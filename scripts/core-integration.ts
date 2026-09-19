@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createWorkerBackend } from '../server/worker.ts';
 import { examples } from '../src/examples.ts';
 import { ballGeometry, collectBinders, discoverScenes, evaluateExpression, initialScenario, sampleGraph, sliceGeometry, updateScenario } from '../src/core/index.ts';
+import { compileSemanticDocument, planViews } from '../src/semantic/index.ts';
 import type { Analysis } from '../src/core/types.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,7 +19,10 @@ try {
     analyses.set(example.id, analysis);
     const scenes = discoverScenes(analysis.tree);
     const scenario = initialScenario(analysis.tree);
-    assert.ok(scenes.length > 0, `${example.id}: no visualizable fragment discovered`);
+    const document = compileSemanticDocument(analysis);
+    const plan = planViews(document);
+    assert.ok(plan.views.length > 0, `${example.id}: no semantic view discovered`);
+    assert.ok(scenes.length > 0 || document.relations.length > 0, `${example.id}: no mathematical relationships discovered`);
     for (const scene of scenes) {
       if (scene.kind === 'ball') {
         const geometry = ballGeometry(scene, scenario);

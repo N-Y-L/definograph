@@ -1,8 +1,8 @@
 import type { Expr, NumericOperator, NumericResult, PredicateResult, Scenario, ScenarioValue, StatementNode } from './types';
+import { MAX_NUMERICAL_DIMENSION } from './limits';
 
 const UNKNOWN = (reason: string): NumericResult => ({ status: 'unknown', reason });
 const MAX_DEPTH = 128;
-const MAX_DIMENSION = 12;
 
 export function headName(expr: Expr): string | undefined {
   if (expr.kind === 'const') return expr.name;
@@ -41,7 +41,8 @@ export function comparisonArguments(expr: Expr): [Expr, Expr] | undefined {
 }
 
 function result(value: ScenarioValue): NumericResult {
-  if (typeof value === 'number' ? Number.isFinite(value) : value.length <= MAX_DIMENSION && value.every(Number.isFinite)) {
+  if (Array.isArray(value) && value.length > MAX_NUMERICAL_DIMENSION) return UNKNOWN(`Numerical vectors are limited to ${MAX_NUMERICAL_DIMENSION} coordinates; larger objects remain symbolic.`);
+  if (typeof value === 'number' ? Number.isFinite(value) : value.every(Number.isFinite)) {
     return { status: 'value', value, approximate: true };
   }
   return UNKNOWN('The numerical illustration is outside the finite floating-point range.');
@@ -51,7 +52,7 @@ export function isPoint(value: ScenarioValue): value is number[] { return Array.
 
 export function metricDistance(metric: string, left: ScenarioValue, right: ScenarioValue, dimension?: number): number | undefined {
   if (metric === 'real') return typeof left === 'number' && typeof right === 'number' ? Math.abs(left - right) : undefined;
-  if (!isPoint(left) || !isPoint(right) || left.length !== right.length || left.length === 0) return undefined;
+  if (!isPoint(left) || !isPoint(right) || left.length !== right.length || left.length === 0 || left.length > MAX_NUMERICAL_DIMENSION) return undefined;
   const expected = metric.endsWith('2') ? 2 : dimension;
   if (expected !== undefined && left.length !== expected) return undefined;
   const delta = left.map((x, i) => x - right[i]!);
@@ -92,7 +93,7 @@ export function evaluateExpression(expression: Expr, scenario: Scenario = {}): N
       if (!numeral) return UNKNOWN('Missing numeral.');
       const value = evaluate(numeral, env, depth + 1);
       if (vectorDomain && value.status === 'value' && typeof value.value === 'number') {
-        if (!expr.dimension || expr.dimension < 1 || expr.dimension > MAX_DIMENSION) return UNKNOWN('The zero-vector dimension is unsupported.');
+        if (!expr.dimension || !Number.isSafeInteger(expr.dimension) || expr.dimension < 1 || expr.dimension > MAX_NUMERICAL_DIMENSION) return UNKNOWN(`The numerical zero-vector dimension must be between 1 and ${MAX_NUMERICAL_DIMENSION}.`);
         if (value.value !== 0) return UNKNOWN('Only the zero vector has an audited numeral interpretation.');
         return result(Array.from({ length: expr.dimension }, () => 0));
       }

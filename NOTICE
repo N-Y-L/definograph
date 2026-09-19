@@ -12,3 +12,7 @@ The user interface uses React (MIT). Development tools include TypeScript
 Dependency licenses and notices remain in their respective packages.
 
 No third-party diagram implementation is vendored into this repository.
+
+CodeMirror and its supporting packages are used under the MIT License.
+https://github.com/codemirror/dev
+The Lean syntax highlighter and semantic workbench are implemented in this repository.

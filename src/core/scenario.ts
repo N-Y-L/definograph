@@ -1,4 +1,5 @@
 import type { Binder, Scenario, ScenarioValue, StatementNode } from './types';
+import { MAX_NUMERICAL_DIMENSION } from './limits';
 
 export function collectBinders(tree: StatementNode): Binder[] {
   const binders: Binder[] = [];
@@ -17,7 +18,7 @@ function defaultValue(binder: Binder): ScenarioValue | undefined {
   if (binder.domain === 'real') return /^(ε|ϵ|epsilon|eps|δ|delta|r|radius)$/i.test(binder.name) ? 1 : 0;
   if (binder.domain === 'sup2' || binder.domain === 'euclidean2' || binder.domain === 'supN' || binder.domain === 'euclideanN') {
     const dimension = binder.dimension ?? (binder.domain.endsWith('2') ? 2 : undefined);
-    if (dimension && Number.isSafeInteger(dimension) && dimension >= 1 && dimension <= 12) return Array.from({ length: dimension }, () => 0);
+    if (dimension && Number.isSafeInteger(dimension) && dimension >= 1 && dimension <= MAX_NUMERICAL_DIMENSION) return Array.from({ length: dimension }, () => 0);
   }
   return undefined;
 }
@@ -57,5 +58,6 @@ export function quantifierExplanation(binder: Binder, binders: Binder[]): string
     ? `Choose a candidate ${binder.name} after ${names.join(', ')}. It may depend on these earlier choices, but not on later variables.`
     : `Choose a candidate ${binder.name} before the later variables. It stays fixed when those variables change.`;
   if (binder.role === 'lambda') return `Input ${binder.name} to the displayed function.`;
+  if (binder.role === 'parameter') return `Parameter ${binder.name} of this definition; its signature is not a quantified proposition.`;
   return `Move one representative ${binder.name}. The quantifier concerns every value in its domain; samples are not a proof.`;
 }

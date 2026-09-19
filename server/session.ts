@@ -1,3 +1,4 @@
+import type { AnalysisOptions } from '../src/protocol.js';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { WorkerError, type WorkerResult } from './protocol.js';
@@ -34,7 +35,7 @@ export class LeanSession {
     maxErrorBytes?: number;
   }) {}
 
-  analyze(source: string, signal?: AbortSignal): Promise<WorkerResult> {
+  analyze(source: string, signal?: AbortSignal, options?: AnalysisOptions): Promise<WorkerResult> {
     if (this.closed) return Promise.reject(new WorkerError('WORKER_CLOSED', 'The local Lean service has stopped.', 503));
     if (signal?.aborted) return Promise.reject(new WorkerError('CANCELLED', 'Analysis was cancelled.', 499));
     if (this.state?.pending) return Promise.reject(new WorkerError('WORKER_BUSY', 'Lean is analyzing another statement.', 429));
@@ -49,7 +50,7 @@ export class LeanSession {
       state.pending = { requestId, resolve, reject, timer, signal, abort, outputBytes: 0, errorBytes: 0 };
       signal?.addEventListener('abort', abort, { once: true });
       // Only one bounded source can be in flight. The stream owns backpressure; no unbounded queue exists.
-      state.child.stdin.write(`${JSON.stringify({ requestId, source })}\n`, (error) => {
+      state.child.stdin.write(`${JSON.stringify({ ...options, requestId, source })}\n`, (error) => {
         if (error) this.discard(state, new WorkerError('WORKER_FAILED', 'The local Lean worker stopped unexpectedly.'));
       });
       if (signal?.aborted) abort();

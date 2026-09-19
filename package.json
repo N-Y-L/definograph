@@ -1,6 +1,6 @@
 {
   "name": "statement-lens",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Inspect the geometry and logical structure of Lean mathematical statements locally.",
   "type": "module",
@@ -12,16 +12,23 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:server": "tsx --test server/*.test.ts",
-    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration",
+    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic",
     "start": "tsx server/index.ts",
     "setup:lean": "node scripts/lean-build.mjs",
     "test:lean": "node scripts/lean-test.mjs",
-    "test:integration": "node --import tsx scripts/core-integration.ts"
+    "test:integration": "node --import tsx scripts/core-integration.ts",
+    "test:semantic": "node --import tsx scripts/semantic-integration.ts"
   },
   "engines": {
     "node": ">=22.12"
   },
   "dependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/state": "6.7.5",
+    "@codemirror/view": "6.43.12",
+    "@lezer/highlight": "1.2.3",
+    "codemirror": "6.0.2",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

@@ -1,8 +1,28 @@
 # StatementLens
 
-A local application for inspecting the geometry and logical structure of Lean 4 mathematical statements. Lean elaborates a proposition; StatementLens finds supported fragments, retains their quantifier context, and gives them interactive views.
+A local mathematical workbench that turns Lean statements into connected, inspectable views. Lean resolves types and scope; StatementLens identifies shared objects and relationships, then automatically composes geometry, mapping diagrams, and quantifier dependencies.
 
-For example,
+The goal is a general mathematical statement visualizer. Extensions describe reusable mathematical constructions, not named theorems. This release provides the semantic foundation and working visual vocabulary; it does not claim complete visual understanding of arbitrary mathematics.
+
+## Explore a statement
+
+Enter a Lean expression or choose an example, then select **Interpret statement**. The editor supports syntax highlighting, search, history, and Lean symbol abbreviations such as `\forall` followed by Tab. The **Structure** tab lets you focus on part of a long statement while retaining its enclosing context.
+
+- **Connected objects:** sets, membership, inclusion, functions, applications, images, preimages, relations, and metric regions share object identities across fragments. Select an object to inspect its type and occurrences.
+- **Automatic composition:** a planner chooses a primary view and supporting representations. Abstract mathematics remains structurally inspectable even when no numerical model is available. Coverage distinguishes interpreted, partially interpreted, and structural fragments.
+- **Quantifier dependencies:** `∀` introduces an arbitrary choice; `∃` asks for a candidate witness using earlier choices in its branch. Hypotheses and definition parameters are labeled separately. Changing an earlier numerical choice clears dependent witnesses.
+- **Geometry:** audited real and finite-dimensional Euclidean/max metrics receive interactive regions. The same ball notation can produce a disk or a square depending on its actual metric. High-dimensional numerical views offer labeled coordinate slices and distance profiles.
+- **Declarations and definitions:** look up a declaration such as `Metric.mem_ball` or `Function.comp`. Theorems expose their statements; definitions expose their signatures. Explicitly expand a trusted definition such as `Function.Injective` to reveal its logical structure.
+- **Source provenance:** a selection in the editor exposes its type using exact Lean InfoTree source ranges. Export the typed analysis, semantic document, plan, and current scenario as JSON.
+
+For example, this statement generates connected set and membership views without any coordinates:
+
+```lean
+∀ (A B : Set ℝ) (x : ℝ),
+  A ⊆ B → x ∈ A → x ∈ B
+```
+
+This one adds geometry under the standard Euclidean metric:
 
 ```lean
 ∀ (c : EuclideanSpace ℝ (Fin 2)) (ε : ℝ),
@@ -10,19 +30,7 @@ For example,
   P ∈ Metric.ball c ε → dist P c < ε
 ```
 
-produces a disk and a movable representative point. Changing the ambient type to `ℝ × ℝ` produces a square, because mathlib's standard product metric is the maximum metric. The interpretation comes from elaborated expressions and checked instances, rather than matching the input text.
-
-## Explore a statement
-
-Choose an example or enter a proposition with its variable binders, then select **Analyze statement**. The logical tree lets you inspect a condition inside a larger statement. Select a marked fragment or a view tab to see its geometry; the scenario controls follow the variables in scope.
-
-- **Quantifiers:** `∀` is an arbitrary representative, not an enumeration of every point. `∃` is a candidate witness that can depend only on earlier choices. Reversing their order changes which choices remain fixed.
-- **Metrics:** real-line intervals, product/max-norm balls, and Euclidean balls have separate interpretations. Open boundaries, closed boundaries, spheres, and nonpositive radii are distinguished.
-- **Dimensions:** recognized finite real vector spaces in dimensions 2–12 use labeled coordinate slices above two dimensions. Omitted coordinates and the displayed axes are adjustable. A 3-sphere has ambient dimension four; the view is an intersection with a coordinate plane.
-- **Functions:** explicit supported real expressions can be sampled as graphs. Unknown functions can still have symbolic mapping diagrams.
-- **Partial inspection:** supported fragments remain discoverable inside an otherwise unsupported, well-typed statement. The entire input must first elaborate; recovery from an invalid outer expression is not implemented.
-
-Lean checks that the input is a well-formed proposition. It does **not** prove the proposition. The renderer and floating-point evaluator are not formally verified, and a finite numerical scan establishes neither a universal claim nor a certified counterexample.
+Lean checks the input's type. It does **not** prove arbitrary submitted propositions. Symbolic diagrams retain their logical context; numerical samples are approximations and do not establish quantified claims.
 
 ## Run locally
 
@@ -47,30 +55,26 @@ The production application listens at [127.0.0.1:4317](http://127.0.0.1:4317). T
 
 ## Scope and isolation
 
-This version is a standalone local web application, with a portable expression format for a future VS Code adapter. It accepts proposition terms, including the logical body of a definition or theorem statement. It does not open or edit formal projects, execute pasted proof scripts, add declarations, load arbitrary imports, or claim to visualize all of mathlib.
+This is a standalone local web application with a versioned Lean extraction contract and a renderer-independent semantic document. The same boundary is designed for a future Lean editor panel. A Rocq adapter is not implemented.
 
-Only fixed, trusted mathlib modules are loaded. User input passes a closed syntax allowlist, elaboration, unresolved-placeholder checks, and a kernel type check. Local and custom operation instances are rejected by numerical recognizers unless they are definitionally equal to the imported standard instance. Unsupported objects remain symbolic.
+Only fixed, trusted mathlib modules are loaded. Input passes a closed declarative syntax allowlist, elaboration, unresolved-placeholder checks, and a kernel type check. Existing formal projects are not opened or edited. Arbitrary imports, pasted proof scripts, and user command execution are outside the input contract. The full expression must elaborate before its parts can be inspected; incomplete-term recovery remains future work.
 
-Build products and machine-specific paths stay in ignored `.local/`. Existing Lean toolchains and mathlib caches are read-only inputs. There is no cloud analysis, model API, telemetry, or external font request. The server binds to loopback and checks request origins. These boundaries are intended for a local development application; they are not a hardened multi-user sandbox.
+Custom metric and arithmetic instances remain symbolic unless their interpretation is audited. View rules use typed constructors and argument roles rather than matching theorem names or source spelling. Unsupported parts are retained with explicit coverage information. Numerical vectors have a resource bound of 256 coordinates; larger spaces retain typed structure rather than receiving a fabricated numerical model.
 
-The current views do not include perspective 3D rendering, general manifold charts, Hopf fibrations, arbitrary projections, user-defined notation, or extraction from a running Lean language server. Those require explicit mathematical adapters. See [the architecture](docs/architecture.md).
+Build products and machine-specific paths stay in ignored `.local/`. Existing toolchains and caches are read-only inputs. There is no cloud analysis, model API, telemetry, or external font request. The server binds to loopback and checks request origins. Its separate worker is not a hardened sandbox for arbitrary uploaded Lean projects.
 
-## Check the implementation
+See [the architecture](docs/architecture.md) for the semantic registry, planner, upstream research, and remaining work. [The Lean contract](docs/lean-contract.md) documents declaration inspection, definition expansion, source ranges, and instance safeguards.
+
+## Verification
 
 ```sh
-npm run build
-npm test
-npm run test:server
-npm run test:lean
-npm run test:integration
+npm run check
 ```
 
-[The verification record](docs/verification.md) describes the tested behaviors and remaining limits. Passing these tests is not a claim that the application has no bugs.
+This builds the application and runs unit, server, native Lean, and end-to-end semantic checks. [The verification record](docs/verification.md) records tested behaviors and limits. Passing these tests is not a claim that the application has no bugs.
 
 ## Attribution
 
-**Project lead and maintainer:** Neil Yuanting Li.
-
-**Development:** Codex under the supervision of Neil Yuanting Li.
+Codex under the supervision of Neil Yuanting Li.
 
 Citation: [CITATION.cff](CITATION.cff). License: [Apache 2.0](LICENSE). Dependency attribution: [NOTICE](NOTICE).

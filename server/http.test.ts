@@ -218,3 +218,21 @@ test('static files stay within dist, including encoded traversal and symlinks', 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('versioned capabilities and bounded declaration options reach the worker', async () => {
+  let received: unknown;
+  await withServer(async url => {
+    const capability = await fetch(`${url}/api/capabilities`);
+    const data = await capability.json();
+    assert.equal(data.protocolVersion, 2);
+    assert.equal(data.executesUserCommands, false);
+    const expansion = {constants:['Function.Injective'],maxDepth:1};
+    assert.equal((await post(url, {source:'Function.Injective',inputMode:'declaration',expansion})).status, 200);
+    assert.deepEqual(received, {inputMode:'declaration',expansion});
+    for (const invalid of [
+      {inputMode:'file'}, {filename:'/tmp/Test.lean'}, {expansion:null},
+      {expansion:{constants:['x'],maxDepth:100}}, {expansion:{constants:Array(13).fill('x'),maxDepth:1}},
+      {expansion:{constants:['x'],maxDepth:1,commands:'anything'}},
+    ]) assert.equal((await post(url,{source:'True',...invalid})).status,400);
+  }, {...healthy, analyze:async (_source,_signal,options) => {received=options;return {ok:true,diagnostics:[]};}});
+});

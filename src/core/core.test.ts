@@ -5,7 +5,7 @@ import type { BallScene, Binder, Expr, GraphScene, StatementNode } from './types
 const cn = (name: string): Expr => ({ kind: 'const', name });
 const lit = (value: number): Expr => ({ kind: 'literal', value });
 const vr = (id: string): Expr => ({ kind: 'var', id, name: id, type: 'ℝ' });
-const app = (name: string, args: Expr[], extra: Partial<Extract<Expr, { kind: 'app' }>> = {}): Expr => ({ kind: 'app', fn: cn(name), args, standard: true, type: 'ℝ', domain: 'real', ...extra });
+const app = (name: string, args: Expr[], extra: Partial<Extract<Expr, { kind: 'app' }>> = {}): Expr => ({ kind: 'app', fn: cn(name), args, argumentKinds: args.map(() => 'value'), standard: true, type: 'ℝ', domain: 'real', ...extra });
 const binder = (id: string, role: Binder['role'] = 'universal', dependsOn: string[] = []): Binder => ({ id, name: id, type: 'ℝ', role, domain: 'real', dependsOn });
 const leaf = (id: string, expression: Expr): StatementNode => ({ id, kind: 'predicate', label: id, lean: id, children: [], expression });
 const quantified = (b: Binder, child: StatementNode): StatementNode => ({ id: `q-${b.id}`, kind: b.role === 'existential' ? 'exists' : 'forall', label: b.name, lean: b.name, binder: b, children: [child], expression: { kind: 'forall', binder: b, body: child.expression } });

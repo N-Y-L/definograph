@@ -1,8 +1,20 @@
 import { comparisonArguments, evaluateExpression, expressionVariables, headName, numericOperator } from './expression';
 import type { Binder, Expr, GraphScene, Scene, SceneBase, StatementNode } from './types';
+import { MAX_NUMERICAL_DIMENSION } from './limits';
 
 const setNames = ['Metric.ball', 'Metric.closedBall', 'Metric.sphere'];
 const knownMetrics = new Set(['real', 'sup2', 'euclidean2', 'supN', 'euclideanN']);
+
+/** Constructor names also occur as partially applied functions; only saturated
+ * applications have the geometric/predicate meaning understood by these views.
+ * Legacy exports retain all Lean arguments, so their full arity is required. */
+function completeApplication(expr: Extract<Expr, { kind: 'app' }>, values: number, leanArity: number, output: 'set' | 'proposition' | 'real'): boolean {
+  if (expr.typeDescriptor && expr.typeDescriptor.kind !== output) return false;
+  if (!expr.argumentKinds) return expr.args.length === leanArity;
+  return expr.argumentKinds.length === expr.args.length
+    && expr.argumentKinds.filter(kind => kind === 'value').length === values
+    && expr.argumentKinds.slice(-values).every(kind => kind === 'value');
+}
 
 /** Recognized fragments remain discoverable even below an unsupported predicate. */
 export function discoverScenes(tree: StatementNode): Scene[] {
@@ -18,7 +30,9 @@ export function discoverScenes(tree: StatementNode): Scene[] {
           : node.kind === 'implies' && i === 0 ? [...context, 'Assumption of an implication']
             : node.kind === 'or' ? [...context, `Alternative ${i + 1} of a disjunction`]
               : node.kind === 'iff' ? [...context, `Side ${i + 1} of an equivalence`] : context;
-        walk(child, scoped, childGuards, childContext, depth + 1);
+        // An implication's proof binder is available only in its consequent, not its own type.
+        const childScope = node.kind === 'implies' && i === 0 && node.binder?.role === 'assumption' ? scope : scoped;
+        walk(child, childScope, childGuards, childContext, depth + 1);
       });
       return;
     }
@@ -29,35 +43,35 @@ export function discoverScenes(tree: StatementNode): Scene[] {
       if (exprDepth > 128 || ++visits > 20_000) return;
       if (expr.kind === 'app') {
         const name = headName(expr);
-        if (setNames.includes(name ?? '') && expr.metric && expr.metric !== 'unknown' && knownMetrics.has(expr.metric)) {
+        if (setNames.includes(name ?? '') && completeApplication(expr, 2, 4, 'set') && expr.metric && expr.metric !== 'unknown' && knownMetrics.has(expr.metric)) {
           const dimension = expr.dimension ?? (expr.metric === 'real' ? 1 : expr.metric.endsWith('2') ? 2 : undefined);
           const center = expr.args.at(-2), radius = expr.args.at(-1);
-          const supportedDimension = dimension !== undefined && Number.isInteger(dimension) && (expr.metric === 'real' ? dimension === 1 : dimension >= 2 && dimension <= 12) && (!expr.metric.endsWith('2') || dimension === 2);
+          const supportedDimension = dimension !== undefined && Number.isInteger(dimension) && (expr.metric === 'real' ? dimension === 1 : dimension >= 2 && dimension <= MAX_NUMERICAL_DIMENSION) && (!expr.metric.endsWith('2') || dimension === 2);
           if (center && radius && dimension && supportedDimension) {
             scenes.push({ ...base(expr, `${name === 'Metric.sphere' ? 'Sphere' : name === 'Metric.closedBall' ? 'Closed ball' : 'Open ball'} in ${dimension}D`), kind: 'ball', metric: expr.metric, dimension, metricInstance: expr.metricInstance, center, radius, boundary: name === 'Metric.sphere' ? 'sphere' : name === 'Metric.closedBall' ? 'closed' : 'open', point });
             emitted.add(path);
           }
         }
         const op = numericOperator(expr);
-        if (op && ['lt', 'le', 'eq', 'ne'].includes(op) && expr.args.length >= 2) {
+        if (op && ['lt', 'le', 'eq', 'ne'].includes(op) && completeApplication(expr, 2, op === 'eq' || op === 'ne' ? 3 : 4, 'proposition')) {
           const [left, right] = comparisonArguments(expr)!;
           const variables = new Set([...expressionVariables(left), ...expressionVariables(right)]);
           const variable = [...scoped].reverse().find(b => b.domain === 'real' && variables.has(b.id));
           if (variable) scenes.push({ ...base(expr, `Condition on ${variable.name}`), kind: 'interval', variable, relation: op as 'lt' | 'le' | 'eq' | 'ne', left, right });
         }
-        if ((name === 'Membership.mem' || name === 'Set.Mem') && expr.args.length >= 2) {
+        if ((name === 'Membership.mem' || name === 'Set.Mem') && completeApplication(expr, 2, name === 'Membership.mem' ? 5 : 3, 'proposition')) {
           const element = expr.args.at(-1)!;
           const indexOfSet = expr.args.length - 2;
           expr.args.forEach((arg, i) => visit(arg, `${path}.${i}`, i === indexOfSet && (name === 'Set.Mem' || expr.standard === true) ? element : undefined, exprDepth + 1));
           return;
         }
-        if (['Function.Injective', 'Function.Surjective', 'Function.Bijective'].includes(name ?? '')) {
+        if (['Function.Injective', 'Function.Surjective', 'Function.Bijective'].includes(name ?? '') && completeApplication(expr, 1, 3, 'proposition')) {
           const fn = expr.args.at(-1);
           if (fn) scenes.push({ ...base(expr, (name ?? '').replace('Function.', '')), kind: 'mapping', fn, property: name === 'Function.Injective' ? 'injective' : name === 'Function.Surjective' ? 'surjective' : 'bijective' });
         }
         if (expr.fn.kind === 'var') {
           const fnId = expr.fn.id;
-          if (scoped.some(b => b.id === fnId && b.domain === 'realFunction')) scenes.push({ ...base(expr, `Mapping ${expr.fn.name}`), kind: 'mapping', fn: expr.fn, input: expr.args.at(-1) });
+          if (completeApplication(expr, 1, 1, 'real') && scoped.some(b => b.id === fnId && b.domain === 'realFunction')) scenes.push({ ...base(expr, `Mapping ${expr.fn.name}`), kind: 'mapping', fn: expr.fn, input: expr.args.at(-1) });
         }
         visit(expr.fn, `${path}.fn`, undefined, exprDepth + 1);
         expr.args.forEach((arg, i) => { if (!emitted.has(`${path}.${i}`)) visit(arg, `${path}.${i}`, undefined, exprDepth + 1); });

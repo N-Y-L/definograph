@@ -1,6 +1,9 @@
 export interface Example { id: string; title: string; description: string; source: string }
 export const examples: Example[] = [
   { id: 'epsilon', title: 'A point in an ε-ball', description: 'An arbitrary point under a geometric assumption.', source: '∀ (c : EuclideanSpace ℝ (Fin 2)) (ε : ℝ),\n  0 < ε → ∀ P : EuclideanSpace ℝ (Fin 2),\n  P ∈ Metric.ball c ε → dist P c < ε' },
+  { id: 'sets', title: 'Sets, membership, and inclusion', description: 'Shared objects connect conditions across the statement.', source: '∀ (A B : Set ℝ) (x : ℝ),\n  A ⊆ B → x ∈ A → x ∈ B' },
+  { id: 'maps', title: 'Functions between arbitrary types', description: 'Explore symbolic structure without choosing numerical coordinates.', source: '∀ (α β : Type) (f : α → β),\n  Function.Injective f →\n  ∀ x y : α, f x = f y → x = y' },
+  { id: 'relations', title: 'A relation and its arguments', description: 'An abstract predicate retains its typed objects and application structure.', source: '∀ (α : Type) (R : α → α → Prop),\n  (∀ x : α, R x x) →\n  ∀ x : α, ∃ y : α, R x y' },
   { id: 'product', title: 'The same notation, a different metric', description: 'The standard product metric makes a square ball.', source: '∀ (c P : ℝ × ℝ) (ε : ℝ),\n  P ∈ Metric.ball c ε → dist P c < ε' },
   { id: 'sphere', title: 'A 3-sphere in four dimensions', description: 'Inspect a coordinate slice of a sphere in ℝ⁴.', source: '∀ P : EuclideanSpace ℝ (Fin 4),\n  P ∈ Metric.sphere 0 2' },
   { id: 'six', title: 'A ball in six dimensions', description: 'Move the omitted coordinates and see the slice change.', source: '∀ (P : EuclideanSpace ℝ (Fin 6)) (ε : ℝ),\n  P ∈ Metric.closedBall 0 ε' },

@@ -3,26 +3,41 @@ export type Domain = 'real' | 'sup2' | 'euclidean2' | 'supN' | 'euclideanN' | 'r
 export type Metric = 'real' | 'sup2' | 'euclidean2' | 'supN' | 'euclideanN' | 'unknown';
 export type NumericOperator = 'add' | 'sub' | 'mul' | 'div' | 'neg' | 'pow' | 'abs' | 'min' | 'max' | 'lt' | 'le' | 'eq' | 'ne' | 'pair' | 'proj1' | 'proj2' | 'ofNat';
 
+/** Structural type information supplied by the prover; never inferred from variable names. */
+export interface TypeDescriptor {
+  kind: 'real' | 'natural' | 'integer' | 'rational' | 'finite' | 'type' | 'set' | 'map' | 'relation' | 'proposition' | 'structure' | 'unknown';
+  lean: string;
+  head?: string;
+  dimension?: number;
+  cardinality?: number;
+  element?: TypeDescriptor;
+  domain?: TypeDescriptor;
+  codomain?: TypeDescriptor;
+  dependent?: boolean;
+}
+
 export interface Binder {
   id: string;
   name: string;
   type: string;
-  role: 'universal' | 'existential' | 'assumption' | 'lambda';
+  role: 'universal' | 'existential' | 'assumption' | 'lambda' | 'parameter';
   dependsOn: string[];
   domain?: Domain;
   dimension?: number;
+  typeExpression?: Expr;
+  typeDescriptor?: TypeDescriptor;
 }
 
 export type Expr =
-  | { kind: 'const'; name: string }
-  | { kind: 'var'; id: string; name: string; type: string }
+  | { kind: 'const'; name: string; type?: string; typeDescriptor?: TypeDescriptor }
+  | { kind: 'var'; id: string; name: string; type: string; typeDescriptor?: TypeDescriptor }
   | { kind: 'literal'; value: number | string }
-  | { kind: 'app'; fn: Expr; args: Expr[]; metric?: Metric; metricInstance?: string; dimension?: number; domain?: Domain; standard?: boolean; type?: string; operator?: NumericOperator }
-  | { kind: 'forall' | 'lambda'; binder: Binder; body: Expr }
+  | { kind: 'app'; fn: Expr; args: Expr[]; metric?: Metric; metricInstance?: string; dimension?: number; domain?: Domain; standard?: boolean; type?: string; operator?: NumericOperator; typeDescriptor?: TypeDescriptor; argumentKinds?: ('instance' | 'proof' | 'type' | 'value')[] }
+  | { kind: 'forall' | 'lambda'; binder: Binder; body: Expr; binderType?: Expr }
   | { kind: 'sort'; name: string }
   | { kind: 'opaque'; text: string };
 
-export type NodeKind = 'forall' | 'exists' | 'implies' | 'and' | 'or' | 'iff' | 'not' | 'predicate';
+export type NodeKind = 'forall' | 'exists' | 'implies' | 'and' | 'or' | 'iff' | 'not' | 'predicate' | 'parameter';
 export interface StatementNode {
   id: string;
   kind: NodeKind;
@@ -31,17 +46,28 @@ export interface StatementNode {
   children: StatementNode[];
   binder?: Binder;
   expression: Expr;
+  scope?: string[];
+  expansion?: { constant: string; before: string; after: string; originalExpression?: Expr; definitionalEquality: true; depth?: number };
 }
 
 export interface Analysis {
   ok: true;
   source: string;
   pretty: string;
-  type: 'Prop';
+  type: string;
   tree: StatementNode;
   expression: Expr;
   metrics: unknown[];
   diagnostics: unknown[];
+  schemaVersion?: number;
+  validation?: 'kernel-type-checked-statement' | 'kernel-type-checked-declaration-type';
+  provenance?: { assistant: string; inputMode: 'term' | 'declaration'; declaration?: { name: string; kind: string; module?: string; type: string }; [key: string]: unknown };
+  definitions?: { name: string; kind: string; type: string; module?: string; canExpand: boolean }[];
+  sourceTerms?: { startByte: number; endByte: number; lean: string; type: string; isBinder: boolean; origin: 'lean-infotree' }[];
+  definitionExpression?: Expr | null;
+  definitionTree?: StatementNode | null;
+  definitionBodyStatus?: 'available' | 'export-size-limit' | 'not-a-definition';
+  expansionPolicy?: unknown;
 }
 
 export type Point2 = [number, number];

@@ -1,48 +1,74 @@
-# Architecture and interpretation boundaries
+# Architecture
 
-StatementLens has three independently testable layers.
+StatementLens aims to make arbitrary mathematical statements inspectable through automatically composed representations. Its unit of extension is a mathematical construction—sets, maps, relations, spaces, quantifiers—not a theorem name. A regression example exercises reusable rules; it is never a dispatch key.
 
-1. `lean/StatementLens/Worker.lean` imports a fixed mathlib environment, parses one proposition term, validates its syntax, elaborates it, checks for unresolved metavariables and placeholders, and calls Lean's kernel type checker. It exports the logical tree and typed expression data over JSON lines. Each request receives a fresh elaboration context.
-2. `src/core/` recognizes supported mathematical objects, interprets audited numerical operations, preserves lexical scope, tracks witness dependencies, and computes coordinate intersections. Recognition relies on fully qualified constants and Lean's canonical-instance checks. Display names never identify binders.
-3. `src/App.tsx` and `src/SceneView.tsx` render the tree and numerical scenarios. Source edits invalidate the displayed analysis. Requests carry generation checks so an old result cannot replace a newer source.
+## The pipeline
 
-`server/` manages the local worker, enforces size and time limits, and exposes `/api/health` and `/api/analyze`. It does not accept executable paths, import lists, filesystem paths, or compiler options from HTTP requests. Production file serving stays inside `dist/`. Machine-local configuration is ignored by Git.
+```text
+Lean term / imported declaration
+        ↓
+Lean elaboration, kernel type check, instance audit
+        ↓
+Versioned typed expression + scope + source provenance
+        ↓
+Semantic document: shared objects, relations, choices, unknown regions
+        ↓
+Capability registry and ranked view composition
+        ↓
+Linked diagrams, numerical scenarios, source/type inspection
+```
 
-## What the checks establish
+`lean/StatementLens/Worker.lean` resolves mathematical meaning in a pinned environment. `src/semantic/` separates that meaning from presentation. `src/visual/` renders symbolic structure. `src/core/` and `src/SceneView.tsx` provide audited numerical interpretation. `src/editor/` provides CodeMirror input and exact UTF-8-to-UTF-16 source occurrence conversion. `server/` transports bounded requests to a persistent, isolated worker context.
+
+## A semantic document rather than a diagram recipe
+
+`compileSemanticDocument` creates the versioned document in `src/semantic/types.ts`. Objects carry typed expressions, identity, scope, and provenance. Relations connect named ports to object identities. Quantifier choices retain the information available at their introduction. Logical alternatives, implications, and negations remain separate contexts. Unrecognized expressions remain in `opaqueRegions`; recognized children can still contribute relations and scenes.
+
+Binder names are display labels, not identities. Expression keys preserve types and instances, since different metrics or overloaded operations can change the mathematics. Implicit type, instance, and proof arguments stay in the exported expression but are filtered from ordinary visual roles. A definition signature uses parameter nodes, not universal proposition nodes.
+
+`src/semantic/registry.ts` is a registry of reusable recognizers. Each rule declares its capabilities and limitations. Recognition uses elaborated constructors and typed argument roles. Generic typed relation applications remain visible even when their domain has no coordinate model. Arbitrary unknown predicates remain structural; the program does not infer their meaning from familiar-looking names.
+
+## Automatic representation selection
+
+`planViews` ranks geometric, relational, structural, and quantifier views using directness, recognized mathematical information, shared objects, and selected scope. It retains supporting views and a complete semantic document. Selecting a fragment changes the plan while carrying its enclosing assumptions. Selecting an object connects appearances across views.
+
+Geometry receives a direct rendering when its metric and operations are understood. Abstract sets and maps receive schematic relationships; their drawing does not assign cardinalities or coordinates. Quantifier flow describes the permitted order of choices. For larger finite-dimensional spaces, a distance profile can show every coordinate's contribution while a coordinate slice provides an adjustable spatial intersection. Neither representation is described as the entire high-dimensional object.
+
+The current planner is a tested heuristic, not a theorem that its representation is optimal. The extensible boundary matters: a future chart, fiber, graph embedding, commutative diagram, or projection rule can state what information it preserves and compete as a view without changing the prover extractor or inventing theorem-specific detection.
+
+## Trust and meaning
 
 | Stage | Establishes | Does not establish |
 |---|---|---|
-| Lean elaboration and kernel type checking | The submitted expression is a proposition with resolved types | That the proposition is true |
-| Instance-aware recognition | A supported constant uses a recognized standard mathematical interpretation | Correctness of the TypeScript implementation by proof |
-| Numerical evaluation | An approximate result for the current finite scenario | A theorem, exhaustive search, or exact-real decision |
-| Coordinate slice | Intersection with a specified coordinate plane under the recognized metric | A picture of every point of a higher-dimensional object |
+| Lean elaboration and kernel type checking | Resolved type of a statement or declaration signature | Truth of an arbitrary submitted proposition |
+| Definition expansion | Kernel-checked definitional equality with the original fragment | A new mathematical theorem |
+| Typed semantic extraction | Scope, object roles, recognized relationships | Geometric meaning for every unknown symbol |
+| Symbolic diagram | Relationships and roles in a labeled logical context | That its pictured hypotheses hold |
+| Numerical scenario | Approximate values for selected representatives | Universal truth or a certified counterexample |
+| Coordinate slice | Intersection with a specified coordinate plane | A projection or complete picture of the ambient object |
 
-## Quantifiers and scope
+Changing an earlier arbitrary choice clears dependent candidate witnesses. In `∃ y, ∀ x, P x y`, changing `x` leaves `y` fixed. No witness search or proof is implied. An implication's hypothesis is available only in its consequent. Disjoint branches never acquire each other's binders.
 
-`∀ x, ∃ y, P x y` permits a candidate `y` to depend on `x`. Changing an earlier choice invalidates later dependent witness choices. In `∃ y, ∀ x, P x y`, changing `x` leaves `y` fixed. No automatic witness search or proof is implied.
+Custom typeclass instances cannot silently receive standard numerical meanings. The worker compares actual instances against trusted canonical instances. Parametric set operations have separate exact constructor checks; tests include locally overridden membership and inclusion.
 
-Lean represents both universal binders and implications with `Expr.forallE`. Proposition-valued binders are displayed as assumptions, not geometric sliders. Existentials under a negation, implication antecedent, or disjunction retain that logical context. Two binders with the same printed name retain distinct internal IDs.
+## Prover and editor boundaries
 
-## Geometric views
+`GET /api/capabilities` describes protocol version 2 and bounded input options. `POST /api/analyze` accepts only a source string, an optional term/declaration mode, and explicit bounded definition expansion. It accepts no filesystem paths, commands, import lists, or executable settings. The semantic document and view plan can be exported from the interface as JSON.
 
-For a Euclidean ball centered at `c`, a coordinate slice fixing omitted coordinates `z` has squared radius `r² − ‖z − c_omitted‖²`. Negative residual gives an empty intersection. An open ball excludes tangency; a closed ball and sphere can meet in a single point.
+The current Lean adapter uses fixed imports. An editor adapter should extract from the active Lean document's `InfoTree` and local environment, through Lean RPC or ProofWidgets, then emit the same typed contract. Exact source occurrences are implemented; source links on transformed logical nodes are deliberately not guessed. Recovery from incomplete outer syntax and active-project environment access remain separate work.
 
-For the maximum metric, omitted coordinate displacements must satisfy the original radius bound. A max-norm sphere can intersect a plane in a **filled square** if an omitted coordinate already attains the radius. The scene identifies this case explicitly.
+The semantic document has a prover identifier and is independent of React and HTTP. A Rocq extractor would need its own handling of universes, coercions, modules, contexts, and kernel terms. Shared views are an architectural direction, not a claim of working Rocq support.
 
-The plotted axes are coordinate directions. Changing them or the fixed coordinates changes the view, not the Lean statement. A point outside the slice is hidden and labeled as outside it. Dragging inside the plot places a representative in that slice.
+## Existing foundations and reuse
 
-## Extending the application
+[Penrose](https://penrose.cs.cmu.edu/docs/ref) separates mathematical vocabulary and relationships from visual style and constraint-based layout. That separation informs the document/rule/view design here. Penrose does not supply a general Lean-to-mathematics extractor; no Penrose runtime or copied styles are bundled in this release. The present symbolic renderer uses bounded deterministic layout. A Penrose renderer can fit behind the same view boundary when optimization and reusable styles justify its runtime.
 
-New recognizers should specify the exact Lean constants, type and instance checks, geometric interpretation, unsupported cases, and numerical limitations. Tests should contain a near-miss example that must remain unsupported. A specialized Hopf-fibration view would need its own map and chart semantics; substituting a generic projection would not be sufficient.
+[ProofWidgets4](https://github.com/leanprover-community/ProofWidgets4) supplies Lean/React integration and a [Penrose component](https://github.com/leanprover-community/ProofWidgets4/blob/main/ProofWidgets/Component/PenroseDiagram.lean). It is a useful future editor host, not a replacement for the semantic recognizers. The existing mathlib dependency graph already pins ProofWidgets; the standalone application does not load its UI bundle.
 
-A future VS Code adapter should obtain elaborated expressions and local context from Lean's `InfoTree` or an RPC extension, then reuse this portable scene pipeline. It should preserve the source project and its toolchain. Source ranges, incomplete-term recovery, arbitrary declaration loading, and proof-status auditing are separate work and are not implemented here.
+[CodeMirror](https://github.com/codemirror/dev) supplies the editor, selection, history, bracket matching, and search infrastructure. The small Lean highlighter is lexical; only the Lean worker determines validity. Lean and mathlib provide the actual typed mathematical environment.
 
-## Primary references
+## Current boundaries
 
-- [Lean elaboration and compilation](https://lean-lang.org/doc/reference/latest/Elaboration-and-Compilation/)
-- [Lean expression representation](https://lean-lang.org/doc/api/Lean/Expr.html)
-- [Mathlib metric balls](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Topology/MetricSpace/Pseudo/Defs.html)
-- [Mathlib finite-dimensional Euclidean spaces](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Analysis/InnerProductSpace/PiL2.html)
-- [Lean InfoTree data](https://lean-lang.org/doc/api/Lean/Elab/InfoTree/Types.html)
+The application has generalized structure and a growing reusable visual vocabulary. It does not yet automatically discover a faithful geometric model for every mathematical construction. Fixed imports, limited supported input syntax, bounded semantic extraction, the numerical subset, incomplete-term recovery, richer layout planning, witness strategies, and active editor integration are engineering work still to do. High dimension is a representation-design problem, not grounds for rejecting a statement.
 
-Online references may describe newer versions. The implementation and tests use the pinned Lean and mathlib versions in this repository.
+The renderer has regression tests, not a formal correctness proof. The local server and allowlisted input are not an operating-system sandbox for arbitrary third-party Lean projects. Full transport and extraction details are in [the Lean contract](lean-contract.md).

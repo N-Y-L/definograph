@@ -1,3 +1,4 @@
+import type { AnalysisOptions } from '../src/protocol.js';
 import { spawn } from 'node:child_process';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -18,7 +19,7 @@ export interface Health {
 
 export interface WorkerBackend {
   health(): Promise<Health>;
-  analyze(source: string, signal?: AbortSignal): Promise<WorkerResult>;
+  analyze(source: string, signal?: AbortSignal, options?: AnalysisOptions): Promise<WorkerResult>;
   close?(): void;
 }
 
@@ -143,7 +144,7 @@ export function createWorkerBackend(options: {
       pendingHealth ??= readHealth().finally(() => { pendingHealth = undefined; });
       return pendingHealth;
     },
-    async analyze(source, signal) {
+    async analyze(source, signal, requestOptions) {
       if (closed) throw new WorkerError('WORKER_CLOSED', 'The local Lean service has stopped.', 503);
       if (analyzing) throw new WorkerError('WORKER_BUSY', 'Lean is analyzing another statement.', 429);
       if (!source.trim() || source.length > MAX_SOURCE_CHARACTERS || Buffer.byteLength(source) > MAX_SOURCE_BYTES) {
@@ -171,7 +172,7 @@ export function createWorkerBackend(options: {
           });
           sessionFingerprint = fingerprint;
         }
-        return await session.analyze(source, signal);
+        return await session.analyze(source, signal, requestOptions);
       } finally {
         analyzing = false;
       }

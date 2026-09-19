@@ -1,3 +1,4 @@
+import { capabilities, type AnalysisRequest } from '../src/protocol.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -25,7 +26,7 @@ function sendError(response: ServerResponse, status: number, code: string, messa
   sendJSON(response, status, { ok: false, error: message, code, diagnostics: [{ severity: 'error', message }] });
 }
 
-async function readSource(request: IncomingMessage): Promise<string> {
+async function readSource(request: IncomingMessage): Promise<AnalysisRequest> {
   if (request.headers['content-encoding'] && request.headers['content-encoding'] !== 'identity') {
     request.resume();
     throw new WorkerError('UNSUPPORTED_ENCODING', 'Compressed requests are not supported.', 415);
@@ -79,7 +80,27 @@ async function readSource(request: IncomingMessage): Promise<string> {
   if (!source.trim() || source.length > MAX_SOURCE_CHARACTERS || Buffer.byteLength(source) > MAX_SOURCE_BYTES) {
     throw new WorkerError('INVALID_SOURCE', 'Provide a nonempty Lean statement of at most 32,768 characters and 65,536 bytes.', 400);
   }
-  return source;
+  const input = body as Record<string, unknown>;
+  if (Object.keys(input).some(key => !['source', 'inputMode', 'expansion'].includes(key))) {
+    throw new WorkerError('INVALID_OPTIONS', 'Unknown analysis option.', 400);
+  }
+  const result: AnalysisRequest = { source };
+  if (input.inputMode !== undefined) {
+    if (input.inputMode !== 'term' && input.inputMode !== 'declaration') throw new WorkerError('INVALID_OPTIONS', 'inputMode must be term or declaration.', 400);
+    result.inputMode = input.inputMode;
+  }
+  if (input.expansion !== undefined) {
+    const expansion = input.expansion as Record<string, unknown>;
+    if (!expansion || typeof expansion !== 'object' || Array.isArray(expansion) ||
+        Object.keys(expansion).some(key => !['constants', 'maxDepth'].includes(key)) ||
+        !Array.isArray(expansion.constants) || expansion.constants.length > 12 ||
+        !expansion.constants.every(name => typeof name === 'string' && name.length > 0 && name.length <= 512 && !/[\r\n\0]/.test(name)) ||
+        !Number.isInteger(expansion.maxDepth) || Number(expansion.maxDepth) < 1 || Number(expansion.maxDepth) > 3) {
+      throw new WorkerError('INVALID_OPTIONS', 'Expansion needs up to 12 constant names and maxDepth from 1 to 3.', 400);
+    }
+    result.expansion = { constants: [...new Set(expansion.constants as string[])], maxDepth: Number(expansion.maxDepth) };
+  }
+  return result;
 }
 
 /** Resolve within dist, including symlinks. No local project files can be served. */
@@ -155,6 +176,10 @@ export function createLocalServer(options: { worker: WorkerBackend; port?: numbe
       response.end();
       return;
     }
+    if (url.pathname === '/api/capabilities' && request.method === 'GET') {
+      sendJSON(response, 200, capabilities);
+      return;
+    }
     if (url.pathname === '/api/health' && request.method === 'GET') {
       sendJSON(response, 200, await options.worker.health());
       return;
@@ -171,8 +196,8 @@ export function createLocalServer(options: { worker: WorkerBackend; port?: numbe
       const cancel = () => { if (!response.writableEnded) controller.abort(); };
       response.once('close', cancel);
       try {
-        const source = await readSource(request);
-        sendJSON(response, 200, await options.worker.analyze(source, controller.signal));
+        const { source, ...analysisOptions } = await readSource(request);
+        sendJSON(response, 200, await options.worker.analyze(source, controller.signal, analysisOptions));
       } finally {
         analyzing = false;
         response.off('close', cancel);
