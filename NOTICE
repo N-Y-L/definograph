@@ -1,0 +1,14 @@
+StatementLens
+Copyright 2026 Neil Yuanting Li
+
+Development: Codex under the supervision of Neil Yuanting Li.
+
+This project uses Lean 4 and mathlib, each licensed under Apache License 2.0.
+https://github.com/leanprover/lean4
+https://github.com/leanprover-community/mathlib4
+
+The user interface uses React (MIT). Development tools include TypeScript
+(Apache-2.0), Vite (MIT), Vitest (MIT), and tsx (MIT).
+Dependency licenses and notices remain in their respective packages.
+
+No third-party diagram implementation is vendored into this repository.

@@ -1,0 +1,37 @@
+{
+  "name": "statement-lens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Inspect the geometry and logical structure of Lean mathematical statements locally.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite --host 127.0.0.1",
+    "dev:server": "tsx server/index.ts",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:server": "tsx --test server/*.test.ts",
+    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration",
+    "start": "tsx server/index.ts",
+    "setup:lean": "node scripts/lean-build.mjs",
+    "test:lean": "node scripts/lean-test.mjs",
+    "test:integration": "node --import tsx scripts/core-integration.ts"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2",
+    "vite": "8.3.0",
+    "vitest": "5.0.1"
+  }
+}

@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, cite the repository and the commit used."
+title: "StatementLens: geometric inspection of Lean mathematical statements"
+type: software
+version: 0.1.0
+date-released: 2026-09-19
+authors:
+  - given-names: Neil Yuanting
+    family-names: Li
+license: Apache-2.0
+abstract: >-
+  A local Lean-backed application for inspecting geometric fragments,
+  quantifier dependencies, and coordinate slices in mathematical statements.
+  Developed by Codex under the supervision of Neil Yuanting Li.

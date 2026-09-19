@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.local/
+.lake/
+*.olean
+*.ilean
+*.olean.*
+*.ir
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+coverage/
+test-results/
