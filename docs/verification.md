@@ -1,4 +1,37 @@
-## Release 0.4 checks
+# Verification record
+
+Verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
+
+## Release 0.5 checks
+
+The guided-constructions iteration passes strict TypeScript, the production build, and **487 automated checks**: 483 in `npm run check`, plus four extension checks. Counts below are recorded from `.local/release-0.5-check.log` and `.local/release-0.5-extension.log`; builds and packaging are not counted as tests.
+
+| Suite | Passed | Added assurance |
+|---|---:|---|
+| `npm test` | 259 | 21 test files covering guided cues, compositional set regions, identities, scoped reading, host messages, and existing semantic/numerical behavior |
+| `npm run test:server` | 29 | Local transport, request bounds, cancellation, asset containment, and editor-context boundaries |
+| `npm run test:lean` | 46 | Real Lean elaboration, kernel checks, syntax isolation, and constant universe metadata |
+| `npm run test:integration` | 18 | All 17 interface examples and combined geometry/dependency behavior |
+| `npm run test:semantic` | 21 | Typed semantic recognition, application completeness, and scope |
+| `npm run test:reading` | 20 | Whole-statement logic, witnesses, and abstract relationships |
+| `npm run test:notation` | 24 | Native LeanTeX output through strict KaTeX, interface examples, and bounded fallback |
+| `npm run test:atlas` | 21 | Native Lean through typed constructions, grouped regions, and the actual React renderer |
+| `npm run test:cues` | 15 | Native statements through scope-preserving guided reading cues |
+| `npm run test:sets` | 7 | Native Boolean set constructions, composition, and preservation of unknown instances |
+| `npm run test:editor` | 23 | Native project-context extraction and its trust, selection, diagnostic, and resource boundaries |
+| Extension tests in `npm run check:extension` | 4 | Mocked VS Code controller and lifecycle checks |
+
+The native editor suite uses a temporary Lean project with a compiled imported dependency. It exercises unsaved buffer contents, local parameters and proof assumptions, dependent types, Unicode selections, later file errors, placeholder rejection, canonical-constant and custom-instance guards, toolchain compatibility, cancellation, and deadlines. Its source and configuration fixtures remain unchanged. These are real native extraction checks, not a running VS Code GUI session.
+
+The extension checks compile TypeScript and exercise mocked VS Code APIs, including request ordering, stale-result rejection, selection/reveal behavior, configuration failures, and invalidation after another buffer changes. Packaging also succeeds, producing `.local/statement-lens-editor-0.5.0.vsix` (six files). Packaging verifies the artifact can be built; **installation, activation, and the complete workflow in an actual VS Code GUI have not been tested**. The controller uses the separately configured local engine and assets. Remote editor hosts and native Windows operation remain unverified.
+
+Browser checks covered the guided sequence, abstract maps, compositional sets, and scoped assumptions. At a browser-reported width of 600 pixels, the checked layout had no horizontal document overflow. A hosted-browser fixture used actual native extraction output: local parameters and assumptions rendered, editing cleared the old result, stale responses were discarded, refresh restored the result, source reveal emitted the expected host message, and file diagnostics remained visible with the correct filename and count. This checks the browser side of the editor bridge; it does not substitute for VS Code extension-host testing.
+
+A final pass loaded the rebuilt production reader, the dynamically loaded LeanTeX component, and the CodeMirror source editor. The exercised workflows produced no browser console errors. These browser observations are manual checks, not an exhaustive UI regression suite.
+
+See [guided reading](guided-reading.md), [set constructions](set-constructions.md), and [editor integration](editor-integration.md) for implemented behavior and limits. No Manim runtime was added. Editor extraction replays trusted Lean source in a separate process; it is not a security sandbox and does not certify the surrounding theorem. Existing user projects and global toolchain settings were not modified by these checks.
+
+## Historical release 0.4 checks
 
 The atlas iteration passes strict TypeScript, the production build, and **357 automated checks**:
 
@@ -20,10 +53,6 @@ A preview rebuild exposed a missing lazy editor chunk that previously blanked th
 Review also corrected a pending analysis dismissing a different drawer opened after submission. Completion now dismisses only the drawer that initiated that request. Arrow routing separates adjacent maps from a longer composed route.
 
 See [the atlas review](atlas-iteration.md) for semantic boundaries and [the visual-method research](visual-method.md) for the 3Blue1Brown reference and proposed guided-reading foundation. This release adds no Manim dependency and no extra Mathlib import. Existing formal projects and global toolchain settings remain unchanged.
-
-# Verification record
-
-Verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
 
 ## Historical release 0.3 checks
 
@@ -88,4 +117,4 @@ The original clean-cache download smoke test remains applicable: setup fetched 2
 
 Passing these checks is not a proof that the renderer is bug-free. Lean's kernel checks the submitted expression or definition expansion; the TypeScript semantic rules, layout, and floating-point evaluator have regression tests rather than formal correctness proofs. Numerical samples cannot certify universal statements or exact real equality.
 
-The fixed imported environment and allowlisted term syntax do not accept every Lean project or incomplete expression. Source occurrences are exact, but transformed-node-to-source mapping is not guessed. Definition unfolding is bounded and acts at logical heads. The planner uses explicit heuristics and representation contracts, not a verified global optimum. Rich geometric realization for arbitrary structures, witness strategies, active Lean editor extraction, and Rocq support remain future work.
+The standalone reader's fixed imported environment and allowlisted term syntax do not accept every Lean project or incomplete expression. The editor adapter adds trusted project-context extraction, with the toolchain, import, source-selection, and execution limits documented in [editor integration](editor-integration.md). Source occurrences are exact, but transformed-node-to-source mapping is not guessed. Definition unfolding is bounded and acts at logical heads. The planner uses explicit heuristics and representation contracts, not a verified global optimum. Rich geometric realization for arbitrary structures, witness strategies, and Rocq support remain future work. Actual VS Code GUI installation and end-to-end extension-host use remain unverified in release 0.5.

@@ -14,13 +14,13 @@ The useful direction is to make constructions and relationships perceptible whil
 | The three-dimensional transformation lesson follows basis vectors and retains the original axes as a reference instead of showing an overcrowded full grid. [Three-dimensional transformations](https://www.3blue1brown.com/lessons/3d-transformations/) | Choose a representation that exposes the relevant structure. Arbitrary types can use carrier-and-map diagrams; dependent types can use indexed families; high-dimensional metric conditions can use distance profiles or explicit slices. A basis-based view is justified only when the required linear structure and basis are actually available. |
 | The abstract-vector-space lesson connects operations on arrows with operations on functions, then states the shared algebraic properties. [Abstract vector spaces](https://www.3blue1brown.com/lessons/abstract-vector-spaces/) | Prefer reusable visual grammars for operations and relations. A picture of a two-dimensional example can illustrate an abstract structure, but must not replace the abstract objects or imply that their dimension, topology, or cardinality has been determined. |
 
-These observations support the current atlas: typed constructions, ordered map paths, persistent object identities, compact scalar constraints, and explicit logical regions. They also suggest that the next advance should be a coherent guided reading of one construction, rather than adding unrelated animated theorem demonstrations.
+These observations support the current atlas: typed constructions, ordered map paths, persistent object identities, compact scalar constraints, and explicit logical regions. Release 0.5 builds on them with a guided reading of constructions and their enclosing logical roles.
 
-## Concrete next foundation: a semantic reading cue plan
+## Implemented foundation in release 0.5: semantic reading cues
 
-Add a pure presentation compiler over the existing semantic document and reading presentation. It should emit a deterministic list of attention cues, independent of an animation engine. This is a proposed next component, not functionality supplied by Manim or already implemented here.
+The pure compiler in [`src/reading/cues.ts`](../src/reading/cues.ts) emits a deterministic list of attention cues over the semantic document and reading presentation, independent of an animation engine. [`src/visual/GuidedReading.tsx`](../src/visual/GuidedReading.tsx) presents this sequence with Previous/Next controls and a step selector. The complete static statement remains available below it. See [guided reading](guided-reading.md) for the current contract and [verification](verification.md) for the recorded checks.
 
-Each cue should contain:
+Each cue contains:
 
 - Exact source node, scope, and branch-path IDs.
 - The objects and relations receiving attention, plus the object identities retained from the preceding cue.
@@ -28,17 +28,17 @@ Each cue should contain:
 - Its logical role: parameter, arbitrary choice, requested witness, assumption, required conclusion, alternative, negated condition, or contained expression part.
 - A short explanation derived from that role and the recognized relation; no claim that the condition has been proved.
 
-Generate cues from the same scope-preserving regions already used by the atlas. Within one atomic clause, ordered application dependencies can supply a construction sequence. Do not flatten a disjunction into successive required facts, move a witness before its permitted dependencies, or expose an inner predicate as an assertion of its unknown wrapper. An equality cue compares its two expressions; it does not certify their equality.
+Cues use the same scope-preserving regions as the atlas. Within one atomic clause, ordered application dependencies supply a construction sequence. [Boolean set constructions](set-constructions.md) also retain their operand identities and expose intermediate operations before their enclosing relation. Do not flatten a disjunction into successive required facts, move a witness before its permitted dependencies, or expose an inner predicate as an assertion of its unknown wrapper. An equality cue compares its two expressions; it does not certify their equality.
 
-The first renderer can use the existing browser SVGs: a Next/Previous control focuses the relevant objects and paths while keeping the surrounding logic and overview visible. Unchanged objects keep their positions where practical. An optional short transition makes correspondence easier to follow; reduced-motion mode performs the identical change of focus instantly. The complete static atlas remains the default available view. No autoplay or chosen coordinates are required.
+The current renderer reuses the browser diagrams and keeps the surrounding logic and overview visible. It requires neither autoplay nor chosen coordinates. Motion is currently limited to a short progress-indicator transition, disabled under reduced-motion preferences; animated object transforms and correspondence-preserving motion remain future work.
 
-Acceptance checks should establish that:
+The cue plan is checked against these semantic requirements:
 
 1. Every cue refers to existing objects and relations in its declared scope.
 2. Binder renaming preserves cue topology; same-spelled binders in separate scopes never merge.
 3. Reversing `∀ x, ∃ y` to `∃ y, ∀ x` changes introduction order and permitted dependence.
 4. OR, iff, negation, nested antecedents, and unknown wrappers retain their enclosing roles throughout playback.
-5. Static, reduced-motion, and animated presentations expose the same mathematical content.
+5. Guided and complete static reading retain the same semantic objects and enclosing logical context; reduced-motion preferences do not change mathematical content. Any future animated renderer must meet the same requirement.
 
 Coordinated highlighting inside the optional mathematical notation needs a further provenance contract: LaTeX fragments linked to expression IDs. LeanTeX currently returns a string, so matching letters in that string is not a reliable way to identify bound objects.
 
