@@ -2,6 +2,7 @@ import { headName, numericOperator, comparisonArguments } from '../core/expressi
 import type { Expr } from '../core/types';
 import type { SemanticPlugin, SemanticRuleMatch } from './types';
 import { setConstructionParts, visibleApplicationArguments } from './expression';
+import { graphSemanticPlugin } from '../graphs/semantics';
 
 const arg = (role: string, expression: Expr) => ({ role, expression });
 const match = (kind: SemanticRuleMatch['kind'], label: string, args: SemanticRuleMatch['arguments'], conditions: readonly string[] = []): SemanticRuleMatch => ({ kind, label, arguments: args, fidelity: 'symbolic', conditions });
@@ -13,6 +14,7 @@ function returns(expr: Extract<Expr, { kind: 'app' }>, kind: 'set' | 'propositio
 }
 
 export const builtInSemanticPlugins: readonly SemanticPlugin[] = [
+  graphSemanticPlugin,
   {
     id: 'sets', version: '1.1.0', title: 'Sets and membership', capabilities: ['membership', 'subset', 'image', 'preimage', 'set-construction'],
     limitations: ['Set diagrams encode relations; area, distance, and cardinality are not inferred.'],

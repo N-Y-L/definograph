@@ -3,6 +3,7 @@ import type { ReadingBinder, ReadingDocument, ReadingNode, ReadingPanel } from '
 import { planReadingPresentation, visibleReadingNodes, type ReadingPresentation, type ReadingRegion } from '../reading/presentation';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { TypedConstructionFigure } from '../constructions';
+import { compileGraphConstraint, GraphConstraintFigure } from '../graphs';
 import { compileSetConstruction, SetConstructionFigure } from '../set-constructions';
 import { compactLabel } from './layout';
 import './statement-reading.css';
@@ -60,7 +61,7 @@ function FigureArrow({ from, to, bend = 0, label, ctx }: { from: [number, number
 }
 
 function port(relation: SemanticRelation, role: string): string | undefined { return relation.ports.find(candidate => candidate.role === role)?.objectId; }
-function producedBy(id: string | undefined, relations: readonly SemanticRelation[]) { return id ? relations.find(relation => relation.ports.some(p => ['output', 'result', 'region', 'distance'].includes(p.role) && p.objectId === id)) : undefined; }
+function producedBy(id: string | undefined, relations: readonly SemanticRelation[]) { return id ? relations.find(relation => relation.ports.some(p => ['output', 'result', 'region', 'distance', 'color', 'target vertex'].includes(p.role) && p.objectId === id)) : undefined; }
 
 /** Expand a bounded map path; unexpanded subexpressions remain explicit objects. */
 export function expressionMapPath(objectId: string, relations: readonly SemanticRelation[], depth = 0): { inputs: string[]; maps: string[]; output: string; collapsed: boolean } {
@@ -89,6 +90,7 @@ function ExpressionPath({ objectId, relations, y, ctx }: { objectId: string; rel
 }
 
 function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
+  if (compileGraphConstraint(ctx.document, relation, relations)) return <GraphConstraintFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   if (!['image', 'preimage'].includes(relation.kind) && compileSetConstruction(ctx.document, relation, relations)) return <SetConstructionFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   let body: ReactNode;
   let caption = relation.label;
@@ -200,6 +202,22 @@ function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
   </section>;
 }
 
+function BinderFigures({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: RenderContext }) {
+  const relations = nodes.flatMap(node => ctx.document.relations.filter(relation => relation.nodeId === node.id && relation.provenance.expressionPath === 'binder.type' && relation.scopeId === `scope:${node.id}`));
+  const recognized = relations.filter(relation => compileGraphConstraint(ctx.document, relation));
+  const figures: ReactNode[] = [];
+  let run: ReadingNode[] = [];
+  const flush = () => { if (run.length) { figures.push(<TypedConstructionFigure key={`types:${run[0]!.id}`} document={ctx.document} binders={run.map(node => node.binder!)} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>); run = []; } };
+  for (const node of nodes) {
+    const bundled = recognized.filter(relation => relation.nodeId === node.id);
+    if (!bundled.length) { run.push(node); continue; }
+    flush();
+    bundled.forEach(relation => figures.push(<GraphConstraintFigure key={relation.id} document={ctx.document} relation={relation} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>));
+  }
+  flush();
+  return <>{figures}</>;
+}
+
 function RegionHeader({ region, title, symbol, ctx, detail, lead }: { region: ReadingRegion; title: string; symbol?: string; ctx: RenderContext; detail?: string; lead?: string }) {
   return <header className="sr-region-heading"><SourceButton node={region.node} ctx={ctx}>{lead && <span className="sr-heading-lead">{lead}</span>}{symbol && <span className="sr-region-symbol" aria-hidden="true">{symbol}</span>}<span>{title}</span></SourceButton>{detail && <p>{detail}</p>}</header>;
 }
@@ -211,7 +229,7 @@ function AtlasRegion({ region, ctx, depth = 0, lead }: { region: ReadingRegion; 
   if (region.kind === 'binders') {
     const binders = region.binders.filter(node => ctx.visibleNodes.has(node.id));
     const role = region.node.binder!.role;
-    body = <><div className="sr-object-introduction"><RegionHeader region={region} ctx={ctx} lead={lead} symbol={roleSymbol[role]} title={role === 'universal' ? 'For every' : role === 'existential' ? 'A witness is required' : 'Parameters'}/><BinderStrip nodes={binders} ctx={ctx}/><TypedConstructionFigure document={ctx.document} binders={binders.map(node => node.binder!)} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>{binders.length < region.binders.length && <button type="button" className="sr-show-more" onClick={() => ctx.onNodeSelect?.(region.binders[binders.length].id)}>Read the next {region.binders.length - binders.length} binders</button>}</div>{region.body && <AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/>}</>;
+    body = <><div className="sr-object-introduction"><RegionHeader region={region} ctx={ctx} lead={lead} symbol={roleSymbol[role]} title={role === 'universal' ? 'For every' : role === 'existential' ? 'A witness is required' : 'Parameters'}/><BinderStrip nodes={binders} ctx={ctx}/><BinderFigures nodes={binders} ctx={ctx}/>{binders.length < region.binders.length && <button type="button" className="sr-show-more" onClick={() => ctx.onNodeSelect?.(region.binders[binders.length].id)}>Read the next {region.binders.length - binders.length} binders</button>}</div>{region.body && <AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/>}</>;
   } else if (region.kind === 'implication') {
     body = <div className="sr-implication-regions"><section className="sr-given-region" aria-label="Given assumptions"><h3 className="sr-role-heading">Given</h3><div className="sr-region-stack">{region.assumptions.map(assumption => <AtlasRegion key={assumption.id} region={assumption} ctx={ctx} depth={depth + 1}/>)}</div></section><section className="sr-then-region" aria-label="Then the conclusion is required">{region.conclusion.kind !== 'binders' && <h3 className="sr-role-heading"><span aria-hidden="true">→</span> Then</h3>}<AtlasRegion region={region.conclusion} ctx={ctx} depth={depth + 1} lead={region.conclusion.kind === 'binders' ? 'Then' : undefined}/></section></div>;
   } else if (region.kind === 'all') {
@@ -250,7 +268,7 @@ function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
   let body: ReactNode;
   if (cue.intent === 'introduce') {
     const nodes = cue.sourceNodeIds.flatMap(id => { const source = ctx.reading.nodes.find(candidate => candidate.id === id); return source?.binder ? [source] : []; });
-    body = <><BinderStrip nodes={nodes} ctx={focused}/><TypedConstructionFigure document={ctx.document} binders={cue.binders} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/></>;
+    body = <><BinderStrip nodes={nodes} ctx={focused}/><BinderFigures nodes={nodes} ctx={focused}/></>;
   } else if (cue.stage.kind === 'clause') {
     body = <Clause node={node} ctx={focused}/>;
   } else if (cue.stage.relationId) {

@@ -81,13 +81,17 @@ async function readSource(request: IncomingMessage): Promise<AnalysisRequest> {
     throw new WorkerError('INVALID_SOURCE', 'Provide a nonempty Lean statement of at most 32,768 characters and 65,536 bytes.', 400);
   }
   const input = body as Record<string, unknown>;
-  if (Object.keys(input).some(key => !['source', 'inputMode', 'expansion'].includes(key))) {
+  if (Object.keys(input).some(key => !['source', 'inputMode', 'expansion', 'previewDefinitions'].includes(key))) {
     throw new WorkerError('INVALID_OPTIONS', 'Unknown analysis option.', 400);
   }
   const result: AnalysisRequest = { source };
   if (input.inputMode !== undefined) {
     if (input.inputMode !== 'term' && input.inputMode !== 'declaration') throw new WorkerError('INVALID_OPTIONS', 'inputMode must be term or declaration.', 400);
     result.inputMode = input.inputMode;
+  }
+  if (input.previewDefinitions !== undefined) {
+    if (typeof input.previewDefinitions !== 'boolean') throw new WorkerError('INVALID_OPTIONS', 'previewDefinitions must be boolean.', 400);
+    result.previewDefinitions = input.previewDefinitions;
   }
   if (input.expansion !== undefined) {
     const expansion = input.expansion as Record<string, unknown>;

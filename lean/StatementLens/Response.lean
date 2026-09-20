@@ -14,10 +14,10 @@ def serializeResponse (response : Json) (maxBytes : Nat := 2 * 1024 * 1024) : St
   let full := response.compress
   if full.utf8ByteSize + 1 ≤ maxBytes then return full
   let .ok fields := response.getObj? | return full
-  let isNotation := fun key => key == "readableMath" || key == "definitionReadableMath"
+  let isNotation := fun key => key == "readableMath" || key == "definitionReadableMath" || key == "definitionPreviews"
   let entries := fields.toList
   let limited := Json.mkObj (entries.map fun (key, value) =>
-    (key, if isNotation key then unavailable "Notation omitted to preserve the semantic response size limit." else value))
+    (key, if key == "definitionPreviews" then Json.arr #[] else if isNotation key then unavailable "Notation omitted to preserve the semantic response size limit." else value))
   let compact := limited.compress
   if compact.utf8ByteSize + 1 ≤ maxBytes then return compact
   -- If even the small status records do not fit, omit the optional fields entirely.

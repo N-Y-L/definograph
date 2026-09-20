@@ -1,0 +1,26 @@
+.interpretation-report { font-size: .84rem; line-height: 1.6; }
+.interpretation-report h3 { font-family: inherit; font-size: .83rem; font-weight: 600; margin: 1.6rem 0 .5rem; }
+.interpretation-report p { color: var(--muted); }
+.coverage-counts { display: flex; gap: 1.4rem; flex-wrap: wrap; padding: .7rem 0; }
+.coverage-counts div { display: flex; flex-direction: column-reverse; gap: .2rem; }
+.coverage-counts dt { color: var(--muted); font-size: .72rem; }
+.coverage-counts dd { margin: 0; font-size: 1.45rem; font-family: var(--serif); }
+.coverage-vocabulary { list-style: none; padding: 0; margin: 0; }
+.coverage-vocabulary li { display: flex; justify-content: space-between; gap: .8rem; border-bottom: 1px solid var(--border); padding: .45rem 0; }
+.coverage-vocabulary li span:last-child { color: var(--muted); white-space: nowrap; }
+.coverage-gaps article { border-top: 1px solid var(--border); padding: .9rem 0; }
+.coverage-gaps article > code { display: block; overflow-wrap: anywhere; font-size: .82rem; }
+.coverage-gaps article > span { color: var(--muted); font-size: .72rem; }
+.coverage-gaps article p { margin: .4rem 0; }
+.coverage-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.coverage-actions button { border: 0; background: transparent; color: var(--blue); cursor: pointer; padding: .3rem 0; font: inherit; text-decoration: underline; text-underline-offset: .18em; }
+.coverage-actions button:disabled { opacity: .5; cursor: default; }
+
+.automatic-reading-note { display: flex; align-items: baseline; justify-content: space-between; gap: .7rem; flex-wrap: wrap; margin-top: 1rem; font-size: .78rem; color: var(--muted); }
+.automatic-reading-note code { color: var(--ink); }
+.automatic-reading-note button { border: 0; background: transparent; color: var(--blue); font: inherit; cursor: pointer; }
+.automatic-inspection { padding: .7rem 0 1rem; border-bottom: 1px solid var(--border); font-size: .81rem; line-height: 1.6; }
+.automatic-inspection > label { display: flex; align-items: center; gap: .5rem; }
+.automatic-inspection > label input { accent-color: var(--blue); }
+.automatic-inspection p { color: var(--muted); }
+.automatic-inspection pre { white-space: pre-wrap; overflow-wrap: anywhere; }

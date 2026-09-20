@@ -3,15 +3,20 @@ Copyright 2026 Neil Yuanting Li
 
 Development: Codex under the supervision of Neil Yuanting Li.
 
+REUSED SOFTWARE
+
 This project uses Lean 4 and mathlib, each licensed under Apache License 2.0.
 https://github.com/leanprover/lean4
 https://github.com/leanprover-community/mathlib4
 
-The user interface uses React (MIT). Development tools include TypeScript
-(Apache-2.0), Vite (MIT), Vitest (MIT), and tsx (MIT).
-Dependency licenses and notices remain in their respective packages.
+Release 0.6 imports mathlib's simple-graph, coloring, and graph-map definitions
+from revision 8f9d9cff6bd728b17a24e163c9402775d9e6a365. These mathematical
+constructors are actual dependencies used by the semantic recognizers.
+The coloring module credits Arthur Paulino and Kyle Miller; upstream copyright,
+license notices, and contributor attribution remain with the dependency sources.
+https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Combinatorics/SimpleGraph/Coloring.lean
+https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Combinatorics/SimpleGraph/Maps.lean
 
-No third-party diagram implementation is vendored into this repository.
 The optional expression pretty printer vendors LeanTeX under Apache License 2.0;
 its license, pinned revision, and compatibility changes are recorded in vendor/LeanTeX.
 https://github.com/kmill/LeanTeX
@@ -22,3 +27,26 @@ https://github.com/KaTeX/KaTeX
 CodeMirror and its supporting packages are used under the MIT License.
 https://github.com/codemirror/dev
 The Lean syntax highlighter and semantic workbench are implemented in this repository.
+
+The user interface uses React (MIT). Development tools include TypeScript
+(Apache-2.0), Vite (MIT), Vitest (MIT), and tsx (MIT).
+Dependency licenses and notices remain in their respective packages.
+
+REVIEWED DESIGN REFERENCES
+
+Grant Sanderson's 3Blue1Brown lessons and Manim/ManimGL examples informed ordered
+constructions, persistent visual identity, and guided attention.
+https://github.com/3b1b/manim
+https://www.3blue1brown.com/
+
+Penrose's examples and separation of mathematical vocabulary, relationships,
+and visual style informed the semantic-document and renderer boundaries.
+https://penrose.cs.cmu.edu/examples
+https://penrose.cs.cmu.edu/docs/ref
+
+These are credited sources of design inspiration. No Manim or Penrose code,
+scene assets, video assets, or styles were copied or vendored; neither runtime
+is included. No third-party diagram implementation is vendored into this repository.
+The graph-constraint figures use local SVG and add no graph-layout dependency.
+See docs/visual-method.md and docs/graph-iteration.md for the specific application
+of these ideas and the distinction between inspiration and software reuse.

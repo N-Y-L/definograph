@@ -2,7 +2,41 @@
 
 Verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
 
-## Release 0.5 checks
+## Release 0.6 checks
+
+The graph-constraints and definition-inspection iteration passes strict TypeScript, the production build, and **587 automated checks**: 583 in `npm run check`, plus four extension checks. Counts come from `.local/check-0.6.log` and `.local/extension-check-0.6.log`; builds and packaging are not tests.
+
+| Suite | Passed | Main coverage |
+|---|---:|---|
+| `npm test` | 297 | 25 files including graph contracts, scope and identity guards, coverage reports, preview selection, and existing behavior |
+| `npm run test:server` | 29 | HTTP/IPC boundaries, cancellation, editor context, and preview-option validation |
+| `npm run test:lean` | 46 | Native elaboration, kernel checks, syntax isolation, universe metadata |
+| `npm run test:integration` | 22 | All 21 interface examples and combined geometry/dependency behavior |
+| `npm run test:semantic` | 21 | Native typed semantics, scope, and conservative recognition |
+| `npm run test:reading` | 20 | Logical reading and dependencies |
+| `npm run test:notation` | 28 | Native LeanTeX/KaTeX, all examples, bounded fallback |
+| `npm run test:atlas` | 21 | Native typed constructions through the React renderer |
+| `npm run test:cues` | 15 | Scoped construction order and guided context |
+| `npm run test:sets` | 7 | Boolean sets and unknown-instance preservation |
+| `npm run test:editor` | 23 | Real project-context extraction and unchanged fixture files |
+| `npm run test:graphs` | 15 | Real graph declarations, overloaded applications, and lookalike rejection |
+| `npm run test:graph-reading` | 8 | Native graph semantics through cues and actual React SSR, including branching, Fin 0, source identity, and no React warnings |
+| `npm run test:inspection` | 5 | Automatic selection, explicit-policy isolation, preserved originals, and exactly one execution of a trusted editor command |
+| `npm run test:definition-previews` | 8 | Native preview budgets, local-assumption scope, caps, placeholder rejection, and preservation of mandatory response fields |
+| `npm run test:corpus` | 18 | Audited supported, partial, and unsupported vocabulary probes with native binary/source provenance |
+| Extension checks | 4 | Mocked VS Code request lifecycle and stale-result rejection |
+
+Browser checks exercised proper-coloring introductions, graph application steps under an adjacency premise, finite available palettes, automatic left-inverse inspection, restoration of the original statement, and actionable coverage gaps. The inverse reading exposes both maps and their output equality while retaining the original named condition. Review also caught and corrected missing inspection metadata for a definition occurring only in a local hypothesis; its regression checks that the opened premise stays scoped over the conclusion. Visual inspection caught and corrected a missing arrowhead on one branch. No console warnings or errors appeared in the exercised workflows. At the browser-reported width of 1200 pixels, the checked graph reading had no horizontal document overflow; this run's viewport backend did not provide the requested 600-pixel width, so mobile behavior was not reverified.
+
+A hosted-browser fixture using actual native context output also checked a definition used only in a local assumption, buffer-edit invalidation, rejection of obsolete results, and refresh. This fixture produced no browser warnings or errors; it tests the browser bridge, not the VS Code host.
+
+The extension packages as `.local/statement-lens-editor-0.6.0.vsix`. Native context tests and mocked controller checks do not replace an actual VS Code GUI session: installation, activation, and the full editor-host workflow remain unverified. Native Windows operation is also unverified.
+
+The corpus has 18/18 passing expectations, including deliberately unsupported inputs; this is not 18 fully visualized statements. Its report records the mathematical vocabulary still missing. No planarity/four-color-theorem, tangent-field/hairy-ball, derivative, or constant-rank-normal-form grammar is claimed. See [the iteration record](graph-iteration.md), [graph contracts](graph-semantics.md), and [corpus](coverage-corpus.md).
+
+Setup adds the pinned Mathlib coloring module to StatementLens's own dependency cache. Existing formal projects and global toolchain settings remain unchanged. Optional previews run in the original checked Lean context without an additional source replay. Explicit user-requested refreshes and expansions still perform a new analysis. See [editor execution limits](editor-integration.md).
+
+## Historical release 0.5 checks
 
 The guided-constructions iteration passes strict TypeScript, the production build, and **487 automated checks**: 483 in `npm run check`, plus four extension checks. Counts below are recorded from `.local/release-0.5-check.log` and `.local/release-0.5-extension.log`; builds and packaging are not counted as tests.
 
@@ -117,4 +151,4 @@ The original clean-cache download smoke test remains applicable: setup fetched 2
 
 Passing these checks is not a proof that the renderer is bug-free. Lean's kernel checks the submitted expression or definition expansion; the TypeScript semantic rules, layout, and floating-point evaluator have regression tests rather than formal correctness proofs. Numerical samples cannot certify universal statements or exact real equality.
 
-The standalone reader's fixed imported environment and allowlisted term syntax do not accept every Lean project or incomplete expression. The editor adapter adds trusted project-context extraction, with the toolchain, import, source-selection, and execution limits documented in [editor integration](editor-integration.md). Source occurrences are exact, but transformed-node-to-source mapping is not guessed. Definition unfolding is bounded and acts at logical heads. The planner uses explicit heuristics and representation contracts, not a verified global optimum. Rich geometric realization for arbitrary structures, witness strategies, and Rocq support remain future work. Actual VS Code GUI installation and end-to-end extension-host use remain unverified in release 0.5.
+The standalone reader's fixed imported environment and allowlisted term syntax do not accept every Lean project or incomplete expression. The editor adapter adds trusted project-context extraction, with the toolchain, import, source-selection, and execution limits documented in [editor integration](editor-integration.md). Source occurrences are exact, but transformed-node-to-source mapping is not guessed. Definition unfolding is bounded and acts at logical heads. The planner uses explicit heuristics and representation contracts, not a verified global optimum. Rich geometric realization for arbitrary structures, witness strategies, and Rocq support remain future work. Actual VS Code GUI installation and end-to-end extension-host use remain unverified in release 0.6.

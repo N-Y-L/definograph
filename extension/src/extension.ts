@@ -65,7 +65,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (dirtyImport) throw new Error(`Save and build imported Lean dependencies before analysis. Another Lean buffer has unsaved changes: ${path.basename(dirtyImport.fileName)}.`);
       const configuration = vscode.workspace.getConfiguration('statementLens', doc.uri);
       const analysis = await analyzeEditorContext({ engineDirectory: engine, fileName: doc.fileName, source: doc.getText(), selection: metadata.selection,
-        workspaceTrusted: vscode.workspace.isTrusted, libraryPaths: configuration.get<string[]>('libraryPaths', []), signal: ticket.signal, expansion: policy });
+        workspaceTrusted: vscode.workspace.isTrusted, libraryPaths: configuration.get<string[]>('libraryPaths', []), signal: ticket.signal, expansion: policy, previewDefinitions: !policy?.constants.length });
       if (!lifecycle.accepts(ticket) || doc.version !== metadata.version) return;
       if (dirtyDependency(doc)) throw new Error("Another Lean buffer changed during analysis. Save and build imported dependencies, then refresh.");
       if (!analysis.ok) throw new Error(typeof analysis.error === 'string' ? analysis.error : 'The selected proposition could not be elaborated.');

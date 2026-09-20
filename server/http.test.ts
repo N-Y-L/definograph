@@ -229,8 +229,13 @@ test('versioned capabilities and bounded declaration options reach the worker', 
     const expansion = {constants:['Function.Injective'],maxDepth:1};
     assert.equal((await post(url, {source:'Function.Injective',inputMode:'declaration',expansion})).status, 200);
     assert.deepEqual(received, {inputMode:'declaration',expansion});
+    assert.equal((await post(url, {source:'True',previewDefinitions:true})).status, 200);
+    assert.deepEqual(received, {previewDefinitions:true});
+    assert.equal((await post(url, {source:'True',previewDefinitions:false})).status, 200);
+    assert.deepEqual(received, {previewDefinitions:false});
     for (const invalid of [
       {inputMode:'file'}, {filename:'/tmp/Test.lean'}, {expansion:null},
+      {previewDefinitions:'true'}, {previewDefinitions:1}, {previewDefinitions:{}},
       {expansion:{constants:['x'],maxDepth:100}}, {expansion:{constants:Array(13).fill('x'),maxDepth:1}},
       {expansion:{constants:['x'],maxDepth:1,commands:'anything'}},
     ]) assert.equal((await post(url,{source:'True',...invalid})).status,400);

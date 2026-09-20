@@ -52,7 +52,7 @@ export interface ReadingCuePlan {
 export interface ReadingCueOptions { readonly maxCues?: number }
 
 const unique = <T>(items: readonly T[]): T[] => [...new Set(items)];
-const producedRoles = new Set(['output', 'result', 'region', 'distance']);
+const producedRoles = new Set(['output', 'result', 'region', 'distance', 'color', 'target vertex']);
 const short = (text: string, limit = 100): string => text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 const edgeRoles = new Set<ReadingCueRole>(['assumption', 'conclusion', 'conjunct', 'alternative', 'equivalence-left', 'equivalence-right', 'negated', 'result']);
 type Draft = Omit<ReadingCue, 'ordinal' | 'retainedObjectIds'>;
@@ -144,7 +144,8 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
     for (const id of draft.focusObjectIds) if (!objects.has(id)) throw new Error(`Unknown cue object ${id}.`);
     for (const id of draft.focusRelationIds) {
       const relation = relations.get(id);
-      if (!relation || relation.nodeId !== draft.nodeId || relation.scopeId !== draft.scopeId) throw new Error(`Cue relation ${id} crosses its declared source scope.`);
+      const introducedType = draft.stage.kind === 'introduction' && relation?.provenance.expressionPath === 'binder.type' && draft.sourceNodeIds.includes(relation.nodeId) && relation.scopeId === `scope:${relation.nodeId}`;
+      if (!relation || !introducedType && (relation.nodeId !== draft.nodeId || relation.scopeId !== draft.scopeId)) throw new Error(`Cue relation ${id} crosses its declared source scope.`);
     }
     const available = new Set([...draft.contextObjectIds, ...draft.focusObjectIds, ...groupObjects]);
     const retainedObjectIds = previous ? unique([...previous.retainedObjectIds, ...previous.focusObjectIds]).filter(id => available.has(id)) : [];
@@ -172,6 +173,10 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
       case 'membership': return ['condition', 'Read the membership condition', `The condition places ${short(label(port(relation, 'element')), 60)} in ${short(label(port(relation, 'set')), 90)} within this logical context.`];
       case 'subset': return ['condition', 'Read the inclusion condition', `The condition requires every element of ${short(label(port(relation, 'subset')), 60)} to belong to ${short(label(port(relation, 'superset')), 70)} within this logical context.`];
       case 'function-property': return ['condition', `Read the ${relation.label} condition`, `Read the stated property of ${short(label(port(relation, 'function')), 90)} within this logical context; it has not been proved.`];
+      case 'graph-adjacency': return ['condition', 'Read the edge condition', `Read adjacency between ${short(label(port(relation, 'left vertex')), 40)} and ${short(label(port(relation, 'right vertex')), 40)} in ${short(label(port(relation, 'graph')), 50)} within this logical context.`];
+      case 'graph-colorable': return ['condition', 'Read the coloring requirement', `A coloring of ${short(label(port(relation, 'graph')), 60)} using at most the stated bound is required; adjacent vertices must receive different colors.`];
+      case 'graph-coloring': return ['apply', 'Follow the coloring', 'Read the color assignment and the different-color constraint on every edge. No concrete coloring is chosen.'];
+      case 'graph-map': return ['apply', 'Follow the graph map', 'Read how this map transports vertices and the adjacency constraints supplied by its exact type.'];
       default: return ['condition', `Read ${short(relation.label, 85)}`, 'Read this relation at its place in the statement; its truth has not been established.'];
     }
   };
@@ -245,7 +250,7 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
         : dependencies.length ? `This witness may depend on ${short(dependencies.join(', '), 120)}. Its existence is part of the enclosed condition.` : 'This witness is introduced before later choices. Its existence is part of the enclosed condition.'
         : role === 'arbitrary' ? 'Read these objects as arbitrary choices of their stated types, in the displayed binder order.' : 'These are typed parameters of this context; they do not assert a universally quantified proposition.';
       emit({ ...base, id: `cue:${region.id}:introduce`, intent: 'introduce', role, roles: [...base.roles, role], title, detail, binders,
-        focusObjectIds: binders.flatMap(binder => binder.objectId ? [binder.objectId] : []), focusRelationIds: [], stage: { kind: 'introduction', index: 1, count: 1 } });
+        focusObjectIds: binders.flatMap(binder => binder.objectId ? [binder.objectId] : []), focusRelationIds: document.relations.filter(relation => region.sourceNodeIds.includes(relation.nodeId) && relation.provenance.expressionPath === 'binder.type').map(relation => relation.id), stage: { kind: 'introduction', index: 1, count: 1 } });
       if (region.body) visit(region.body);
       return;
     }

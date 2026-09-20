@@ -72,7 +72,7 @@ def canonicalModule (name : Name) : Option Name :=
   if #[`Add.add, `And, `Div.div, `Eq, `False, `Fin, `GE.ge, `GT.gt,
     `HAdd.hAdd, `HDiv.hDiv, `HMul.hMul, `HPow.hPow, `HSub.hSub, `LE.le, `LT.lt,
     `Max.max, `Membership.mem, `Min.min, `Mul.mul, `Nat, `Neg.neg, `Not,
-    `OfNat.ofNat, `Or, `Pow.pow, `Prod, `Prod.fst, `Prod.mk, `Prod.snd, `Sub.sub, `True, `Function.comp].contains name
+    `OfNat.ofNat, `Or, `Pow.pow, `Prod, `Prod.fst, `Prod.mk, `Prod.snd, `Sub.sub, `True, `Function.comp, `instOfNatNat].contains name
       then some `Init.Prelude
   else if #[`Exists, `HasSubset.Subset, `Iff, `Ne, `Union.union, `Inter.inter, `SDiff.sdiff].contains name then some `Init.Core
   else if #[`Function.Injective, `Function.Surjective].contains name then some `Init.Data.Function
@@ -88,6 +88,11 @@ def canonicalModule (name : Name) : Option Name :=
   else if #[`Set.preimage, `Set.instCompl].contains name then some `Mathlib.Data.Set.Operations
   else if name == `Compl.compl then some `Mathlib.Order.Notation
   else if name == `Set.instHasSSubset then some `Mathlib.Data.Set.Basic
+  else if #[`SimpleGraph, `SimpleGraph.Adj, `SimpleGraph.completeGraph].contains name then some `Mathlib.Combinatorics.SimpleGraph.Basic
+  else if #[`SimpleGraph.Hom, `SimpleGraph.Embedding, `SimpleGraph.Iso].contains name then some `Mathlib.Combinatorics.SimpleGraph.Maps
+  else if #[`SimpleGraph.Coloring, `SimpleGraph.Colorable].contains name then some `Mathlib.Combinatorics.SimpleGraph.Coloring
+  else if #[`RelHom.toFun, `RelHom, `RelHom.instFunLike, `RelEmbedding, `RelEmbedding.instFunLike, `RelIso, `RelIso.instFunLike].contains name then some `Mathlib.Order.RelIso.Basic
+  else if name == `DFunLike.coe then some `Mathlib.Data.FunLike.Basic
   else none
 
 def canonicalConstant (name : Name) : MetaM Bool := do
@@ -182,6 +187,13 @@ def standardInstances (e : Expr) : MetaM Bool := do
           `Set.instInter, `Set.instUnion, `Set.instCompl, `Set.instSDiff, `Set.instEmptyCollection]
         if setInstances.contains (a.getAppFn.constName?.getD .anonymous) && a.getAppArgs.size == 1 &&
             (← canonicalConstant (a.getAppFn.constName?.getD .anonymous)) then
+          continue
+        -- These exact bundled-function instances project the stored map. A local
+        -- or globally replaced coercion must not inherit that interpretation.
+        if #[`RelHom.instFunLike, `RelEmbedding.instFunLike].contains (a.getAppFn.constName?.getD .anonymous) &&
+            a.getAppArgs.size == 4 && (← canonicalConstant (a.getAppFn.constName?.getD .anonymous)) then
+          continue
+        if a.isAppOfArity `instOfNatNat 1 && (← canonicalConstant `instOfNatNat) then
           continue
         if ← projectContextMode then return false
         if ty.hasFVar || ty.hasMVar then return false
@@ -382,5 +394,73 @@ partial def sourceTerms (infoTree : InfoTree) (out : Array Json := #[]) : MetaM 
     for child in children do out ← sourceTerms child out
     return out
 
+
+/-- Candidates are logical heads only. Their single unfolding must be small and
+    remain a proposition; the frontend determines whether its reading improves.
+    Arbitrary computational definitions are not executed or normalized. -/
+partial def previewCandidates (expression : Expr) (names : Array Name := #[])
+    (depth : Nat := 0) : MetaM (Array Name) := do
+  if names.size >= 3 || depth > 40 then return names
+  let expression := expression.consumeMData
+  match expression with
+  | .forallE name ty body bi | .lam name ty body bi =>
+    let names ← if ← isProp ty then previewCandidates ty names (depth + 1) else pure names
+    return ← withLocalDecl name bi ty fun value =>
+      previewCandidates (body.instantiate1 value) names (depth + 1)
+  | _ =>
+    let head := expression.getAppFn.constName?.getD .anonymous
+    let args := expression.getAppArgs
+    if #[`And, `Or, `Iff, `Not].contains head then
+      let mut names := names
+      for arg in args do names ← previewCandidates arg names (depth + 1)
+      return names
+    if head == `Exists && args.size == 2 then return ← previewCandidates args[1]! names (depth + 1)
+    if head.isAnonymous || names.contains head then return names
+    let some info := (← getEnv).find? head | return names
+    unless info.isDefinition && !info.isUnsafe && !info.isPartial do return names
+    unless ← isProp expression do return names
+    let some expanded ← unfoldDefinition? expression (ignoreTransparency := true) | return names
+    if expanded == expression || expanded.hasMVar || expanded.hasSorry ||
+        expanded.approxDepth > 24 || expanded.sizeWithoutSharing > 80 then return names
+    unless ← isProp expanded do return names
+    checkWithKernel expanded
+    unless ← isDefEq expression expanded do return names
+    return names.push head
+
+/-- Optional previews reuse the already elaborated expression and its local
+    context. They never replay project commands, and cannot invalidate the
+    mandatory semantic response when their own budget is exhausted. -/
+def definitionPreviews (request : Json) (policy : ExportPolicy) (expressions : Array Expr)
+    (originalPretty : String) (build : ExportPolicy → MetaM Json) : MetaM (Array Json) := do
+  unless (request.getObjValAs? Bool "previewDefinitions").toOption.getD false do return #[]
+  unless policy.constants.isEmpty do return #[]
+  let ctx ← readThe Core.Context
+  let now ← IO.getNumHeartbeats
+  let remaining := if ctx.maxHeartbeats == 0 then 20000000 else ctx.maxHeartbeats - (now - ctx.initHeartbeats)
+  let budget := min 20000000 (remaining - 1000000)
+  if budget < 1000 then return #[]
+  let saved ← Meta.saveState
+  try
+    withTheReader Core.Context (fun state =>
+      { state with initHeartbeats := now, maxHeartbeats := budget, maxRecDepth := min state.maxRecDepth 128 }) do
+      let mut names := #[]
+      for expression in expressions do names ← previewCandidates expression names
+      let mut previews := #[]
+      let mut bytes := 0
+      for name in names do
+        try
+          let previewPolicy : ExportPolicy := { constants := #[name], maxDepth := 1 }
+          let result ← build previewPolicy
+          let preview := obj [("constant", str name.toString), ("pretty", str originalPretty),
+            ("originalPretty", str originalPretty), ("tree", result), ("expression", expressionOf result),
+            ("expansionPolicy", obj [("constants", toJson #[name.toString]), ("maxDepth", toJson (1 : Nat))])]
+          let size := preview.compress.utf8ByteSize
+          if bytes + size <= 262144 then
+            previews := previews.push preview
+            bytes := bytes + size
+        catch _ => pure ()
+      return previews
+  catch _ => return #[]
+  finally saved.restore
 
 end StatementLens

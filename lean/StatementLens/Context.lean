@@ -66,18 +66,33 @@ def exportCandidate (candidate : Candidate) (source : String) (fileName : String
     if expression.hasMVar || expression.hasSorry then throwError "The selected proposition contains an unresolved term or sorry after local definitions are substituted."
     let mut locals := #[]
     for localDecl in ← getLCtx do
-      if !localDecl.isLet then locals := locals.push localDecl
+      if !localDecl.isLet then
+        -- InfoTree contexts may retain assigned metavariables in local types.
+        -- Use the same checked, normalized types for the tree, definition
+        -- inventory, and optional previews; none may inspect a stale raw type.
+        let ty ← instantiateMVars (← zetaReduce (← instantiateMVars localDecl.type))
+        if ty.hasMVar || ty.hasSorry then throwError "The selected context has an unresolved or placeholder type."
+        checkWithKernel ty
+        locals := locals.push (localDecl.setType ty)
     if locals.size > 128 then throwError "The selected local context exceeds 128 declarations."
     let policy ← readPolicy request
     let result ← contextTree locals 0 expression #[] "context" policy
     let pretty ← pp expression
     let type ← pp (← inferType expression)
+    let contextExpressions := #[expression] ++ locals.map (·.type)
     let mut definitions := #[]
-    for name in expression.getUsedConstants do
+    let mut definitionNames : Array Name := #[]
+    for contextExpression in contextExpressions do
       if definitions.size >= 128 then break
-      if let some info := (← getEnv).find? name then
-        if info.isDefinition && !info.isUnsafe && !info.isPartial then
-          definitions := definitions.push (← declarationJson info)
+      for name in contextExpression.getUsedConstants do
+        if definitions.size >= 128 then break
+        if definitionNames.contains name then continue
+        if let some info := (← getEnv).find? name then
+          if info.isDefinition && !info.isUnsafe && !info.isPartial then
+            definitions := definitions.push (← declarationJson info)
+            definitionNames := definitionNames.push name
+    let previews ← definitionPreviews request policy contextExpressions pretty
+      (fun previewPolicy => contextTree locals 0 expression #[] "context" previewPolicy)
     return obj [
       ("ok", toJson true), ("schemaVersion", toJson (2 : Nat)), ("leanVersion", str Lean.versionString),
       ("source", str source), ("pretty", str pretty), ("type", str type),
@@ -91,7 +106,7 @@ def exportCandidate (candidate : Candidate) (source : String) (fileName : String
         ("parentDeclaration", candidate.context.parentDecl?.map (str ∘ Name.toString) |>.getD Json.null),
         ("contextParameters", toJson locals.size), ("localLetBindings", str "substituted-definitionally")]),
       ("expansionPolicy", obj [("constants", toJson (policy.constants.map Name.toString)), ("maxDepth", toJson policy.maxDepth)]),
-      ("definitions", Json.arr definitions), ("tree", result), ("expression", expressionOf result),
+      ("definitions", Json.arr definitions), ("definitionPreviews", Json.arr previews), ("tree", result), ("expression", expressionOf result),
       ("sourceTerms", Json.arr #[obj [("startByte", toJson candidate.startByte), ("endByte", toJson candidate.endByte),
         ("lean", str pretty), ("type", str type), ("isBinder", toJson false), ("origin", str "lean-infotree")]]),
       ("metrics", Json.arr #[]), ("diagnostics", Json.arr #[])]

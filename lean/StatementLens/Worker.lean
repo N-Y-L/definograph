@@ -12,7 +12,8 @@ namespace StatementLens
 def imports : Array Import := #[
   { module := `StatementLens.ReadableMath },
   { module := `Mathlib.Topology.MetricSpace.Basic },
-  { module := `Mathlib.Analysis.InnerProductSpace.PiL2 }
+  { module := `Mathlib.Analysis.InnerProductSpace.PiL2 },
+  { module := `Mathlib.Combinatorics.SimpleGraph.Coloring }
 ]
 
 def analyze (source : String) (request : Json) (renderNotation : Expr → MetaM Json) : TermElabM Json := withoutErrToSorry do
@@ -84,6 +85,7 @@ def analyze (source : String) (request : Json) (renderNotation : Expr → MetaM 
     | some body => renderNotation body
     | none => pure (obj [("provider", toJson "leantex"), ("status", toJson "unavailable"),
       ("reason", toJson "No bounded definition body is available for notation printing.")])
+  let previews ← definitionPreviews request policy #[expression] pretty (fun previewPolicy => tree expression #[] "n" previewPolicy)
   return obj [
     ("ok", toJson true), ("schemaVersion", toJson (2 : Nat)),
     ("leanVersion", str Lean.versionString), ("source", str source),
@@ -92,7 +94,7 @@ def analyze (source : String) (request : Json) (renderNotation : Expr → MetaM 
     ("provenance", obj [("assistant", str "lean"), ("inputMode", str inputMode), ("inspected", str inspected),
       ("declaration", declaration), ("mathlibRevision", str "8f9d9cff6bd728b17a24e163c9402775d9e6a365")]),
     ("expansionPolicy", obj [("constants", toJson (policy.constants.map Name.toString)), ("maxDepth", toJson policy.maxDepth)]),
-    ("definitions", Json.arr definitions), ("sourceTerms", Json.arr terms),
+    ("definitions", Json.arr definitions), ("sourceTerms", Json.arr terms), ("definitionPreviews", Json.arr previews),
     ("definitionExpression", definitionExpression), ("definitionTree", definitionTree),
     ("definitionBodyStatus", str definitionBodyStatus),
     ("readableMath", readableMath), ("definitionReadableMath", definitionReadableMath),

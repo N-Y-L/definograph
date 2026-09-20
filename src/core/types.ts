@@ -71,6 +71,16 @@ export interface Analysis {
   definitionTree?: StatementNode | null;
   definitionBodyStatus?: 'available' | 'export-size-limit' | 'not-a-definition';
   expansionPolicy?: unknown;
+  definitionPreviews?: DefinitionPreview[];
+  automaticInspection?: { constant: string; originalPretty: string; reason: string };
+}
+
+export interface DefinitionPreview {
+  constant: string;
+  pretty: string;
+  tree: StatementNode;
+  expression: Expr;
+  expansionPolicy: { constants: string[]; maxDepth: number };
 }
 
 export type Point2 = [number, number];

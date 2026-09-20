@@ -1,6 +1,6 @@
 {
   "name": "statement-lens",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Read Lean mathematical statements through a faithful visual sequence and a linked logical overview.",
   "type": "module",
@@ -12,7 +12,7 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:server": "tsx --test server/*.test.ts",
-    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation && npm run test:atlas && npm run test:cues && npm run test:sets && npm run test:editor",
+    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation && npm run test:atlas && npm run test:cues && npm run test:sets && npm run test:editor && npm run test:graphs && npm run test:graph-reading && npm run test:inspection && npm run test:definition-previews && npm run test:corpus",
     "start": "tsx server/index.ts",
     "setup:lean": "node scripts/lean-build.mjs",
     "test:lean": "node scripts/lean-test.mjs",
@@ -24,7 +24,12 @@
     "test:cues": "node --import tsx scripts/cues-integration.ts",
     "test:sets": "node --import tsx scripts/set-construction-integration.ts",
     "test:editor": "node --import tsx scripts/editor-integration.ts",
-    "check:extension": "npm --prefix extension run check && npm --prefix extension test && npm --prefix extension run package"
+    "check:extension": "npm --prefix extension run check && npm --prefix extension test && npm --prefix extension run package",
+    "test:graphs": "node --import tsx scripts/graph-integration.ts",
+    "test:graph-reading": "node --import tsx scripts/graph-reading-integration.ts",
+    "test:inspection": "node --import tsx scripts/inspection-integration.ts",
+    "test:definition-previews": "node --import tsx scripts/definition-preview-integration.ts",
+    "test:corpus": "node --import tsx scripts/corpus-audit.ts"
   },
   "engines": {
     "node": ">=22.12"

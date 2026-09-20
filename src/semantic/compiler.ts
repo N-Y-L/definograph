@@ -1,8 +1,9 @@
 import { discoverScenes } from '../core/scenes';
 import { headName, numericOperator } from '../core/expression';
 import type { Binder, Expr, StatementNode, TypeDescriptor } from '../core/types';
-import { expressionKey, formatExpression, setConstructionParts, stableHash, visibleApplicationArguments } from './expression';
+import { binderTypeExpression, expressionKey, formatExpression, setConstructionParts, stableHash, visibleApplicationArguments } from './expression';
 import { createSemanticRegistry } from './registry';
+import { graphBinderSemantics } from '../graphs/semantics';
 import { SEMANTIC_DOCUMENT_VERSION } from './types';
 import type { AnalysisInput, FragmentCoverage, OpaqueRegion, Provenance, QuantifierChoice, SemanticDocument, SemanticObject, SemanticObjectKind, SemanticPlugin, SemanticRelation, SemanticScope } from './types';
 
@@ -83,6 +84,18 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
             : b.role === 'assumption' ? 'A local hypothesis; it is available only within this scope.' : b.role === 'parameter' ? 'A parameter of this definition. This function signature is not a universally quantified proposition.' : 'A function input, local to its body.' });
       if (isImplicationHypothesis) implicationBinderId = id;
       else localObjects.push(id);
+      // A bundled coloring/map carries constraints as part of its declared type.
+      // Attach them to the actual introduced object, never to a fabricated witness.
+      const value: Expr = { kind: 'var', id: b.id, name: b.name, type: b.type, typeDescriptor: b.typeDescriptor };
+      const typeExpression = binderTypeExpression(node, b);
+      const bundled = typeExpression && b.role !== 'assumption' ? graphBinderSemantics(value, typeExpression) : undefined;
+      if (bundled && (!plugins || plugins.some(plugin => plugin.id === 'graphs'))) {
+        const source = provenance(node.id, 'binder.type');
+        relations.push({ id: `relation:${node.id}:binder:graphs`, kind: bundled.kind, label: bundled.label,
+          ports: bundled.arguments.map(argument => ({ role: argument.role, objectId: object(argument.expression, binderScopeId, provenance(node.id, `binder.type.${argument.role}`)) })),
+          expression: typeExpression!, scopeId: binderScopeId, nodeId: node.id, pluginId: 'graphs', fidelity: bundled.fidelity,
+          provenance: source, conditions: bundled.conditions ?? [], ...(bundled.graphMapKind ? { graphMapKind: bundled.graphMapKind } : {}) });
+      }
     }
     const scope: SemanticScope = { id: scopeId, parentId: parent?.id, nodeId: node.id, kind: node.kind, label: node.label, objectIds: localObjects, assumptionNodeIds: assumptions, context };
     scopes.push(scope);
@@ -131,11 +144,15 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
           fragmentObjects.add(id);
           return { role: argument.role, objectId: id };
         });
-        relations.push({ id: `relation:${node.id}:${stableHash(key)}:${rule.plugin.id}`, kind: matched.kind, label: matched.label, ports, expression, scopeId: currentScopeId, nodeId: node.id, pluginId: rule.plugin.id, fidelity: matched.fidelity, provenance: source, conditions: matched.conditions ?? [], ...(matched.setOperation ? { setOperation: matched.setOperation } : {}) });
+        relations.push({ id: `relation:${node.id}:${stableHash(key)}:${rule.plugin.id}`, kind: matched.kind, label: matched.label, ports, expression, scopeId: currentScopeId, nodeId: node.id, pluginId: rule.plugin.id, fidelity: matched.fidelity, provenance: source, conditions: matched.conditions ?? [], ...(matched.setOperation ? { setOperation: matched.setOperation } : {}), ...(matched.graphMapKind ? { graphMapKind: matched.graphMapKind } : {}) });
         matched.arguments.forEach(argument => { if (expressionKey(argument.expression, identities) !== key) walk(argument.expression, `${path}.${argument.role}`, exprDepth + 1, expressionScope, expressionObjects); });
         return;
       }
       if (expression.kind === 'app') {
+        if (expression.fn.kind === 'const' && expression.fn.canonical === true && headName(expression) === 'Fin' && expression.args.length === 1 && expression.typeDescriptor?.kind === 'type') {
+          walk(expression.args[0]!, `${path}.cardinality`, exprDepth + 1, expressionScope, expressionObjects);
+          return;
+        }
         const op = numericOperator(expression);
         const valueCount = expression.argumentKinds?.filter(kind => kind === 'value').length;
         const fullNumericExpression = expression.typeDescriptor?.kind !== 'map' && expression.typeDescriptor?.kind !== 'relation';

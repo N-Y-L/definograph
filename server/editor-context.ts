@@ -18,6 +18,7 @@ export interface EditorContextRequest {
   signal?: AbortSignal;
   timeoutMs?: number;
   expansion?: { constants: string[]; maxDepth: number };
+  previewDefinitions?: boolean;
 }
 export interface ProjectContext { root: string; libraries: string[]; toolchain: string }
 const MAX_SOURCE_BYTES = 512 * 1024;
@@ -157,7 +158,7 @@ export async function analyzeEditorContext(request: EditorContextRequest): Promi
     const relative = path.relative(project.root, sourceFile);
     if (!inside(project.root, sourceFile)) throw new WorkerError('EDITOR_FILE', 'The selected file is outside its resolved Lean project.');
     const mainModule = relative.replace(/\.lean$/, '').split(path.sep).join('.');
-    await runContext(executable, JSON.stringify({ source: request.source, fileName: sourceFile, mainModule, expansion: request.expansion,
+    await runContext(executable, JSON.stringify({ source: request.source, fileName: sourceFile, mainModule, expansion: request.expansion, previewDefinitions: request.previewDefinitions,
       startByte: Buffer.byteLength(request.source.slice(0, start)), endByte: Buffer.byteLength(request.source.slice(0, end)) }) + '\n', temporary, {
       ...process.env, LEAN_PATH: project.libraries.join(path.delimiter),
       STATEMENTLENS_LEAN_SYSROOT: config.leanSysroot, STATEMENTLENS_CONTEXT_RESULT: resultFile,

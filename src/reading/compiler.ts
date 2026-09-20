@@ -4,7 +4,7 @@ import { READING_DOCUMENT_VERSION } from './types';
 import type { ReadingBinder, ReadingConnection, ReadingDocument, ReadingEdge, ReadingNode, ReadingOptions, ReadingPanel, ReadingQuantifierGroup, ReadingRelationGroup, ReadingStep } from './types';
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
-const producedRoles = new Set(['output', 'result', 'region', 'distance']);
+const producedRoles = new Set(['output', 'result', 'region', 'distance', 'color', 'target vertex']);
 
 function edgeFor(parent: StatementNode, index: number): ReadingEdge {
   switch (parent.kind) {
@@ -34,6 +34,10 @@ function relationPhrase(relation: SemanticRelation, objects: ReadonlyMap<string,
     case 'distance': return port('from') && port('to') ? `The distance from ${port('from')} to ${port('to')}` : undefined;
     case 'image': return port('function') && port('set') ? `The image of ${port('set')} under ${port('function')}` : undefined;
     case 'preimage': return port('function') && port('set') ? `The preimage of ${port('set')} under ${port('function')}` : undefined;
+    case 'graph-adjacency': return `${port('left vertex')} is adjacent to ${port('right vertex')} in ${port('graph')}`;
+    case 'graph-colorable': return `${port('graph')} admits a proper coloring with at most ${port('color bound')} colors`;
+    case 'graph-coloring': return port('vertex') ? `${port('coloring')} assigns a color to ${port('vertex')}` : `${port('coloring')} is a proper coloring of ${port('graph')}`;
+    case 'graph-map': return `${port('map')} preserves the stated graph relationships`;
     // An abstract predicate or application keeps its source expression. Calling it true would
     // invent semantics, and generic inputs need not be points or members of a finite model.
     default: return undefined;

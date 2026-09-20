@@ -1,6 +1,21 @@
 import { headName, numericOperator } from '../core/expression';
-import type { Expr } from '../core/types';
+import type { Binder, Expr, StatementNode } from '../core/types';
 import type { SetOperation } from './types';
+import { graphSemanticPlugin } from '../graphs/semantics';
+
+/** Recover the exact exported binder type without parsing the printed Lean type. */
+export function binderTypeExpression(node: StatementNode, binder: Binder): Expr | undefined {
+  if (binder.typeExpression) return binder.typeExpression;
+  const expression = node.expression;
+  if ((expression.kind === 'forall' || expression.kind === 'lambda') && expression.binder.id === binder.id) return expression.binderType ?? expression.binder.typeExpression;
+  if (node.kind === 'exists' && expression.kind === 'app') {
+    const { fn, args } = applicationParts(expression);
+    if (headName(fn) === 'Exists' && args.length === 2) {
+      const body = args[1];
+      if (body.kind === 'lambda' && body.binder.id === binder.id) return body.binderType ?? args[0];
+    }
+  }
+}
 
 /** Exact constructor semantics from Mathlib.Data.Set.Defs. Overloaded notation
  * requires the exporter's canonical-instance audit and a Set result type. */
@@ -88,6 +103,12 @@ export function formatExpression(expr: Expr, depth = 0): string {
     case 'forall': return `∀ ${expr.binder.name}, ${format(expr.body)}`;
     case 'lambda': return `${expr.binder.name} ↦ ${format(expr.body)}`;
     case 'app': {
+      const graph = graphSemanticPlugin.match(expr);
+      if (graph?.kind === 'graph-coloring' || graph?.kind === 'graph-map') {
+        const map = graph.arguments.find(port => port.role === (graph.kind === 'graph-coloring' ? 'coloring' : 'map'))?.expression;
+        const vertex = graph.arguments.find(port => port.role === (graph.kind === 'graph-coloring' ? 'vertex' : 'source vertex'))?.expression;
+        if (map && vertex) return `${format(map)}(${format(vertex)})`;
+      }
       const set = setConstructionParts(expr);
       if (set) return set.operation === 'complement' ? `${format(set.operands[0])}ᶜ` : `(${format(set.operands[0])} ${{ union: '∪', intersection: '∩', difference: '∖' }[set.operation]} ${format(set.operands[1])})`;
       const name = headName(expr);

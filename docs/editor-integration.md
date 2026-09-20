@@ -16,7 +16,7 @@ npm ci --prefix extension --ignore-scripts
 npm run package --prefix extension
 ```
 
-Install `.local/statement-lens-editor-0.5.0.vsix` with **Extensions: Install from VSIX…**. Set `statementLens.engineDirectory` to the absolute checkout path. The VSIX contains the extension controller; its local engine and browser assets remain in that checkout. No extension is installed into the user's VS Code profile by building or packaging it.
+Install `.local/statement-lens-editor-0.6.0.vsix` with **Extensions: Install from VSIX…**. Set `statementLens.engineDirectory` to the absolute checkout path. The VSIX contains the extension controller; its local engine and browser assets remain in that checkout. No extension is installed into the user's VS Code profile by building or packaging it.
 
 With the official Lean extension enabled, open a saved `.lean` file in a trusted workspace. Select a complete proposition and run **Statement Lens: Visualize Selection**. A nonempty selection must match an elaborated proposition or proof term, apart from surrounding whitespace. An empty selection chooses the smallest containing proposition or proof term with a proposition type. Arbitrarily selecting a variable does not silently expand a nonempty selection into a different statement.
 
@@ -32,7 +32,7 @@ The separate `StatementLens.Context` native process parses the active buffer's o
 
 A fragment's free local objects become **context parameters**, not implicit universal assertions. Local proof hypotheses become **assumptions**, scoped over the displayed fragment. Local `let` values are substituted definitionally before export, including a second placeholder check after substitution. A selected proof expression is displayed as its proposition type, with `selectionKind: "proof-type"`. Placeholder-containing proof values are refused even when their type is a valid proposition. Later proof errors may be reported as diagnostics while an independently valid selected statement remains inspectable. This checks the selected term's type; it does not certify that the surrounding theorem is proved.
 
-Exact safe definition names may be expanded on request, with at most 12 names and depth 1–3. Every expansion is kernel checked and checked for definitional equality; unresolved terms and `sorry` introduced by unfolding are refused. Opaque or otherwise unsupported mathematics remains typed structure, with no invented properties.
+Exact safe definition names may be expanded on request, with at most 12 names and depth 1–3. Every expansion is kernel checked and checked for definitional equality; unresolved terms and `sorry` introduced by unfolding are refused. The adapter also requests bounded small-definition previews within the same elaboration; the reader selects at most one when it reduces unknown meaning and retains the original reading. Generating these previews does not replay the buffer again. See [the graph and inspection iteration](graph-iteration.md) for limits. Opaque or otherwise unsupported mathematics remains typed structure, with no invented properties.
 
 Editor provenance uses:
 
@@ -52,7 +52,7 @@ provenance: {
 
 The fixed worker's trusted global instance environment cannot be assumed for an arbitrary project. Editor exports therefore disable numerical domain classification and metric samples. Imported metric objects still have symbolic typed relationships, but no Euclidean or other numerical interpretation is asserted.
 
-Name-based mathematical recognition is limited by an exact audited **declaring-module** table for the imported constructors. A project declaration spelled `Set` or `Metric.ball` receives `canonical: false`, retaining its exact identity and printed name without set or metric semantics. Frontend recognizers must respect that field. Numerical/overloaded operations with instance arguments are conservatively nonstandard, except for the explicitly audited canonical set instance constructors. In particular, a project's high-priority global replacement for `Union (Set Nat)` does not become canonical just because that environment synthesizes it. The module audit is a semantic compatibility boundary for trusted projects, not a signature-verification mechanism for hostile compiled libraries.
+Name-based mathematical recognition is limited by an exact audited **declaring-module** table for the imported constructors. A project declaration spelled `Set` or `Metric.ball` receives `canonical: false`, retaining its exact identity and printed name without set or metric semantics. Frontend recognizers must respect that field. Numerical/overloaded operations with instance arguments are conservatively nonstandard, except for explicitly audited canonical set instances, natural-number literals, and the bundled graph function coercions described in [graph semantics](graph-semantics.md). In particular, a project's high-priority global replacement for `Union (Set Nat)` does not become canonical just because that environment synthesizes it. The module audit is a semantic compatibility boundary for trusted projects, not a signature-verification mechanism for hostile compiled libraries.
 
 ## Execution and isolation limits
 

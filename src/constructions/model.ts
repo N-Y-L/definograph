@@ -1,7 +1,7 @@
 import type { Binder, Expr, StatementNode, TypeDescriptor } from '../core/types';
 import { headName } from '../core/expression';
 import type { ReadingBinder } from '../reading/types';
-import { applicationParts, expressionKey, formatExpression } from '../semantic/expression';
+import { applicationParts, binderTypeExpression, expressionKey, formatExpression } from '../semantic/expression';
 import type { SemanticDocument, SemanticObject } from '../semantic/types';
 
 export interface ConstructionType {
@@ -62,19 +62,6 @@ function sourceNodes(root: StatementNode): Map<string, StatementNode> {
   visit(root); return result;
 }
 
-/** Trees retain binderType even when the worker omits its duplicate on Binder. */
-function typeOfBinder(node: StatementNode, binder: Binder): Expr | undefined {
-  if (binder.typeExpression) return binder.typeExpression;
-  const expression = node.expression;
-  if ((expression.kind === 'forall' || expression.kind === 'lambda') && expression.binder.id === binder.id) return expression.binderType ?? expression.binder.typeExpression;
-  if (node.kind === 'exists' && expression.kind === 'app') {
-    const { fn, args } = applicationParts(expression);
-    if (headName(fn) === 'Exists' && args.length === 2) {
-      const body = args[1];
-      if (body.kind === 'lambda' && body.binder.id === binder.id) return body.binderType ?? args[0];
-    }
-  }
-}
 
 function variableIds(expression: Expr, depth = 0): Set<string> {
   if (depth > 80) return new Set();
@@ -132,7 +119,7 @@ export function compileTypedConstruction(document: SemanticDocument, binders: re
     const binder = object.binder!;
     const base: ConstructionObject = { objectId: object.id, binderId: binder.id, name: binder.name, type: binder.type, role: reading.role, scopeId: reading.scopeId };
     introducedObjects.push(base);
-    const type = typeOfBinder(node, binder);
+    const type = binderTypeExpression(node, binder);
     const descriptor = binder.typeDescriptor;
     if (!type) { unknowns.push({ ...base, reason: 'The typed expression was not exported; its declared type is retained.' }); continue; }
     if (type.kind === 'sort' && !isProp(type)) {
