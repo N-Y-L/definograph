@@ -43,6 +43,7 @@ partial def contextTree (locals : Array LocalDecl) (index : Nat) (expression : E
   let b : Bound := ⟨localDecl.fvarId, path ++ ".binder", binderName localDecl.userName, ← pp ty,
     if assumption then "assumption" else "parameter"⟩
   let bj ← binderJson b ty bs
+  let bj ← reflectBinder b ty bs bj (fun e bs path => tree e bs path {} 0 0 false)
   let body ← contextTree locals (index + 1) expression (bs.push b) (path ++ ".body") policy
   let premise ← if assumption then pure #[← tree ty bs (path ++ ".premise") policy] else pure #[]
   let expr := obj [("kind", str (if assumption then "forall" else "lambda")), ("binder", bj),
@@ -54,62 +55,73 @@ partial def contextTree (locals : Array LocalDecl) (index : Nat) (expression : E
 def exportCandidate (candidate : Candidate) (source : String) (fileName : String) (request : Json) : IO Json := do
   candidate.term.runMetaM candidate.context <| withOptions (fun opts =>
     opts.set `statementLens.projectContext true |>.set `maxRecDepth (256 : Nat) |>.set `maxHeartbeats (400000 : Nat)) do
-    let original ← instantiateMVars (← zetaReduce (← instantiateMVars candidate.term.expr))
-    if original.hasMVar || original.hasSorry then throwError "The selected term is incomplete or contains sorry."
-    let originalType ← inferType original
-    let proof ← isProp originalType
-    let expression ← if ← isProp original then pure original else if proof then pure originalType
-      else throwError "Select a proposition, theorem statement, or proof term with a proposition type."
-    checkWithKernel original
-    checkWithKernel expression
-    let expression ← instantiateMVars (← zetaReduce expression)
-    if expression.hasMVar || expression.hasSorry then throwError "The selected proposition contains an unresolved term or sorry after local definitions are substituted."
-    let mut locals := #[]
+    -- InfoTrees can retain assigned expression and universe metavariables in
+    -- local declaration types. The kernel reads those declarations directly;
+    -- normalize the actual local context before checking the selected term.
+    let mut normalizedContext ← getLCtx
     for localDecl in ← getLCtx do
-      if !localDecl.isLet then
-        -- InfoTree contexts may retain assigned metavariables in local types.
-        -- Use the same checked, normalized types for the tree, definition
-        -- inventory, and optional previews; none may inspect a stale raw type.
-        let ty ← instantiateMVars (← zetaReduce (← instantiateMVars localDecl.type))
-        if ty.hasMVar || ty.hasSorry then throwError "The selected context has an unresolved or placeholder type."
-        checkWithKernel ty
-        locals := locals.push (localDecl.setType ty)
-    if locals.size > 128 then throwError "The selected local context exceeds 128 declarations."
-    let policy ← readPolicy request
-    let result ← contextTree locals 0 expression #[] "context" policy
-    let pretty ← pp expression
-    let type ← pp (← inferType expression)
-    let contextExpressions := #[expression] ++ locals.map (·.type)
-    let mut definitions := #[]
-    let mut definitionNames : Array Name := #[]
-    for contextExpression in contextExpressions do
-      if definitions.size >= 128 then break
-      for name in contextExpression.getUsedConstants do
+      let ty ← instantiateMVars localDecl.type
+      let mut normalized := localDecl.setType ty
+      if let some value := localDecl.value? (allowNondep := true) then
+        normalized := normalized.setValue (← instantiateMVars value)
+      normalizedContext := normalizedContext.modifyLocalDecl localDecl.fvarId (fun _ => normalized)
+    withLCtx normalizedContext (← getLocalInstances) do
+      let original ← instantiateMVars (← zetaReduce (← instantiateMVars candidate.term.expr))
+      if original.hasMVar || original.hasSorry then throwError "The selected term is incomplete or contains sorry."
+      let originalType ← inferType original
+      let proof ← isProp originalType
+      let expression ← if ← isProp original then pure original else if proof then pure originalType
+        else throwError "Select a proposition, theorem statement, or proof term with a proposition type."
+      checkWithKernel original
+      checkWithKernel expression
+      let expression ← instantiateMVars (← zetaReduce expression)
+      if expression.hasMVar || expression.hasSorry then throwError "The selected proposition contains an unresolved term or sorry after local definitions are substituted."
+      let mut locals := #[]
+      for localDecl in ← getLCtx do
+        if !localDecl.isLet then
+          -- InfoTree contexts may retain assigned metavariables in local types.
+          -- Use the same checked, normalized types for the tree, definition
+          -- inventory, and optional previews; none may inspect a stale raw type.
+          let ty ← instantiateMVars (← zetaReduce (← instantiateMVars localDecl.type))
+          if ty.hasMVar || ty.hasSorry then throwError "The selected context has an unresolved or placeholder type."
+          checkWithKernel ty
+          locals := locals.push (localDecl.setType ty)
+      if locals.size > 128 then throwError "The selected local context exceeds 128 declarations."
+      let policy ← readPolicy request
+      let result ← contextTree locals 0 expression #[] "context" policy
+      let pretty ← pp expression
+      let type ← pp (← inferType expression)
+      let contextExpressions := #[expression] ++ locals.map (·.type)
+      let mut definitions := #[]
+      let mut definitionNames : Array Name := #[]
+      for contextExpression in contextExpressions do
         if definitions.size >= 128 then break
-        if definitionNames.contains name then continue
-        if let some info := (← getEnv).find? name then
-          if info.isDefinition && !info.isUnsafe && !info.isPartial then
-            definitions := definitions.push (← declarationJson info)
-            definitionNames := definitionNames.push name
-    let previews ← definitionPreviews request policy contextExpressions pretty
-      (fun previewPolicy => contextTree locals 0 expression #[] "context" previewPolicy)
-    return obj [
-      ("ok", toJson true), ("schemaVersion", toJson (2 : Nat)), ("leanVersion", str Lean.versionString),
-      ("source", str source), ("pretty", str pretty), ("type", str type),
-      ("validation", str "kernel-type-checked-context-fragment"),
-      ("provenance", obj [("assistant", str "lean"), ("inputMode", str "editor"),
-        ("inspected", str "context-fragment"), ("fileName", str fileName),
-        ("selectionKind", str (if proof then "proof-type" else "proposition")),
-        ("startByte", toJson candidate.startByte), ("endByte", toJson candidate.endByte),
-        ("requestedStartByte", (request.getObjVal? "startByte").toOption.getD Json.null),
-        ("requestedEndByte", (request.getObjVal? "endByte").toOption.getD Json.null),
-        ("parentDeclaration", candidate.context.parentDecl?.map (str ∘ Name.toString) |>.getD Json.null),
-        ("contextParameters", toJson locals.size), ("localLetBindings", str "substituted-definitionally")]),
-      ("expansionPolicy", obj [("constants", toJson (policy.constants.map Name.toString)), ("maxDepth", toJson policy.maxDepth)]),
-      ("definitions", Json.arr definitions), ("definitionPreviews", Json.arr previews), ("tree", result), ("expression", expressionOf result),
-      ("sourceTerms", Json.arr #[obj [("startByte", toJson candidate.startByte), ("endByte", toJson candidate.endByte),
-        ("lean", str pretty), ("type", str type), ("isBinder", toJson false), ("origin", str "lean-infotree")]]),
-      ("metrics", Json.arr #[]), ("diagnostics", Json.arr #[])]
+        for name in contextExpression.getUsedConstants do
+          if definitions.size >= 128 then break
+          if definitionNames.contains name then continue
+          if let some info := (← getEnv).find? name then
+            if info.isDefinition && !info.isUnsafe && !info.isPartial then
+              definitions := definitions.push (← declarationJson info)
+              definitionNames := definitionNames.push name
+      let previews ← definitionPreviews request policy contextExpressions pretty
+        (fun previewPolicy => contextTree locals 0 expression #[] "context" previewPolicy)
+      return obj [
+        ("ok", toJson true), ("schemaVersion", toJson (2 : Nat)), ("leanVersion", str Lean.versionString),
+        ("source", str source), ("pretty", str pretty), ("type", str type),
+        ("validation", str "kernel-type-checked-context-fragment"),
+        ("provenance", obj [("assistant", str "lean"), ("inputMode", str "editor"),
+          ("inspected", str "context-fragment"), ("fileName", str fileName),
+          ("selectionKind", str (if proof then "proof-type" else "proposition")),
+          ("startByte", toJson candidate.startByte), ("endByte", toJson candidate.endByte),
+          ("requestedStartByte", (request.getObjVal? "startByte").toOption.getD Json.null),
+          ("requestedEndByte", (request.getObjVal? "endByte").toOption.getD Json.null),
+          ("parentDeclaration", candidate.context.parentDecl?.map (str ∘ Name.toString) |>.getD Json.null),
+          ("contextParameters", toJson locals.size), ("localLetBindings", str "substituted-definitionally")]),
+        ("expansionPolicy", obj [("constants", toJson (policy.constants.map Name.toString)), ("maxDepth", toJson policy.maxDepth)]),
+        ("definitions", Json.arr definitions), ("definitionPreviews", Json.arr previews), ("tree", result), ("expression", expressionOf result),
+        ("sourceTerms", Json.arr #[obj [("startByte", toJson candidate.startByte), ("endByte", toJson candidate.endByte),
+          ("lean", str pretty), ("type", str type), ("isBinder", toJson false), ("origin", str "lean-infotree")]]),
+        ("metrics", Json.arr #[]), ("diagnostics", Json.arr #[])]
 
 unsafe def analyze (request : Json) : IO Json := do
   let source ← IO.ofExcept (request.getObjValAs? String "source")

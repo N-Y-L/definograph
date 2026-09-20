@@ -13,7 +13,8 @@ def imports : Array Import := #[
   { module := `StatementLens.ReadableMath },
   { module := `Mathlib.Topology.MetricSpace.Basic },
   { module := `Mathlib.Analysis.InnerProductSpace.PiL2 },
-  { module := `Mathlib.Combinatorics.SimpleGraph.Coloring }
+  { module := `Mathlib.Combinatorics.SimpleGraph.Coloring },
+  { module := `Mathlib.Topology.OpenPartialHomeomorph.Defs }
 ]
 
 def analyze (source : String) (request : Json) (renderNotation : Expr → MetaM Json) : TermElabM Json := withoutErrToSorry do

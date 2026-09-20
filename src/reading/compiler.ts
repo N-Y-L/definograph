@@ -38,6 +38,9 @@ function relationPhrase(relation: SemanticRelation, objects: ReadonlyMap<string,
     case 'graph-colorable': return `${port('graph')} admits a proper coloring with at most ${port('color bound')} colors`;
     case 'graph-coloring': return port('vertex') ? `${port('coloring')} assigns a color to ${port('vertex')}` : `${port('coloring')} is a proper coloring of ${port('graph')}`;
     case 'graph-map': return `${port('map')} preserves the stated graph relationships`;
+    case 'restricted-equivalence': return `${port('map')} has inverse maps on its designated regions`;
+    case 'restricted-region': return `The ${relation.restrictedRegion} region of ${port('map')}`;
+    case 'restricted-application': return `Apply the ${relation.restrictedDirection} map of ${port('map')} to ${port('input')}`;
     // An abstract predicate or application keeps its source expression. Calling it true would
     // invent semantics, and generic inputs need not be points or members of a finite model.
     default: return undefined;

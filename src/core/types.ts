@@ -25,7 +25,36 @@ export interface Binder {
   domain?: Domain;
   dimension?: number;
   typeExpression?: Expr;
+  /** Optional small type-head reduction, independently checked by Lean. */
+  typeExpansion?: { expression: Expr; before: string; after: string; constants: string[]; definitionalEquality: true; maxDepth: 2 };
   typeDescriptor?: TypeDescriptor;
+  structure?: ReflectedStructure;
+  structureOmission?: string;
+}
+
+/** Direct projections checked in Lean's current environment. Laws belong to the
+ * owning value; this metadata never asserts that such a value exists. */
+export interface ReflectedField {
+  name: string;
+  projection: string;
+  expression: Expr;
+  type: string;
+  typeExpression: Expr;
+  typeDescriptor: TypeDescriptor;
+  typeExpansion?: Binder['typeExpansion'];
+  kind: 'data' | 'law';
+  dependsOn: string[];
+  parent?: string;
+  law?: StatementNode;
+}
+export interface ReflectedStructure {
+  name: string;
+  typeExpression: Expr;
+  fields: ReflectedField[];
+  omittedFields: number;
+  kernelChecked: true;
+  limits: { maxFields: 16; maxFieldNodes: 120; maxDepth: 24 };
+  stopReason?: string;
 }
 
 export type Expr =

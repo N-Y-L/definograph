@@ -69,6 +69,7 @@ export const graphSemanticPlugin: SemanticPlugin = {
     'A coloring bound is an upper bound on available colors; no witness or exact number of used colors is inferred.',
     'Only canonical fully applied Mathlib simple-graph constructors and audited bundled coercions are interpreted.',
   ],
+  matchBinder: graphBinderSemantics,
   match(expression) {
     if (expression.kind !== 'app') return;
     if (application(expression, 'SimpleGraph.Adj', ['type', 'value', 'value', 'value'], 'proposition')) {

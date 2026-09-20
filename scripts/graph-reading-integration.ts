@@ -11,6 +11,7 @@ import type { SemanticDocument, SemanticRelation } from '../src/semantic/types.t
 import { compileReading, compileReadingCues, type ReadingDocument, type ReadingCuePlan } from '../src/reading/index.ts';
 import { compileGraphConstraint } from '../src/graphs/model.ts';
 import type { StatementReadingViewProps } from '../src/visual/StatementReadingView.tsx';
+import { activeReadingGuide as activeGuide } from './ssr-reading.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backend = createWorkerBackend({ rootDir });
@@ -32,12 +33,6 @@ function render(document: SemanticDocument, selectedNodeId?: string): string {
     assert.equal(warnings.length, 0, `React could not faithfully render the graph reader: ${warnings[0]?.slice(0, 260)}`);
     return html;
   } finally { console.error = originalError; }
-}
-function activeGuide(html: string): string {
-  const start = html.indexOf('<section class="reading-guide"');
-  const end = html.indexOf('<details class="sr-complete-reading"', start);
-  assert.ok(start >= 0 && end > start, 'The complete reader must include its guide and full statement');
-  return html.slice(start, end);
 }
 function figure(html: string, relation: SemanticRelation): string {
   const marker = html.indexOf(`data-graph-relation="${relation.id}"`);

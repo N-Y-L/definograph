@@ -2,7 +2,45 @@
 
 Verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
 
-## Release 0.6 checks
+## Release 0.7 checks
+
+The deterministic decomposition iteration passes strict TypeScript, the production build, and **725 automated checks**: 721 in `npm run check`, plus four extension checks. Counts come from `.local/check-0.7.log` and `.local/extension-check-0.7.log`; builds and packaging are not tests.
+
+| Suite | Passed | Main coverage |
+|---|---:|---|
+| `npm test` | 369 | 30 files, including generic reflected fields, malformed metadata, shared applications, scope, and rendering |
+| `npm run test:server` | 29 | HTTP/IPC boundaries, cancellation, editor context, and request validation |
+| `npm run test:lean` | 46 | Native elaboration, kernel checks, syntax isolation, and universes |
+| `npm run test:integration` | 26 | All 25 interface examples and numerical/dependency behavior |
+| `npm run test:semantic` | 21 | Typed semantics and conservative recognition |
+| `npm run test:reading` | 20 | Logical reading and dependencies |
+| `npm run test:notation` | 32 | LeanTeX/KaTeX and all interface examples |
+| `npm run test:atlas` | 21 | Typed constructions through the production renderer |
+| `npm run test:cues` | 15 | Ordered constructions and retained context |
+| `npm run test:sets` | 7 | Compound sets and unknown instances |
+| `npm run test:editor` | 23 | Actual context extraction and unchanged project files |
+| `npm run test:graphs` | 15 | Graph contracts and lookalike rejection |
+| `npm run test:graph-reading` | 8 | Native graph semantics through the production reader |
+| `npm run test:inspection` | 5 | Checked automatic inspection and single source execution |
+| `npm run test:definition-previews` | 8 | Preview budgets, placeholders, and mandatory response preservation |
+| `npm run test:corpus` | 25 | Supported, partial, and unknown vocabulary with stable native hashes |
+| `npm run test:restricted` | 18 | Optional restricted-map lens, aliases, and custom-coercion boundaries |
+| `npm run test:restricted-reading` | 15 | Actual editor context through scoped restricted-map diagrams |
+| `npm run test:structure-export` | 8 | Native reflection, parent fields, law-only records, bounded aliases, source isolation, and transport trimming |
+| `npm run test:decomposition` | 10 | Unseen definitions, full renaming, internal carriers, aliases, opaque fields/laws, separate witnesses, and production diagrams |
+| Extension checks | 4 | Mocked VS Code request lifecycle and stale-result rejection |
+
+The generic acceptance cases require no additions to the mathematical recognizer catalogue. Completely renamed records and fields produce the same primitive topology. Reflected fields keep their exact projected identities in law applications. Internal carrier fields stay shared with operations and elements. Local hypotheses and separate existential alternatives keep their fields in the owner's scope. The original statement remains intact alongside supplementary laws.
+
+Browser checks used actual native editor exports through the hosted-browser bridge. They exercised unfamiliar maps and sets, a function-type alias, switching field laws, a composed round trip under its membership hypothesis, an internal carrier with a binary operation, a 23-field record with seven visibly omitted fields, a law-only hypothesis at its conditional step, and the explicit two-step alias boundary. The checked final-build workflows produced no console warnings or errors. A browser-reported 1272-pixel view had no horizontal document overflow; mobile layouts were not reverified in this iteration.
+
+These checks exposed and corrected lost alias applications, missing hypothesis diagrams, missing projected fields in conclusion scope, and indistinguishable shortened map labels. An older SSR helper incorrectly stopped at a nested law reader; the corrected helper verifies that the original compact graph views remain present.
+
+The extension packages as `.local/statement-lens-editor-0.7.0.vsix`. It has not been installed or published by this iteration. Actual VS Code GUI activation and complete extension-host use, and native Windows operation, remain unverified. The checked local browser bridge is not a substitute for that host validation.
+
+Direct structure reflection and bounded unfolding are implemented foundations, not universal geometric understanding. Early native budget/type-size exits may retain only the original typed object without a specific reason; recursive value/inductive decomposition and automatic abstraction selection remain incomplete. See [the decomposition record](decomposition-iteration.md) and [the roadmap](roadmap.md).
+
+## Historical release 0.6 checks
 
 The graph-constraints and definition-inspection iteration passes strict TypeScript, the production build, and **587 automated checks**: 583 in `npm run check`, plus four extension checks. Counts come from `.local/check-0.6.log` and `.local/extension-check-0.6.log`; builds and packaging are not tests.
 
@@ -143,7 +181,7 @@ These checks found and corrected stale BallView coordinate state, misleading inh
 
 ## Isolation and reproducibility
 
-Development used an isolated local checkout. Its worker read StatementLens's own dedicated mathlib cache and the pinned installed Lean binary. No other formal project or global toolchain setting was modified. The source contains no machine-specific runtime paths; those stay in ignored `.local/config.json`. No commits were pushed and no remote repository was configured.
+Development used an isolated local checkout. Its worker read StatementLens's own dedicated mathlib cache and the pinned installed Lean binary. No other formal project or global toolchain setting was modified. The source contains no machine-specific runtime paths; those stay in ignored `.local/config.json`. No commits were pushed and no external remote repository was configured.
 
 The original clean-cache download smoke test remains applicable: setup fetched 2,372 pinned transitive module caches into a dedicated directory and built a working worker. Release 0.2 adds no Lean imports or mathlib dependencies. CodeMirror dependencies are pinned in `package-lock.json`; the editor is split into a separate production chunk.
 
@@ -151,4 +189,4 @@ The original clean-cache download smoke test remains applicable: setup fetched 2
 
 Passing these checks is not a proof that the renderer is bug-free. Lean's kernel checks the submitted expression or definition expansion; the TypeScript semantic rules, layout, and floating-point evaluator have regression tests rather than formal correctness proofs. Numerical samples cannot certify universal statements or exact real equality.
 
-The standalone reader's fixed imported environment and allowlisted term syntax do not accept every Lean project or incomplete expression. The editor adapter adds trusted project-context extraction, with the toolchain, import, source-selection, and execution limits documented in [editor integration](editor-integration.md). Source occurrences are exact, but transformed-node-to-source mapping is not guessed. Definition unfolding is bounded and acts at logical heads. The planner uses explicit heuristics and representation contracts, not a verified global optimum. Rich geometric realization for arbitrary structures, witness strategies, and Rocq support remain future work. Actual VS Code GUI installation and end-to-end extension-host use remain unverified in release 0.6.
+The standalone reader's fixed imported environment and allowlisted term syntax do not accept every Lean project or incomplete expression. The editor adapter adds trusted project-context extraction, with the toolchain, import, source-selection, and execution limits documented in [editor integration](editor-integration.md). Source occurrences are exact, but transformed-node-to-source mapping is not guessed. Definition unfolding is bounded and acts at logical heads. The planner uses explicit heuristics and representation contracts, not a verified global optimum. Rich geometric realization for arbitrary structures, witness strategies, and Rocq support remain future work. Actual VS Code GUI installation and end-to-end extension-host use remain unverified in release 0.7.

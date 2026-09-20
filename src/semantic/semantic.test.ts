@@ -260,6 +260,49 @@ describe('semantic rules and honest coverage', () => {
     expect(() => createSemanticRegistry([p, p])).toThrow('Duplicate');
     expect(() => compileSemanticDocument({ source: '', tree: leaf('root', c('P')), expression: c('P') }, [{ ...p, match: () => ({ kind: 'membership', label: 'unsafe', arguments: [], fidelity: 'symbolic' }) }])).toThrow('undeclared capability');
   });
+
+  it('binds plugin-carried structure only to an introduced value and its exact type', () => {
+    const typeExpression = app('Audited.Structure', [c('A')]);
+    const x = bind('x', 'x', { type: 'Audited.Structure A', typeExpression, domain: 'unknown' });
+    const tree = node('intro', 'forall', [leaf('claim', c('True'))], x);
+    const plugin = { id: 'bundle-test', version: '1', title: 'Bundle test', capabilities: ['predicate'] as const, limitations: [], match: () => undefined,
+      matchBinder: (value: Expr, type: Expr) => type === typeExpression ? { kind: 'predicate' as const, label: 'declared structure', arguments: [{ role: 'value', expression: value }], fidelity: 'symbolic' as const } : undefined };
+    const analysis = { source: '', tree, expression: tree.expression };
+    const document = compileSemanticDocument(analysis, [plugin]);
+    const relation = document.relations[0]!;
+    expect(relation.provenance.expressionPath).toBe('binder.type');
+    expect(relation.expression).toBe(typeExpression);
+    expect(relation.scopeId).toBe('scope:intro');
+    expect(document.scopes.find(scope => scope.id === relation.scopeId)!.objectIds).toContain(relation.ports[0]!.objectId);
+    expect(document.objects.find(object => object.id === relation.ports[0]!.objectId)!.binder?.id).toBe('x');
+    expect(compileSemanticDocument(analysis, []).relations).toHaveLength(0);
+  });
+
+  it('exposes checked type aliases through the same binder hook while keeping the declared name', () => {
+    const exposed = app('Audited.Structure', [c('A')]);
+    const expansion = { expression: exposed, before: 'MyStructure', after: 'Audited.Structure A', constants: ['MyStructure'], definitionalEquality: true as const, maxDepth: 2 as const };
+    const x = bind('x', 'x', { type: 'MyStructure', typeExpression: c('MyStructure'), typeExpansion: expansion, domain: 'unknown' });
+    const plugin = { id: 'alias-test', version: '1', title: 'Alias test', capabilities: ['predicate'] as const, limitations: [], match: () => undefined,
+      matchBinder: (value: Expr, type: Expr) => type === exposed ? { kind: 'predicate' as const, label: 'declared structure', arguments: [{ role: 'value', expression: value }], fidelity: 'symbolic' as const } : undefined };
+    const run = (binder: Binder) => { const tree = node('intro', 'forall', [leaf('claim', c('True'))], binder); return compileSemanticDocument({ source: '', tree, expression: tree.expression }, [plugin]); };
+    const document = run(x);
+    expect(document.relations).toHaveLength(1);
+    expect(document.objects.find(object => object.binder?.id === 'x')!.type).toBe('MyStructure');
+    expect(document.relations[0]!.conditions.join(' ')).toContain('definitionally equal');
+    expect(run({ ...x, typeExpansion: { ...expansion, before: 'AnotherType' } }).relations).toHaveLength(0);
+    expect(run({ ...x, typeExpansion: { ...expansion, constants: ['a', 'b', 'c'] } }).relations).toHaveLength(0);
+    expect(run({ ...x, typeExpansion: { ...expansion, expression: { kind: 'opaque', text: 'truncated' } } }).relations).toHaveLength(0);
+  });
+
+  it('validates binder plugin capabilities and never treats a proof assumption as a structured witness', () => {
+    const x = bind('x', 'x', { typeExpression: c('A'), domain: 'unknown' });
+    const tree = node('intro', 'forall', [leaf('claim', c('True'))], x);
+    const plugin = { id: 'bundle-test', version: '1', title: 'Bundle test', capabilities: ['predicate'] as const, limitations: [], match: () => undefined,
+      matchBinder: () => ({ kind: 'membership' as const, label: 'undeclared', arguments: [], fidelity: 'symbolic' as const }) };
+    expect(() => compileSemanticDocument({ source: '', tree, expression: tree.expression }, [plugin])).toThrow('undeclared capability');
+    const assumption = node('hypothesis', 'implies', [leaf('premise', c('True')), leaf('conclusion', c('True'))], { ...x, role: 'assumption' });
+    expect(compileSemanticDocument({ source: '', tree: assumption, expression: assumption.expression }, [plugin]).relations).toHaveLength(0);
+  });
 });
 
 describe('automatic view planning', () => {

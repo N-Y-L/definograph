@@ -2,13 +2,15 @@
 
 Read a Lean mathematical statement as a visual sequence, with its logical overview alongside. StatementLens introduces the objects, distinguishes assumptions from conclusions, preserves quantifier order, and draws relationships using the resolved Lean types. Understanding the statement is the primary purpose; numerical experimentation is optional.
 
-The goal is a general mathematical statement visualizer. Extensions describe reusable mathematical constructions, not named theorems. This release provides the semantic foundation and working visual vocabulary; it does not claim complete visual understanding of arbitrary mathematics.
+The goal is a general mathematical statement visualizer built from a small set of shared visual primitives. Lean supplies the actual definitions and types; deterministic decomposition exposes their objects, fields, dependencies, and logical conditions; the reader composes those into a visual explanation. A new mathematical object should not require its own renderer. The current foundation handles direct structure fields, bounded type aliases, and bounded definition unfolding. It does not yet explain every mathematical definition or statement.
 
 ## Read a statement
 
 Choose a statement from the top bar to read it immediately. Use **Next** to follow its constructions in order, or jump through the overview. **Full visual statement** opens the complete static reading. To enter your own, open **Lean source**, enter a Lean expression, and select **Interpret statement**. Editing and inspection use focused panels so the mathematical sequence and overview have the main surface. The editor supports syntax highlighting, search, history, and Lean symbol abbreviations such as `\forall` followed by Tab. The **Structure** tab lets you focus on part of a long statement while retaining its enclosing context.
 
+- **Unfamiliar definitions:** a fresh Lean structure can expose its typed fields and quantified laws without adding its name to a recognizer. Maps, sets, elements, and their shared expressions feed the same reading primitives. Original names stay visible; unknown law predicates and bounded omissions remain explicit. Law-only structures keep their hypothesis scope. See [generic structure reflection](docs/structure-reflection.md).
 - **Connected objects:** sets, membership, inclusion, functions, applications, images, preimages, relations, and metric regions share object identities across fragments. Select an object to inspect its type and occurrences. **Inspect** also exposes coverage and definition expansion.
+- **Optional mathematical views:** audited adapters can give a concise view of a known contract, such as maps inverse only on designated source and target regions. They complement generic decomposition. A partial equivalence does not become a global inverse, and an open partial homeomorphism does not imply coordinates or differentiability.
 - **Graph constraints:** adjacency, proper colorings, colorability, graph homomorphisms, and embeddings have reusable diagrams. Named vertices and mapped values keep their identities across the guided steps. Available color labels are distinct from an assigned coloring; zero- and one-color cases keep their exact meaning. No complete graph instance or planar drawing is invented.
 - **Compound sets:** union, intersection, difference, and complement compose inside membership, inclusion, and equality. Highlighted regions encode allowed membership combinations; hatching identifies combinations required to be empty. No sample element or nonempty intersection is invented.
 - **Typed constructions:** abstract maps connect their domain and codomain from Lean type expressions. Curried maps retain their ordered inputs, and dependent families retain which earlier arguments their types use. No coordinate model or finite cardinality is invented.
@@ -19,6 +21,19 @@ Choose a statement from the top bar to read it immediately. Use **Next** to foll
 - **Actionable coverage:** inspect the recognized vocabulary and remaining unknown definitions for the selected fragment, jump to their source context, or expand an eligible definition. Coverage describes interpretation by the installed rules, not mathematical truth or a percentage of all mathematics.
 - **Readable notation:** optionally show a LeanTeX rendering of the elaborated statement alongside its visual sequence. Typesetting is local with KaTeX; unsupported notation falls back to Lean and never changes the expression used for diagrams.
 - **Source provenance:** a selection in the editor exposes its type using exact Lean InfoTree source ranges. Export the typed analysis, semantic document, reading sequence, overview, optional view plan, and scenario as JSON.
+
+In an existing Lean editor, even a newly defined record can supply the structure for a reading:
+
+```lean
+structure Passage (A B : Type) where
+  advance : A → B
+  retreat : B → A
+  roundTrip : ∀ x, retreat (advance x) = x
+
+#check ∀ (A B : Type) (p : Passage A B), True
+```
+
+Its map fields and round-trip law come from Lean's checked structure metadata. Their names have no special meaning to the visualizer. This source belongs in a trusted Lean project; the standalone browser input accepts a statement term and does not execute pasted declarations. [The decomposition contract](docs/structure-reflection.md) describes the bounds and remaining limits.
 
 For example, this statement generates connected set and membership views without any coordinates:
 
@@ -76,15 +91,15 @@ npm ci --prefix extension
 npm run check:extension
 ```
 
-Install the resulting `.local/statement-lens-editor-0.6.0.vsix` with **Extensions: Install from VSIX…**, set `statementLens.engineDirectory` to this checkout, then run **Statement Lens: Visualize Selection** in a trusted Lean workspace. The package has not been published. Native extraction, mocked controller, and hosted-browser checks do not substitute for installing and exercising the extension in an actual VS Code GUI; that workflow remains unverified. [The editor guide](docs/editor-integration.md) explains exact selection, explicit definition expansion, project isolation, and the initial symbolic-only interpretation boundary.
+Install the resulting `.local/statement-lens-editor-0.7.0.vsix` with **Extensions: Install from VSIX…**, set `statementLens.engineDirectory` to this checkout, then run **Statement Lens: Visualize Selection** in a trusted Lean workspace. The package has not been published. Native extraction, mocked controller, and hosted-browser checks do not substitute for installing and exercising the extension in an actual VS Code GUI; that workflow remains unverified. [The editor guide](docs/editor-integration.md) explains exact selection, explicit definition expansion, project isolation, and the initial symbolic-only interpretation boundary.
 
 ## Product direction
 
-The target is general mathematical statements, including abstract definitions and maps. Reusable rules recognize constructions rather than named theorems. The default is a visual sequence with a linked overview; examples and coordinates do not supply unstated assumptions. See [the atlas iteration](docs/atlas-iteration.md) for typed construction and reading-region boundaries, [the statement-first review](docs/statement-first-review.md) for concrete acceptance cases and [the reading contract](src/reading/types.ts) for the renderer-independent representation.
+The target is general mathematical statements, including abstract definitions and maps. The architecture prioritizes checked decomposition and composition through shared primitives. Optional mathematical adapters can improve a representation, but adding one recognizer per library object is not the route to the general objective. The default is a visual sequence with a linked overview; examples and coordinates do not supply unstated assumptions. See [the atlas iteration](docs/atlas-iteration.md) for typed construction and reading-region boundaries, [the statement-first review](docs/statement-first-review.md) for concrete acceptance cases and [the reading contract](src/reading/types.ts) for the renderer-independent representation.
 
 The [visual-method notes](docs/visual-method.md) document design references from [3Blue1Brown/Manim](https://github.com/3b1b/manim) and [Penrose](https://penrose.cs.cmu.edu/examples): persistent object identity, ordered constructions, and the [guided-reading layer](docs/guided-reading.md), which preserves the same logical scope as the static diagrams. The current graph figures use local SVG and add no layout or animation runtime.
 
-The general goal remains unfinished. Planar graph structure, the four-color theorem, tangent fields and bundles, derivatives, and constant-rank normal forms do not yet have semantic grammars. Next shared foundations are restricted maps with local inverse laws, indexed fibers and sections, and linear-map structure. [The roadmap](docs/roadmap.md) and [coverage corpus](docs/coverage-corpus.md) keep those gaps explicit.
+The general goal remains unfinished. Direct record reflection is implemented; recursive decomposition of arbitrary values, inductive types, and complex definitions is future work. A useful geometric explanation of the four-color, hairy-ball, or constant-rank theorem is not established by this release. Their types or laws may expose shared pieces while important mathematical meaning remains unknown. [The roadmap](docs/roadmap.md) and [coverage corpus](docs/coverage-corpus.md) keep those boundaries explicit.
 
 ## Scope and isolation
 
@@ -92,7 +107,7 @@ This is a standalone local web application with a versioned Lean extraction cont
 
 In standalone browser mode, only fixed, trusted modules are loaded. Input passes a closed declarative syntax allowlist, elaboration, unresolved-placeholder checks, and a kernel type check. Standalone input does not open existing formal projects. Editor mode reads the selected trusted project and its imported environment in a separate process; the adapter does not rewrite project files or configuration. Arbitrary imports, pasted proof scripts, and user command execution are outside the standalone input contract. Editor mode elaborates trusted Lean source, which can run project elaborators and commands; the process is not a security sandbox. The selected expression must elaborate without unresolved placeholders; this is not general recovery from incomplete mathematical syntax.
 
-Custom metric and arithmetic instances remain symbolic unless their interpretation is audited. View rules use typed constructors and argument roles rather than matching theorem names or source spelling. Unsupported parts are retained with explicit coverage information. Numerical vectors have a resource bound of 256 coordinates; larger spaces retain typed structure rather than receiving a fabricated numerical model.
+Custom metric and arithmetic instances remain symbolic unless their interpretation is audited. Generic record decomposition uses actual Lean field metadata and checked projections; optional mathematical views use audited typed constructors and argument roles. Neither path assigns meaning from theorem titles or field spelling. Unsupported parts are retained with explicit coverage information. Numerical vectors have a resource bound of 256 coordinates; larger spaces retain typed structure rather than receiving a fabricated numerical model.
 
 Build products and machine-specific paths stay in ignored `.local/`. Existing toolchains and caches are read-only inputs. There is no cloud analysis, model API, telemetry, or external font request. The server binds to loopback and checks request origins. Its separate worker is not a hardened sandbox for arbitrary uploaded Lean projects.
 
@@ -112,6 +127,6 @@ This builds the application and runs unit, server, native Lean, project-context,
 
 Codex under the supervision of Neil Yuanting Li.
 
-Lean and mathlib supply the checked mathematical environment, including [the pinned graph-coloring definitions](https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Combinatorics/SimpleGraph/Coloring.lean). LeanTeX, KaTeX, CodeMirror, and React supply the documented printing and interface components. 3Blue1Brown/Manim and Penrose are credited design references; no code, scene assets, or styles from either were copied or bundled.
+Lean supplies the checked structure metadata and projection APIs used for generic decomposition. Mathlib supplies the reusable mathematical definitions, including [the pinned graph-coloring definitions](https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Combinatorics/SimpleGraph/Coloring.lean). LeanTeX, KaTeX, CodeMirror, and React supply the documented printing and interface components. 3Blue1Brown/Manim and Penrose are credited design references; no code, scene assets, or styles from either were copied or bundled.
 
 Citation: [CITATION.cff](CITATION.cff). License: [Apache 2.0](LICENSE). Dependency attribution: [NOTICE](NOTICE).

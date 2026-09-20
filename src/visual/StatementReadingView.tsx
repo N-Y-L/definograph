@@ -4,8 +4,14 @@ import { planReadingPresentation, visibleReadingNodes, type ReadingPresentation,
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { TypedConstructionFigure } from '../constructions';
 import { compileGraphConstraint, GraphConstraintFigure } from '../graphs';
+import { compileRestrictedMap, RestrictedMapFigure } from '../restricted';
+import { compileStructuralObject } from '../decomposition/compiler';
+import { StructuralObjectFigure } from '../decomposition/StructuralObjectFigure';
+import type { StructuralField } from '../decomposition/types';
+import { compileReading } from '../reading/compiler';
 import { compileSetConstruction, SetConstructionFigure } from '../set-constructions';
 import { compactLabel } from './layout';
+import { applicationFlow } from '../semantic/application-flow';
 import './statement-reading.css';
 import { compileReadingCues, type ReadingCue } from '../reading/cues';
 import { GuidedReading } from './GuidedReading';
@@ -40,9 +46,10 @@ function FigureObject({ id, ctx, children, title }: { id?: string; ctx: RenderCo
   </g>;
 }
 
-function ObjectName({ id, x, y, ctx, max = 24, anchor = 'middle' }: { id?: string; x: number; y: number; ctx: RenderContext; max?: number; anchor?: 'start' | 'middle' | 'end' }) {
+function ObjectName({ id, x, y, ctx, max = 24, anchor = 'middle', suffix = '', fieldOnly = false }: { id?: string; x: number; y: number; ctx: RenderContext; max?: number; anchor?: 'start' | 'middle' | 'end'; suffix?: string; fieldOnly?: boolean }) {
   const object = id ? ctx.objects.get(id) : undefined;
-  return <text x={x} y={y} textAnchor={anchor} className="sr-object-label">{compactLabel(object?.label ?? 'unspecified', max)}</text>;
+  const label = fieldOnly && object?.provenance.some(source => source.expressionPath.startsWith('binder.structure.')) ? object.label.slice(object.label.lastIndexOf('.') + 1) : object?.label ?? 'unspecified';
+  return <text x={x} y={y} textAnchor={anchor} className="sr-object-label">{compactLabel(label, max) + suffix}</text>;
 }
 
 function Region({ id, x, y, width, height, ctx, children, labelTop = true }: { id?: string; x: number; y: number; width: number; height: number; ctx: RenderContext; children?: ReactNode; labelTop?: boolean }) {
@@ -64,16 +71,15 @@ function port(relation: SemanticRelation, role: string): string | undefined { re
 function producedBy(id: string | undefined, relations: readonly SemanticRelation[]) { return id ? relations.find(relation => relation.ports.some(p => ['output', 'result', 'region', 'distance', 'color', 'target vertex'].includes(p.role) && p.objectId === id)) : undefined; }
 
 /** Expand a bounded map path; unexpanded subexpressions remain explicit objects. */
-export function expressionMapPath(objectId: string, relations: readonly SemanticRelation[], depth = 0): { inputs: string[]; maps: string[]; output: string; collapsed: boolean } {
+export function expressionMapPath(objectId: string, relations: readonly SemanticRelation[], depth = 0): { inputs: string[]; maps: string[]; directions: ('forward' | 'inverse')[]; output: string; collapsed: boolean } {
   const application = producedBy(objectId, relations);
-  const fallback = { inputs: [objectId], maps: [], output: objectId, collapsed: Boolean(application?.kind === 'application') };
-  if (application?.kind !== 'application' || depth >= 3) return fallback;
-  const fn = port(application, 'function');
-  const inputs = application.ports.filter(p => p.role.startsWith('input')).map(p => p.objectId);
-  if (!fn || !inputs.length || inputs.length > 3) return fallback;
-  if (inputs.length > 1) return { inputs, maps: [fn], output: objectId, collapsed: inputs.some(id => producedBy(id, relations)?.kind === 'application') };
-  const inner = expressionMapPath(inputs[0], relations, depth + 1);
-  return { inputs: inner.inputs, maps: [...inner.maps, fn], output: objectId, collapsed: inner.collapsed };
+  const flow = applicationFlow(application);
+  const fallback = { inputs: [objectId], maps: [], directions: [], output: objectId, collapsed: Boolean(flow) };
+  if (!flow || !application || depth >= 3 || flow.inputIds.length > 3) return fallback;
+  const scoped = relations.filter(relation => relation.nodeId === application.nodeId && relation.scopeId === application.scopeId);
+  if (flow.inputIds.length > 1) return { inputs: [...flow.inputIds], maps: [flow.functionId], directions: [flow.direction], output: objectId, collapsed: flow.inputIds.some(id => Boolean(applicationFlow(producedBy(id, scoped)))) };
+  const inner = expressionMapPath(flow.inputIds[0]!, scoped, depth + 1);
+  return { inputs: inner.inputs, maps: [...inner.maps, flow.functionId], directions: [...inner.directions, flow.direction], output: objectId, collapsed: inner.collapsed };
 }
 
 function ExpressionPath({ objectId, relations, y, ctx }: { objectId: string; relations: readonly SemanticRelation[]; y: number; ctx: RenderContext }) {
@@ -84,12 +90,13 @@ function ExpressionPath({ objectId, relations, y, ctx }: { objectId: string; rel
   return <g className="sr-expression-path" data-expression-output={objectId}>
     {path.inputs.length === 1 ? <NamedPoint id={path.inputs[0]} x={62} y={y} ctx={ctx} labelY={24}/> : <>{path.inputs.map((input, index) => <FigureObject key={`${input}:${index}`} id={input} ctx={ctx}><text x="14" y={y - 15 * (path.inputs.length - 1) + index * 30 + 6} className="sr-input-index">{index + 1}</text><ObjectName id={input} x={76} y={y - 15 * (path.inputs.length - 1) + index * 30 + 6} ctx={ctx} max={12}/></FigureObject>)}</>}
     <FigureArrow from={[path.inputs.length === 1 ? 80 : 120, y]} to={[positions[0] - 32, y]} ctx={ctx}/>
-    {path.maps.map((fn, index) => <g key={`${fn}:${index}`} data-map-function={fn} data-map-stage={index}><FigureObject id={fn} ctx={ctx}><rect x={positions[index] - 31} y={y - 25} width="62" height="50" rx="10" className="sr-function-box"/><ObjectName id={fn} x={positions[index]} y={y + 6} ctx={ctx} max={8}/></FigureObject>{index < path.maps.length - 1 && <FigureArrow from={[positions[index] + 34, y]} to={[positions[index + 1] - 34, y]} ctx={ctx}/>}</g>)}
+    {path.maps.map((fn, index) => <g key={`${fn}:${index}`} data-map-function={fn} data-map-stage={index} data-map-direction={path.directions[index]}><FigureObject id={fn} ctx={ctx}><rect x={positions[index] - 31} y={y - 25} width="62" height="50" rx="10" className="sr-function-box"/><ObjectName id={fn} x={positions[index]} y={y + 6} ctx={ctx} max={8} fieldOnly suffix={path.directions[index] === 'inverse' ? '⁻¹' : ''}/></FigureObject>{index < path.maps.length - 1 && <FigureArrow from={[positions[index] + 34, y]} to={[positions[index + 1] - 34, y]} ctx={ctx}/>}</g>)}
     <FigureArrow from={[lastMap + 34, y]} to={[426, y]} ctx={ctx}/><NamedPoint id={objectId} x={442} y={y} ctx={ctx} labelY={24}/>
   </g>;
 }
 
 function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
+  if (compileRestrictedMap(ctx.document, relation, relations)) return <RestrictedMapFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   if (compileGraphConstraint(ctx.document, relation, relations)) return <GraphConstraintFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   if (!['image', 'preimage'].includes(relation.kind) && compileSetConstruction(ctx.document, relation, relations)) return <SetConstructionFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   let body: ReactNode;
@@ -202,17 +209,48 @@ function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
   </section>;
 }
 
+function FieldLawReading({ field, ctx }: { field: StructuralField; ctx: RenderContext }) {
+  const [nodeId, setNodeId] = useState(field.lawReading?.selection.nodeId);
+  const [objectId, setObjectId] = useState<string>();
+  const document = field.lawDocument;
+  const reading = useMemo(() => document ? compileReading(document, { selectedNodeId: nodeId }) : undefined, [document, nodeId]);
+  if (!document || !reading) return <code>{field.type}</code>;
+  return <StatementReadingView document={document} reading={reading} selectedObjectId={objectId ?? ctx.selectedObjectId}
+    onNodeSelect={setNodeId} onObjectSelect={id => { setObjectId(id); if (ctx.objects.has(id)) ctx.onObjectSelect?.(id); }}/>;
+}
+
+function StructuralBinderFigure({ object, ctx }: { object: SemanticObject; ctx: RenderContext }) {
+  const model = useMemo(() => compileStructuralObject(ctx.document, object), [ctx.document, object]);
+  return model ? <StructuralObjectFigure model={model} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}
+    renderLaw={field => <FieldLawReading key={field.projection} field={field} ctx={ctx}/>}/> : object.binder?.structureOmission ? <p className="sd-remaining">{object.binder.structureOmission}</p> : null;
+}
+
+function HypothesisStructures({ nodeIds, ctx }: { nodeIds: readonly string[]; ctx: RenderContext }) {
+  const owners = nodeIds.flatMap(id => {
+    const binder = ctx.reading.nodes.find(node => node.id === id)?.binder;
+    const owner = binder?.role === 'assumption' && binder.objectId ? ctx.objects.get(binder.objectId) : undefined;
+    return owner?.binder?.structure ? [owner] : [];
+  });
+  return owners.length ? <div className="sd-hypotheses"><p>Under these hypotheses, the following laws are available in the conclusion.</p>{owners.map(owner => <StructuralBinderFigure key={owner.id} object={owner} ctx={ctx}/>)}</div> : null;
+}
+
 function BinderFigures({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: RenderContext }) {
   const relations = nodes.flatMap(node => ctx.document.relations.filter(relation => relation.nodeId === node.id && relation.provenance.expressionPath === 'binder.type' && relation.scopeId === `scope:${node.id}`));
-  const recognized = relations.filter(relation => compileGraphConstraint(ctx.document, relation));
+  const recognized = relations.filter(relation => compileGraphConstraint(ctx.document, relation) || compileRestrictedMap(ctx.document, relation));
   const figures: ReactNode[] = [];
   let run: ReadingNode[] = [];
   const flush = () => { if (run.length) { figures.push(<TypedConstructionFigure key={`types:${run[0]!.id}`} document={ctx.document} binders={run.map(node => node.binder!)} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>); run = []; } };
   for (const node of nodes) {
     const bundled = recognized.filter(relation => relation.nodeId === node.id);
-    if (!bundled.length) { run.push(node); continue; }
+    const object = node.binder?.objectId ? ctx.objects.get(node.binder.objectId) : undefined;
+    const structure = object?.binder?.structure || object?.binder?.structureOmission;
+    if (!bundled.length && !structure) { run.push(node); continue; }
     flush();
-    bundled.forEach(relation => figures.push(<GraphConstraintFigure key={relation.id} document={ctx.document} relation={relation} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>));
+    bundled.forEach(relation => figures.push(<RelationFigure key={relation.id} relation={relation} relations={relations} ctx={ctx}/>));
+    if (structure && object) {
+      const figure = <StructuralBinderFigure object={object} ctx={ctx}/>;
+      figures.push(bundled.length ? <details className="sd-generic-detail" key={`structure:${node.id}`}><summary>Read the underlying fields and laws</summary>{figure}</details> : <div key={`structure:${node.id}`}>{figure}</div>);
+    }
   }
   flush();
   return <>{figures}</>;
@@ -231,7 +269,7 @@ function AtlasRegion({ region, ctx, depth = 0, lead }: { region: ReadingRegion; 
     const role = region.node.binder!.role;
     body = <><div className="sr-object-introduction"><RegionHeader region={region} ctx={ctx} lead={lead} symbol={roleSymbol[role]} title={role === 'universal' ? 'For every' : role === 'existential' ? 'A witness is required' : 'Parameters'}/><BinderStrip nodes={binders} ctx={ctx}/><BinderFigures nodes={binders} ctx={ctx}/>{binders.length < region.binders.length && <button type="button" className="sr-show-more" onClick={() => ctx.onNodeSelect?.(region.binders[binders.length].id)}>Read the next {region.binders.length - binders.length} binders</button>}</div>{region.body && <AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/>}</>;
   } else if (region.kind === 'implication') {
-    body = <div className="sr-implication-regions"><section className="sr-given-region" aria-label="Given assumptions"><h3 className="sr-role-heading">Given</h3><div className="sr-region-stack">{region.assumptions.map(assumption => <AtlasRegion key={assumption.id} region={assumption} ctx={ctx} depth={depth + 1}/>)}</div></section><section className="sr-then-region" aria-label="Then the conclusion is required">{region.conclusion.kind !== 'binders' && <h3 className="sr-role-heading"><span aria-hidden="true">→</span> Then</h3>}<AtlasRegion region={region.conclusion} ctx={ctx} depth={depth + 1} lead={region.conclusion.kind === 'binders' ? 'Then' : undefined}/></section></div>;
+    body = <div className="sr-implication-regions"><section className="sr-given-region" aria-label="Given assumptions"><h3 className="sr-role-heading">Given</h3><div className="sr-region-stack">{region.assumptions.map(assumption => <AtlasRegion key={assumption.id} region={assumption} ctx={ctx} depth={depth + 1}/>)}</div><HypothesisStructures nodeIds={region.sourceNodeIds} ctx={ctx}/></section><section className="sr-then-region" aria-label="Then the conclusion is required">{region.conclusion.kind !== 'binders' && <h3 className="sr-role-heading"><span aria-hidden="true">→</span> Then</h3>}<AtlasRegion region={region.conclusion} ctx={ctx} depth={depth + 1} lead={region.conclusion.kind === 'binders' ? 'Then' : undefined}/></section></div>;
   } else if (region.kind === 'all') {
     body = <><RegionHeader region={region} ctx={ctx} symbol="∧" title="Together" detail="Every condition below is required."/><div className="sr-conjuncts">{region.children.map(child => <AtlasRegion key={child.id} region={child} ctx={ctx} depth={depth + 1}/>)}</div></>;
   } else if (region.kind === 'alternatives') {
@@ -281,7 +319,7 @@ function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
   } else if (cue.intent === 'logic') {
     const grouped = cue.sourceNodeIds.flatMap(id => { const source = ctx.reading.nodes.find(candidate => candidate.id === id); return source?.kind === 'implies' ? [source] : []; });
     const children = node.kind === 'implies' && grouped.length ? [...grouped.map(source => source.children[0]), grouped.at(-1)!.children[1]] : node.children;
-    body = <div className="rg-logic-children">{children.map((child, index) => <div className="rg-logic-child" key={child.id}><span>{node.kind === 'implies' ? index < children.length - 1 ? 'Given' : 'Then' : node.kind === 'or' ? `Alternative ${index + 1}` : node.kind === 'not' ? 'Negated condition' : node.kind === 'iff' ? `${index === 0 ? 'First' : 'Second'} condition` : `Condition ${index + 1}`}</span><button type="button" onClick={() => ctx.onNodeSelect?.(child.id)} title={child.lean}>{compactLabel(child.phrase || child.lean, 180)}</button></div>)}</div>;
+    body = <><div className="rg-logic-children">{children.map((child, index) => <div className="rg-logic-child" key={child.id}><span>{node.kind === 'implies' ? index < children.length - 1 ? 'Given' : 'Then' : node.kind === 'or' ? `Alternative ${index + 1}` : node.kind === 'not' ? 'Negated condition' : node.kind === 'iff' ? `${index === 0 ? 'First' : 'Second'} condition` : `Condition ${index + 1}`}</span><button type="button" onClick={() => ctx.onNodeSelect?.(child.id)} title={child.lean}>{compactLabel(child.phrase || child.lean, 180)}</button></div>)}</div><HypothesisStructures nodeIds={cue.sourceNodeIds} ctx={focused}/></>;
   } else body = <Clause node={node} ctx={focused}/>;
   return <>{body}<details className="rg-source-context"><summary>Lean fragment and source context</summary><code>{node.lean}</code></details></>;
 }

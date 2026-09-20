@@ -16,7 +16,7 @@ npm ci --prefix extension --ignore-scripts
 npm run package --prefix extension
 ```
 
-Install `.local/statement-lens-editor-0.6.0.vsix` with **Extensions: Install from VSIX…**. Set `statementLens.engineDirectory` to the absolute checkout path. The VSIX contains the extension controller; its local engine and browser assets remain in that checkout. No extension is installed into the user's VS Code profile by building or packaging it.
+Install `.local/statement-lens-editor-0.7.0.vsix` with **Extensions: Install from VSIX…**. Set `statementLens.engineDirectory` to the absolute checkout path. The VSIX contains the extension controller; its local engine and browser assets remain in that checkout. No extension is installed into the user's VS Code profile by building or packaging it.
 
 With the official Lean extension enabled, open a saved `.lean` file in a trusted workspace. Select a complete proposition and run **Statement Lens: Visualize Selection**. A nonempty selection must match an elaborated proposition or proof term, apart from surrounding whitespace. An empty selection chooses the smallest containing proposition or proof term with a proposition type. Arbitrarily selecting a variable does not silently expand a nonempty selection into a different statement.
 

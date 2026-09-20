@@ -1,11 +1,11 @@
 import { discoverScenes } from '../core/scenes';
 import { headName, numericOperator } from '../core/expression';
 import type { Binder, Expr, StatementNode, TypeDescriptor } from '../core/types';
-import { binderTypeExpression, expressionKey, formatExpression, setConstructionParts, stableHash, visibleApplicationArguments } from './expression';
+import { binderTypeExpression, checkedBinderTypeExpansion, expressionKey, formatExpression, setConstructionParts, stableHash, visibleApplicationArguments } from './expression';
 import { createSemanticRegistry } from './registry';
-import { graphBinderSemantics } from '../graphs/semantics';
 import { SEMANTIC_DOCUMENT_VERSION } from './types';
-import type { AnalysisInput, FragmentCoverage, OpaqueRegion, Provenance, QuantifierChoice, SemanticDocument, SemanticObject, SemanticObjectKind, SemanticPlugin, SemanticRelation, SemanticScope } from './types';
+import { exactField, fieldApplicationRule, fieldLabel, reflectedFields, type FieldBinding } from '../decomposition/reflection';
+import type { AnalysisInput, FragmentCoverage, OpaqueRegion, Provenance, QuantifierChoice, SemanticDocument, SemanticObject, SemanticObjectKind, SemanticPlugin, SemanticRelation, SemanticRuleMatch, SemanticScope } from './types';
 
 function objectKind(expression: Expr, binder?: Binder): SemanticObjectKind {
   if (setConstructionParts(expression)) return 'set';
@@ -24,10 +24,25 @@ function objectKind(expression: Expr, binder?: Binder): SemanticObjectKind {
   return 'expression';
 }
 
+function relationMetadata(match: SemanticRuleMatch): Pick<SemanticRelation, 'setOperation' | 'graphMapKind' | 'restrictedMapKind' | 'restrictedDirection' | 'restrictedRegion'> {
+  return {
+    ...(match.setOperation ? { setOperation: match.setOperation } : {}),
+    ...(match.graphMapKind ? { graphMapKind: match.graphMapKind } : {}),
+    ...(match.restrictedMapKind ? { restrictedMapKind: match.restrictedMapKind } : {}),
+    ...(match.restrictedDirection ? { restrictedDirection: match.restrictedDirection } : {}),
+    ...(match.restrictedRegion ? { restrictedRegion: match.restrictedRegion } : {}),
+  };
+}
+
 /** Adapt elaborated Lean expressions into a renderer-independent semantic document. */
-export function compileSemanticDocument(analysis: AnalysisInput, plugins?: readonly SemanticPlugin[]): SemanticDocument {
+export interface SemanticCompileContext {
+  readonly identities?: ReadonlyMap<string, string>;
+  /** Checked projections from an enclosing document, used by supplementary laws. */
+  readonly fields?: readonly FieldBinding[];
+}
+export function compileSemanticDocument(analysis: AnalysisInput, plugins?: readonly SemanticPlugin[], enclosing: SemanticCompileContext = {}): SemanticDocument {
   const registry = createSemanticRegistry(plugins);
-  const identities = new Map<string, string>();
+  const identities = new Map<string, string>(enclosing.identities);
   const binders = new Map<string, Binder>();
   const registerBinder = (binder: Binder): string => {
     if (!identities.has(binder.id)) identities.set(binder.id, `object:b${identities.size}`);
@@ -40,6 +55,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
     node.children.forEach(child => index(child, depth + 1));
   };
   index(analysis.tree);
+  const fields = [...reflectedFields(binders.values()), ...(enclosing.fields ?? [])];
   const objects = new Map<string, SemanticObject & { provenance: Provenance[] }>();
   const objectKeys = new Map<string, string>();
   const relations: SemanticRelation[] = [];
@@ -63,7 +79,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
       return id;
     }
     objectKeys.set(id, key);
-    const label = binder?.role === 'assumption' && binder.name.includes('_@') ? 'Hypothesis' : formatExpression(expression);
+    const label = binder?.role === 'assumption' && binder.name.includes('_@') ? 'Hypothesis' : fieldLabel(expression, fields);
     objects.set(id, { id, kind: objectKind(expression, binder), label, type: binder?.type ?? ('type' in expression ? expression.type ?? '' : ''), expression, binder, scopeId, provenance: [source] });
     return id;
   };
@@ -72,6 +88,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
     const scopeId = `scope:${node.id}`;
     const localObjects = [...activeObjects];
     let implicationBinderId: string | undefined;
+    const implicationFields: string[] = [];
     if (node.binder) {
       const b = node.binder;
       const isImplicationHypothesis = node.kind === 'implies' && b.role === 'assumption' && node.children.length > 1;
@@ -84,17 +101,30 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
             : b.role === 'assumption' ? 'A local hypothesis; it is available only within this scope.' : b.role === 'parameter' ? 'A parameter of this definition. This function signature is not a universally quantified proposition.' : 'A function input, local to its body.' });
       if (isImplicationHypothesis) implicationBinderId = id;
       else localObjects.push(id);
-      // A bundled coloring/map carries constraints as part of its declared type.
-      // Attach them to the actual introduced object, never to a fabricated witness.
+      // Projected data retain expression identities and are available only after
+      // their owner. They are fields, not additional quantified choices.
+      for (const { field } of fields.filter(binding => binding.owner.id === b.id)) {
+        const fieldId = object(field.expression, binderScopeId, provenance(node.id, `binder.structure.${field.name}`));
+        if (!isImplicationHypothesis) localObjects.push(fieldId);
+        else implicationFields.push(fieldId);
+      }
+      // Structured values carry constraints in their declared type. Registry hooks
+      // bind those constraints to the introduced object without inventing a witness.
       const value: Expr = { kind: 'var', id: b.id, name: b.name, type: b.type, typeDescriptor: b.typeDescriptor };
       const typeExpression = binderTypeExpression(node, b);
-      const bundled = typeExpression && b.role !== 'assumption' ? graphBinderSemantics(value, typeExpression) : undefined;
-      if (bundled && (!plugins || plugins.some(plugin => plugin.id === 'graphs'))) {
+      const expandedType = checkedBinderTypeExpansion(b);
+      const interpretationTypes = [typeExpression, expandedType].filter((type): type is Expr => Boolean(type));
+      const bundleRule = b.role !== 'assumption'
+        ? interpretationTypes.flatMap(type => registry.map(plugin => ({ plugin, type, match: plugin.matchBinder?.(value, type) }))).find(result => result.match)
+        : undefined;
+      if (bundleRule?.match) {
+        const { plugin, match: bundled } = bundleRule;
+        if (!plugin.capabilities.includes(bundled.kind)) throw new Error(`Plugin ${plugin.id} emitted an undeclared capability: ${bundled.kind}`);
         const source = provenance(node.id, 'binder.type');
-        relations.push({ id: `relation:${node.id}:binder:graphs`, kind: bundled.kind, label: bundled.label,
+        relations.push({ id: `relation:${node.id}:binder:${plugin.id}`, kind: bundled.kind, label: bundled.label,
           ports: bundled.arguments.map(argument => ({ role: argument.role, objectId: object(argument.expression, binderScopeId, provenance(node.id, `binder.type.${argument.role}`)) })),
-          expression: typeExpression!, scopeId: binderScopeId, nodeId: node.id, pluginId: 'graphs', fidelity: bundled.fidelity,
-          provenance: source, conditions: bundled.conditions ?? [], ...(bundled.graphMapKind ? { graphMapKind: bundled.graphMapKind } : {}) });
+          expression: bundleRule.type, scopeId: binderScopeId, nodeId: node.id, pluginId: plugin.id, fidelity: bundled.fidelity,
+          provenance: source, conditions: [...(bundled.conditions ?? []), ...(bundleRule.type === expandedType ? [`Lean checked the declared type ${b.type} as definitionally equal to ${b.typeExpansion!.after}.`] : [])], ...relationMetadata(bundled) });
       }
     }
     const scope: SemanticScope = { id: scopeId, parentId: parent?.id, nodeId: node.id, kind: node.kind, label: node.label, objectIds: localObjects, assumptionNodeIds: assumptions, context };
@@ -107,7 +137,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
             : node.kind === 'not' ? [...context, 'Inside a negation']
               : node.kind === 'or' ? [...context, `Alternative ${i + 1} of a disjunction`]
                 : node.kind === 'iff' ? [...context, `Side ${i + 1} of an equivalence`] : context;
-        const branchObjects = node.kind === 'implies' && i === 1 && implicationBinderId ? [...localObjects, implicationBinderId] : localObjects;
+        const branchObjects = node.kind === 'implies' && i === 1 && implicationBinderId ? [...localObjects, implicationBinderId, ...implicationFields] : localObjects;
         visitNode(child, scope, branchObjects, branchAssumptions, branchContext, depth + 1);
       });
       return;
@@ -135,7 +165,10 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
         walk(expression.body, `${path}.body`, exprDepth + 1, innerScope, innerScope.objectIds);
         return;
       }
-      const rule = registry.map(plugin => ({ plugin, match: plugin.match(expression) })).find(result => result.match);
+      const scopedFields = fields.filter(binding => expressionObjects.includes(identities.get(binding.owner.id) ?? ''));
+      const fieldRule = fieldApplicationRule(expression, scopedFields);
+      const rule = registry.map(plugin => ({ plugin, match: plugin.match(expression) })).find(result => result.match)
+        ?? (fieldRule ? { plugin: { id: 'structure-fields', capabilities: ['application', 'predicate'] as readonly SemanticRuleMatch['kind'][] }, match: fieldRule } : undefined);
       if (rule?.match) {
         const matched = rule.match;
         if (!rule.plugin.capabilities.includes(matched.kind)) throw new Error(`Plugin ${rule.plugin.id} emitted an undeclared capability: ${matched.kind}`);
@@ -144,10 +177,11 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
           fragmentObjects.add(id);
           return { role: argument.role, objectId: id };
         });
-        relations.push({ id: `relation:${node.id}:${stableHash(key)}:${rule.plugin.id}`, kind: matched.kind, label: matched.label, ports, expression, scopeId: currentScopeId, nodeId: node.id, pluginId: rule.plugin.id, fidelity: matched.fidelity, provenance: source, conditions: matched.conditions ?? [], ...(matched.setOperation ? { setOperation: matched.setOperation } : {}), ...(matched.graphMapKind ? { graphMapKind: matched.graphMapKind } : {}) });
+        relations.push({ id: `relation:${node.id}:${stableHash(key)}:${rule.plugin.id}`, kind: matched.kind, label: matched.label, ports, expression, scopeId: currentScopeId, nodeId: node.id, pluginId: rule.plugin.id, fidelity: matched.fidelity, provenance: source, conditions: matched.conditions ?? [], ...relationMetadata(matched) });
         matched.arguments.forEach(argument => { if (expressionKey(argument.expression, identities) !== key) walk(argument.expression, `${path}.${argument.role}`, exprDepth + 1, expressionScope, expressionObjects); });
         return;
       }
+      if (exactField(expression, scopedFields)) return;
       if (expression.kind === 'app') {
         if (expression.fn.kind === 'const' && expression.fn.canonical === true && headName(expression) === 'Fin' && expression.args.length === 1 && expression.typeDescriptor?.kind === 'type') {
           walk(expression.args[0]!, `${path}.cardinality`, exprDepth + 1, expressionScope, expressionObjects);

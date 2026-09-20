@@ -25,7 +25,7 @@ export interface InterpretationReport {
 
 const vocabularyLabels: Record<string, string> = {
   sets: 'Sets and membership', mappings: 'Maps and applications', relations: 'Equality and order',
-  metric: 'Metric regions and distance', graphs: 'Graphs and coloring',
+  metric: 'Metric regions and distance', graphs: 'Graphs and coloring', 'restricted-maps': 'Restricted maps and local inverses',
 };
 
 /** Report unknown symbols without treating their display names as mathematical meaning. */

@@ -93,6 +93,12 @@ def canonicalModule (name : Name) : Option Name :=
   else if #[`SimpleGraph.Coloring, `SimpleGraph.Colorable].contains name then some `Mathlib.Combinatorics.SimpleGraph.Coloring
   else if #[`RelHom.toFun, `RelHom, `RelHom.instFunLike, `RelEmbedding, `RelEmbedding.instFunLike, `RelIso, `RelIso.instFunLike].contains name then some `Mathlib.Order.RelIso.Basic
   else if name == `DFunLike.coe then some `Mathlib.Data.FunLike.Basic
+  else if #[`PartialEquiv, `PartialEquiv.source, `PartialEquiv.target,
+    `PartialEquiv.toFun, `PartialEquiv.invFun, `PartialEquiv.symm].contains name
+      then some `Mathlib.Logic.Equiv.PartialEquiv
+  else if #[`OpenPartialHomeomorph, `OpenPartialHomeomorph.toPartialEquiv,
+    `OpenPartialHomeomorph.toFun', `OpenPartialHomeomorph.symm].contains name
+      then some `Mathlib.Topology.OpenPartialHomeomorph.Defs
   else none
 
 def canonicalConstant (name : Name) : MetaM Bool := do
@@ -163,7 +169,7 @@ partial def describeType (t : Expr) (depth : Nat := 0) : MetaM Json := do
   if d != "unknown" then return base "structure" [("dimension", toJson n), ("numericalDomain", str d)]
   return base (if head.isAnonymous then "unknown" else "structure")
 
-def binderJson (b : Bound) (t : Expr) (bs : Bounds) : MetaM Json := do
+def basicBinderJson (b : Bound) (t : Expr) (bs : Bounds) : MetaM Json := do
   let (d, n) ← domain t
   return obj [
     ("id", str b.id), ("name", str b.name), ("type", str b.type),
@@ -221,7 +227,7 @@ partial def encode (e : Expr) (bs : Bounds) (path : String) (depth : Nat := 0) :
     let prop ← isProp ty
     withLocalDecl name bi ty fun x => do
       let b : Bound := ⟨x.fvarId!, path ++ ".binder", binderName name, ← pp ty, if e.isLambda then "lambda" else if prop then "assumption" else "universal"⟩
-      return obj [("kind", str kind), ("binder", ← binderJson b ty bs),
+      return obj [("kind", str kind), ("binder", ← basicBinderJson b ty bs),
         ("binderType", ← encode ty bs (path ++ ".type") (depth + 1)),
         ("body", ← encode (body.instantiate1 x) (bs.push b) (path ++ ".body") (depth + 1))]
   | .app .. =>
@@ -258,6 +264,147 @@ partial def encode (e : Expr) (bs : Bounds) (path : String) (depth : Nat := 0) :
       ("args", Json.arr #[← encode value bs (path ++ ".value") (depth + 1)]), ("standard", toJson true), ("type", str (← pp (← inferType e)))]
   | .letE _ _ value body _ => encode (body.instantiate1 value) bs path (depth + 1)
   | _ => return obj [("kind", str "opaque"), ("text", str (← pp e))]
+
+/-- A bounded type-head view exposes safe aliases without replacing their names.
+    This is shared by statement binders and the editor's local-context binders.
+    It neither synthesizes structure fields nor replays source commands. -/
+def binderTypeExpansion (t : Expr) (bs : Bounds) (path : String) : MetaM Json := do
+  let ctx ← readThe Core.Context
+  let now ← IO.getNumHeartbeats
+  let remaining := if ctx.maxHeartbeats == 0 then 1200000 else ctx.maxHeartbeats - (now - ctx.initHeartbeats)
+  let budget := min 200000 (remaining - 1000000)
+  if budget < 1000 then return Json.null
+  let saved ← Meta.saveState
+  try
+    withTheReader Core.Context (fun state =>
+      { state with initHeartbeats := now, maxHeartbeats := budget, maxRecDepth := min state.maxRecDepth 128 }) do
+      if t.hasMVar || t.hasSorry || t.approxDepth > 24 || t.sizeWithoutSharing > 80 then return Json.null
+      if ← isProp t then return Json.null
+      let mut expanded := t
+      let mut constants : Array Name := #[]
+      for _ in [:2] do
+        let head := expanded.getAppFn.constName?.getD .anonymous
+        if head.isAnonymous then break
+        -- Keep any already audited vocabulary intact. Unknown safe aliases can
+        -- lead to any type, including a function type or an unfamiliar structure.
+        if (canonicalModule head).isSome && (← canonicalConstant head) then break
+        let some info := (← getEnv).find? head | break
+        unless info.isDefinition && !info.isUnsafe && !info.isPartial do break
+        let some next ← unfoldDefinition? expanded (ignoreTransparency := true) | break
+        if next == expanded || next.hasMVar || next.hasSorry ||
+            next.approxDepth > 24 || next.sizeWithoutSharing > 80 then break
+        if next.getAppFn.constName? == expanded.getAppFn.constName? then break
+        checkWithKernel next
+        unless ← isDefEq t next do return Json.null
+        constants := constants.push head
+        expanded := next
+      if constants.isEmpty then return Json.null
+      let result := obj [
+        ("expression", ← encode expanded bs (path ++ ".typeExpansion")),
+        ("before", str (← pp t)), ("after", str (← pp expanded)),
+        ("constants", toJson (constants.map Name.toString)),
+        ("definitionalEquality", toJson true), ("maxDepth", toJson (2 : Nat))]
+      if result.compress.utf8ByteSize > 65536 then return Json.null
+      return result
+  catch _ => return Json.null
+  finally saved.restore
+
+def binderJson (b : Bound) (t : Expr) (bs : Bounds) : MetaM Json := do
+  let basic ← basicBinderJson b t bs
+  let expansion ← binderTypeExpansion t bs b.id
+  return if expansion == Json.null then basic else basic.setObjVal! "typeExpansion" expansion
+
+/-- Generic structure reflection uses Lean's declaration metadata and checked
+    projections. The callback reads law types with recursive reflection disabled. -/
+def reflectBinder (b : Bound) (t : Expr) (bs : Bounds) (basic : Json)
+    (lawTree : Expr → Bounds → String → MetaM Json) : MetaM Json := do
+  let ctx ← readThe Core.Context
+  let now ← IO.getNumHeartbeats
+  let remaining := if ctx.maxHeartbeats == 0 then 3000000 else ctx.maxHeartbeats - (now - ctx.initHeartbeats)
+  let budget := min 2000000 (remaining - 1000000)
+  if budget < 1000 then return basic
+  let saved ← Meta.saveState
+  try
+    withTheReader Core.Context (fun state =>
+      { state with initHeartbeats := now, maxHeartbeats := budget, maxRecDepth := min state.maxRecDepth 128 }) do
+      if t.hasMVar || t.hasSorry || t.approxDepth > 24 || t.sizeWithoutSharing > 120 then return basic
+      let env ← getEnv
+      let mut reflectedType := t
+      let mut aliasSteps := 0
+      -- Follow at most two safe aliases to any structure, with no vocabulary list.
+      for _ in [:2] do
+        let head := reflectedType.getAppFn.constName?.getD .anonymous
+        if (getStructureInfo? env head).isSome then break
+        let some info := env.find? head | break
+        unless info.isDefinition && !info.isUnsafe && !info.isPartial do break
+        let some next ← unfoldDefinition? reflectedType (ignoreTransparency := true) | break
+        if next == reflectedType || next.hasMVar || next.hasSorry ||
+            next.approxDepth > 24 || next.sizeWithoutSharing > 120 then break
+        checkWithKernel next
+        unless ← isDefEq t next do return basic
+        reflectedType := next
+        aliasSteps := aliasSteps + 1
+      let head := reflectedType.getAppFn.constName?.getD .anonymous
+      let some structureInfo := getStructureInfo? env head | do
+        if aliasSteps == 2 then
+          if let some info := env.find? head then
+            if info.isDefinition && !info.isUnsafe && !info.isPartial then
+              return basic.setObjVal! "structureOmission" (str "Type inspection stopped after two checked definition steps; the original declared type remains visible.")
+        return basic
+      let mut fields : Array Json := #[]
+      let mut previous : Array (Name × Expr) := #[]
+      let mut stopReason : Option String := none
+      let extended := bs.push b
+      for index in [:structureInfo.fieldNames.size] do
+        if index >= 16 then
+          stopReason := some "The structure has more than 16 direct fields; remaining fields are not expanded."
+          break
+        let fieldName := structureInfo.fieldNames[index]!
+        let some info := structureInfo.fieldInfo.find? (·.fieldName == fieldName) | continue
+        try
+          let projection ← instantiateMVars (← mkProjection (mkFVar b.fvar) fieldName)
+          let fieldType ← instantiateMVars (← inferType projection)
+          if projection.hasMVar || projection.hasSorry || fieldType.hasMVar || fieldType.hasSorry ||
+              projection.approxDepth > 24 || projection.sizeWithoutSharing > 120 ||
+              fieldType.approxDepth > 24 || fieldType.sizeWithoutSharing > 120 then
+            stopReason := some "A field exceeded the checked expression size or depth limit."
+            continue
+          checkWithKernel projection
+          checkWithKernel fieldType
+          let proof ← isProp fieldType
+          let fieldPath := b.id ++ s!".structure.{index}"
+          let dependsOn := previous.filterMap fun (name, expression) =>
+            if (fieldType.find? (· == expression)).isSome then some name.toString else none
+          let lawFields ← if proof then do
+              pure [("law", ← lawTree fieldType extended (fieldPath ++ ".law"))]
+            else pure []
+          let typeView ← if proof then pure Json.null else binderTypeExpansion fieldType extended fieldPath
+          let field ← pure <| obj ([("name", str fieldName.toString), ("projection", str info.projFn.toString),
+            ("expression", ← encode projection extended (fieldPath ++ ".value")),
+            ("type", str (← pp fieldType)), ("typeExpression", ← encode fieldType extended (fieldPath ++ ".type")),
+            ("typeDescriptor", ← describeType fieldType), ("kind", str (if proof then "law" else "data")),
+            ("dependsOn", toJson dependsOn)] ++
+            (match info.subobject? with | some parent => [("parent", str parent.toString)] | none => []) ++
+            (if typeView == Json.null then [] else [("typeExpansion", typeView)]) ++
+            lawFields)
+          if (Json.arr (fields.push field)).compress.utf8ByteSize > 120000 then
+            stopReason := some "Further field readings exceed the optional structure payload budget."
+            break
+          fields := fields.push field
+          previous := previous.push (fieldName, projection)
+        catch _ =>
+          stopReason := some "A field could not be reflected within its checked export budget."
+      let result := obj ([("name", str head.toString), ("typeExpression", ← encode reflectedType bs (b.id ++ ".structure.type")),
+        ("fields", Json.arr fields), ("omittedFields", toJson (structureInfo.fieldNames.size - fields.size)),
+        ("kernelChecked", toJson true),
+        ("limits", obj [("maxFields", toJson (16 : Nat)), ("maxFieldNodes", toJson (120 : Nat)), ("maxDepth", toJson (24 : Nat))])] ++
+        (match stopReason with | some reason => [("stopReason", str reason)] | none => []))
+      if result.compress.utf8ByteSize > 131072 then return basic
+      return basic.setObjVal! "structure" result
+  catch error =>
+    let message ← error.toMessageData.toString
+    return basic.setObjVal! "structureOmission" (str ("Structure details unavailable: " ++ (message.take 512).toString))
+  finally saved.restore
 
 def node (id kind label lean : String) (children : Array Json) (expression : Json) (binder : Option Json := none) : Json :=
   obj ([("id", str id), ("kind", str kind), ("label", str label), ("lean", str lean),
@@ -310,7 +457,8 @@ def readPolicy (request : Json) : MetaM ExportPolicy := do
   return { constants, maxDepth }
 
 partial def tree (e : Expr) (bs : Bounds := #[]) (path : String := "n")
-    (policy : ExportPolicy := {}) (expansionDepth : Nat := 0) (depth : Nat := 0) : MetaM Json := do
+    (policy : ExportPolicy := {}) (expansionDepth : Nat := 0) (depth : Nat := 0)
+    (reflectStructures : Bool := true) : MetaM Json := do
   if depth > 80 then throwError "Logical structure exceeds export depth (80)."
   let e := e.consumeMData
   let pretty ← pp e
@@ -322,7 +470,7 @@ partial def tree (e : Expr) (bs : Bounds := #[]) (path : String := "n")
         if expanded.hasMVar || expanded.hasSorry then throwError "The expanded definition contains unresolved metavariables or sorry."
         checkWithKernel expanded
         unless ← isDefEq e expanded do throwError "Definition expansion did not preserve definitional equality."
-        let result ← tree expanded bs path policy (expansionDepth + 1) (depth + 1)
+        let result ← tree expanded bs path policy (expansionDepth + 1) (depth + 1) reflectStructures
         return finish <| result.setObjVal! "expansion" (obj [
           ("constant", str head.toString), ("before", str pretty), ("after", str (← pp expanded)),
           ("originalExpression", ← encode e bs path), ("definitionalEquality", toJson true),
@@ -332,7 +480,8 @@ partial def tree (e : Expr) (bs : Bounds := #[]) (path : String := "n")
     withLocalDecl name bi ty fun x => do
       let b : Bound := ⟨x.fvarId!, path ++ ".binder", binderName name, ← pp ty, "parameter"⟩
       let bj ← binderJson b ty bs
-      let child ← tree (body.instantiate1 x) (bs.push b) (path ++ ".body") policy expansionDepth (depth + 1)
+      let bj ← if reflectStructures then reflectBinder b ty bs bj (fun e bs path => tree e bs path {} 0 0 false) else pure bj
+      let child ← tree (body.instantiate1 x) (bs.push b) (path ++ ".body") policy expansionDepth (depth + 1) reflectStructures
       let expression := obj [("kind", str "lambda"), ("binder", bj),
         ("binderType", ← encode ty bs (path ++ ".type")), ("body", expressionOf child)]
       return finish <| node path "parameter" s!"Parameter {binderName name}" pretty #[child] expression (some bj)
@@ -344,8 +493,9 @@ partial def tree (e : Expr) (bs : Bounds := #[]) (path : String := "n")
       let b : Bound := ⟨x.fvarId!, path ++ ".binder", binderName name, ← pp ty,
         if !statement then "parameter" else if prop then "assumption" else "universal"⟩
       let bj ← binderJson b ty bs
-      let child ← tree (body.instantiate1 x) (bs.push b) (path ++ ".body") policy expansionDepth (depth + 1)
-      let children ← if prop && statement then pure #[← tree ty bs (path ++ ".premise") policy expansionDepth (depth + 1), child] else pure #[child]
+      let bj ← if reflectStructures then reflectBinder b ty bs bj (fun e bs path => tree e bs path {} 0 0 false) else pure bj
+      let child ← tree (body.instantiate1 x) (bs.push b) (path ++ ".body") policy expansionDepth (depth + 1) reflectStructures
+      let children ← if prop && statement then pure #[← tree ty bs (path ++ ".premise") policy expansionDepth (depth + 1) reflectStructures, child] else pure #[child]
       let expression := obj [("kind", str "forall"), ("binder", bj), ("binderType", ← encode ty bs (path ++ ".type")), ("body", expressionOf child)]
       return finish <| node path kind (if !statement then s!"Parameter {binderName name}" else if prop then "If … then …" else s!"For every {binderName name}") pretty children expression (some bj)
   | _ =>
@@ -358,14 +508,15 @@ partial def tree (e : Expr) (bs : Bounds := #[]) (path : String := "n")
         return ← withLocalDecl name bi ty fun x => do
           let b : Bound := ⟨x.fvarId!, path ++ ".binder", binderName name, ← pp ty, "existential"⟩
           let bj ← binderJson b ty bs
-          let child ← tree (body.instantiate1 x) (bs.push b) (path ++ ".body") policy expansionDepth (depth + 1)
+          let bj ← if reflectStructures then reflectBinder b ty bs bj (fun e bs path => tree e bs path {} 0 0 false) else pure bj
+          let child ← tree (body.instantiate1 x) (bs.push b) (path ++ ".body") policy expansionDepth (depth + 1) reflectStructures
           let expr := obj [("kind", str "app"), ("fn", obj [("kind", str "const"), ("name", str "Exists")]),
             ("args", Json.arr #[← encode ty bs (path ++ ".type"), obj [("kind", str "lambda"), ("binder", bj), ("binderType", ← encode ty bs (path ++ ".type")), ("body", expressionOf child)]])]
           return finish <| node path "exists" s!"There exists {binderName name}" pretty #[child] expr (some bj)
     let logical := if head == `And then some ("and", "Both conditions") else if head == `Or then some ("or", "At least one condition") else if head == `Iff then some ("iff", "Equivalent conditions") else if head == `Not then some ("not", "Not") else none
     if let some (kind, label) := logical then
       let mut children := #[]
-      for i in [:args.size] do children := children.push (← tree args[i]! bs s!"{path}.{i}" policy expansionDepth (depth + 1))
+      for i in [:args.size] do children := children.push (← tree args[i]! bs s!"{path}.{i}" policy expansionDepth (depth + 1) reflectStructures)
       let expr := obj [("kind", str "app"), ("fn", obj [("kind", str "const"), ("name", str head.toString)]),
         ("args", Json.arr (children.map expressionOf))]
       return finish <| node path kind label pretty children expr

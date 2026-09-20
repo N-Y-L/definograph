@@ -20,7 +20,7 @@ export interface SemanticObject {
   readonly provenance: readonly Provenance[];
 }
 export type SetOperation = 'union' | 'intersection' | 'difference' | 'complement';
-export type RelationKind = 'membership' | 'subset' | 'equality' | 'inequality' | 'application' | 'image' | 'preimage' | 'function-property' | 'metric-region' | 'distance' | 'predicate' | 'set-construction' | 'graph-adjacency' | 'graph-coloring' | 'graph-colorable' | 'graph-map';
+export type RelationKind = 'membership' | 'subset' | 'equality' | 'inequality' | 'application' | 'image' | 'preimage' | 'function-property' | 'metric-region' | 'distance' | 'predicate' | 'set-construction' | 'graph-adjacency' | 'graph-coloring' | 'graph-colorable' | 'graph-map' | 'restricted-equivalence' | 'restricted-region' | 'restricted-application';
 export interface RelationPort {
   readonly role: string;
   readonly objectId: string;
@@ -40,6 +40,9 @@ export interface SemanticRelation {
   /** Present only for audited set constructors; operand order is preserved in ports. */
   readonly setOperation?: SetOperation;
   readonly graphMapKind?: 'homomorphism' | 'embedding';
+  readonly restrictedMapKind?: 'partial-equivalence' | 'open-partial-homeomorphism';
+  readonly restrictedDirection?: 'forward' | 'inverse';
+  readonly restrictedRegion?: 'source' | 'target';
 }
 export interface SemanticScope {
   readonly id: string;
@@ -103,6 +106,9 @@ export interface SemanticRuleMatch {
   readonly conditions?: readonly string[];
   readonly setOperation?: SetOperation;
   readonly graphMapKind?: 'homomorphism' | 'embedding';
+  readonly restrictedMapKind?: 'partial-equivalence' | 'open-partial-homeomorphism';
+  readonly restrictedDirection?: 'forward' | 'inverse';
+  readonly restrictedRegion?: 'source' | 'target';
 }
 /** Plugins recognize elaborated constructors, never theorem titles or source spelling. */
 export interface SemanticPlugin {
@@ -112,6 +118,8 @@ export interface SemanticPlugin {
   readonly capabilities: readonly RelationKind[];
   readonly limitations: readonly string[];
   match(expression: Expr): SemanticRuleMatch | undefined;
+  /** Constraints carried by an actual introduced value, using its exact Lean type. */
+  matchBinder?(value: Expr, typeExpression: Expr): SemanticRuleMatch | undefined;
 }
 export type PlannedViewKind = 'semantic-map' | 'relation-map' | 'quantifier-flow' | Scene['kind'];
 export interface RepresentationCapability {

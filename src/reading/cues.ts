@@ -177,6 +177,9 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
       case 'graph-colorable': return ['condition', 'Read the coloring requirement', `A coloring of ${short(label(port(relation, 'graph')), 60)} using at most the stated bound is required; adjacent vertices must receive different colors.`];
       case 'graph-coloring': return ['apply', 'Follow the coloring', 'Read the color assignment and the different-color constraint on every edge. No concrete coloring is chosen.'];
       case 'graph-map': return ['apply', 'Follow the graph map', 'Read how this map transports vertices and the adjacency constraints supplied by its exact type.'];
+      case 'restricted-equivalence': return ['condition', 'Read the restricted inverse relationship', 'The two maps undo one another on the designated source and target regions. No inverse law is assumed outside those regions.'];
+      case 'restricted-region': return ['apply', `Locate the ${relation.restrictedRegion} region`, 'Identify the designated region inside its carrier. Its extent and nonemptiness are not specified.'];
+      case 'restricted-application': return ['apply', `Follow the ${relation.restrictedDirection} map`, 'Follow the stored map to its output. Applying the function does not by itself establish membership in a validity region.'];
       default: return ['condition', `Read ${short(relation.label, 85)}`, 'Read this relation at its place in the statement; its truth has not been established.'];
     }
   };

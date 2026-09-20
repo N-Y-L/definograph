@@ -9,7 +9,14 @@ This project uses Lean 4 and mathlib, each licensed under Apache License 2.0.
 https://github.com/leanprover/lean4
 https://github.com/leanprover-community/mathlib4
 
-Release 0.6 imports mathlib's simple-graph, coloring, and graph-map definitions
+Generic structure decomposition uses Lean's structure metadata and checked
+projection-building APIs. It does not copy an upstream diagram implementation.
+The restricted-map view also uses mathlib's PartialEquiv and
+OpenPartialHomeomorph definitions at the same pinned revision.
+https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Logic/Equiv/PartialEquiv.lean
+https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Topology/OpenPartialHomeomorph/Defs.lean
+
+The graph vocabulary imports mathlib's simple-graph, coloring, and graph-map definitions
 from revision 8f9d9cff6bd728b17a24e163c9402775d9e6a365. These mathematical
 constructors are actual dependencies used by the semantic recognizers.
 The coloring module credits Arthur Paulino and Kyle Miller; upstream copyright,

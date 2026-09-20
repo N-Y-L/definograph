@@ -1,7 +1,7 @@
 import type { Binder, Expr, StatementNode, TypeDescriptor } from '../core/types';
 import { headName } from '../core/expression';
 import type { ReadingBinder } from '../reading/types';
-import { applicationParts, binderTypeExpression, expressionKey, formatExpression } from '../semantic/expression';
+import { applicationParts, binderTypeExpression, checkedBinderTypeExpansion, expressionKey, formatExpression } from '../semantic/expression';
 import type { SemanticDocument, SemanticObject } from '../semantic/types';
 
 export interface ConstructionType {
@@ -91,6 +91,7 @@ export function compileTypedConstruction(document: SemanticDocument, binders: re
   const nodes = sourceNodes(document.tree);
   const objects = new Map(document.objects.map(object => [object.id, object]));
   const byBinder = new Map(document.objects.filter(object => object.binder).map(object => [object.binder!.id, object]));
+  const byExpression = new Map(document.objects.map(object => [expressionKey(object.expression), object]));
   const scopes = new Map(document.scopes.map(scope => [scope.id, scope]));
   const selected: { reading: ReadingBinder; object: SemanticObject; node: StatementNode }[] = [];
   for (const reading of binders) {
@@ -109,9 +110,9 @@ export function compileTypedConstruction(document: SemanticDocument, binders: re
     const key = completeIdentity(expression) ? expressionKey(expression) : `unresolved:${types.length}`;
     const existing = typeKeys.get(key);
     if (existing) return existing;
-    const sourceObject = expression.kind === 'var' ? byBinder.get(expression.id) : undefined;
+    const sourceObject = expression.kind === 'var' ? byBinder.get(expression.id) : byExpression.get(expressionKey(expression));
     const objectId = sourceObject && availableIds.has(sourceObject.id) ? sourceObject.id : undefined;
-    const value: ConstructionType = { id: `type:${types.length}`, label: typeLabel(expression, descriptor), expression, objectId, introduced: !!objectId && selectedIds.has(objectId) };
+    const value: ConstructionType = { id: `type:${types.length}`, label: sourceObject?.label ?? typeLabel(expression, descriptor), expression, objectId, introduced: !!objectId && selectedIds.has(objectId) };
     typeKeys.set(key, value); types.push(value); return value;
   };
   const introducedObjects: ConstructionObject[] = [];
@@ -119,7 +120,8 @@ export function compileTypedConstruction(document: SemanticDocument, binders: re
     const binder = object.binder!;
     const base: ConstructionObject = { objectId: object.id, binderId: binder.id, name: binder.name, type: binder.type, role: reading.role, scopeId: reading.scopeId };
     introducedObjects.push(base);
-    const type = binderTypeExpression(node, binder);
+    const declaredType = binderTypeExpression(node, binder);
+    const type = declaredType && byExpression.has(expressionKey(declaredType)) ? declaredType : checkedBinderTypeExpansion(binder) ?? declaredType;
     const descriptor = binder.typeDescriptor;
     if (!type) { unknowns.push({ ...base, reason: 'The typed expression was not exported; its declared type is retained.' }); continue; }
     if (type.kind === 'sort' && !isProp(type)) {
@@ -151,8 +153,8 @@ export function compileTypedConstruction(document: SemanticDocument, binders: re
       continue;
     }
     const { fn, args } = applicationParts(type);
-    if (descriptor?.kind === 'set' && headName(fn) === 'Set' && args.length === 1) {
-      members.push({ ...base, kind: 'set', typeId: addType(args[0], descriptor.element).id }); continue;
+    if (headName(fn) === 'Set' && (descriptor?.kind === 'set' || fn.kind === 'const' && fn.canonical === true) && args.length === 1) {
+      members.push({ ...base, kind: 'set', typeId: addType(args[0], descriptor?.element).id }); continue;
     }
     if (type.kind === 'opaque' || !completeIdentity(type)) {
       unknowns.push({ ...base, reason: 'The type remains symbolic; no type identity or geometric interpretation is inferred.' }); continue;

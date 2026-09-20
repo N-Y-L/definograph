@@ -2,6 +2,7 @@ import { headName, numericOperator } from '../core/expression';
 import type { Binder, Expr, StatementNode } from '../core/types';
 import type { SetOperation } from './types';
 import { graphSemanticPlugin } from '../graphs/semantics';
+import { restrictedMapParts } from '../restricted/semantics';
 
 /** Recover the exact exported binder type without parsing the printed Lean type. */
 export function binderTypeExpression(node: StatementNode, binder: Binder): Expr | undefined {
@@ -15,6 +16,27 @@ export function binderTypeExpression(node: StatementNode, binder: Binder): Expr 
       if (body.kind === 'lambda' && body.binder.id === binder.id) return body.binderType ?? args[0];
     }
   }
+}
+
+/** Accept only the bounded, checked type view; original names and types stay on
+ * the binder. This exposes aliases without a visual rule for each user name. */
+export function checkedBinderTypeExpansion(binder: Binder): Expr | undefined {
+  const expansion = binder.typeExpansion;
+  if (!expansion || expansion.definitionalEquality !== true || expansion.maxDepth !== 2 || expansion.before !== binder.type
+    || !expansion.constants.length || expansion.constants.length > 2 || expansion.constants.some(name => !name || name.length > 512)
+    || JSON.stringify(expansion).length > 65_536) return;
+  let size = 0;
+  const bounded = (expr: Expr, depth = 0, instance = false): boolean => {
+    if (depth > 24 || ++size > 80) return false;
+    if (expr.kind === 'opaque') return instance;
+    if (expr.kind === 'app') return bounded(expr.fn, depth + 1) && expr.args.every((arg, index) => bounded(arg, depth + 1, expr.argumentKinds?.[index] === 'instance'));
+    if (expr.kind === 'forall' || expr.kind === 'lambda') {
+      const type = expr.binderType ?? expr.binder.typeExpression;
+      return Boolean(type && bounded(type, depth + 1) && bounded(expr.body, depth + 1));
+    }
+    return true;
+  };
+  return bounded(expansion.expression) ? expansion.expression : undefined;
 }
 
 /** Exact constructor semantics from Mathlib.Data.Set.Defs. Overloaded notation
@@ -103,6 +125,9 @@ export function formatExpression(expr: Expr, depth = 0): string {
     case 'forall': return `∀ ${expr.binder.name}, ${format(expr.body)}`;
     case 'lambda': return `${expr.binder.name} ↦ ${format(expr.body)}`;
     case 'app': {
+      const restricted = restrictedMapParts(expr);
+      if (restricted?.region) return `${format(restricted.map)}.${restricted.region}`;
+      if (restricted?.input) return `${format(restricted.map)}${restricted.direction === 'inverse' ? '.symm' : ''}(${format(restricted.input)})`;
       const graph = graphSemanticPlugin.match(expr);
       if (graph?.kind === 'graph-coloring' || graph?.kind === 'graph-map') {
         const map = graph.arguments.find(port => port.role === (graph.kind === 'graph-coloring' ? 'coloring' : 'map'))?.expression;

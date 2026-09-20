@@ -42,8 +42,8 @@ try {
       await copyFile(path.join(root, 'lean', file), path.join(isolated, file));
     }
     const lake = path.join(leanSysroot, 'bin', process.platform === 'win32' ? 'lake.exe' : 'lake');
-    console.log('Fetching pinned mathlib dependencies and the required geometry and graph module caches into .local/mathlib-lean. This may take several minutes.');
-    run(lake, ['exe', 'cache', 'get', 'Mathlib.Topology.MetricSpace.Basic', 'Mathlib.Analysis.InnerProductSpace.PiL2', 'Mathlib.Combinatorics.SimpleGraph.Coloring'], {
+    console.log('Fetching pinned mathlib dependencies and the required geometry, graph, and restricted-map module caches into .local/mathlib-lean. This may take several minutes.');
+    run(lake, ['exe', 'cache', 'get', 'Mathlib.Topology.MetricSpace.Basic', 'Mathlib.Analysis.InnerProductSpace.PiL2', 'Mathlib.Combinatorics.SimpleGraph.Coloring', 'Mathlib.Topology.OpenPartialHomeomorph.Defs'], {
       cwd: isolated, timeout: 30 * 60_000, stdio: 'inherit',
       env: { ...process.env, LEAN_PATH: '', PATH: path.join(leanSysroot, 'bin') + path.delimiter + (process.env.PATH || ''), MATHLIB_CACHE_DIR: path.join(local, 'mathlib-download-cache'), MATHLIB_NO_CACHE_ON_UPDATE: '1' },
     });
@@ -71,6 +71,7 @@ try {
   }
   await access(path.join(mathlibLibrary, 'Mathlib', 'Analysis', 'InnerProductSpace', 'PiL2.olean'));
   await access(path.join(mathlibLibrary, 'Mathlib', 'Combinatorics', 'SimpleGraph', 'Coloring.olean'));
+  await access(path.join(mathlibLibrary, 'Mathlib', 'Topology', 'OpenPartialHomeomorph', 'Defs.olean'));
   await mkdir(local, { recursive: true });
   // Preserve the vendored originals. Only these checksummed, bounded compatibility edits
   // are applied to copies in this repository's isolated build directory.

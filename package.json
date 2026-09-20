@@ -1,6 +1,6 @@
 {
   "name": "statement-lens",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Read Lean mathematical statements through a faithful visual sequence and a linked logical overview.",
   "type": "module",
@@ -12,7 +12,7 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:server": "tsx --test server/*.test.ts",
-    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation && npm run test:atlas && npm run test:cues && npm run test:sets && npm run test:editor && npm run test:graphs && npm run test:graph-reading && npm run test:inspection && npm run test:definition-previews && npm run test:corpus",
+    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation && npm run test:atlas && npm run test:cues && npm run test:sets && npm run test:editor && npm run test:graphs && npm run test:graph-reading && npm run test:inspection && npm run test:definition-previews && npm run test:corpus && npm run test:restricted && npm run test:restricted-reading && npm run test:structure-export && npm run test:decomposition",
     "start": "tsx server/index.ts",
     "setup:lean": "node scripts/lean-build.mjs",
     "test:lean": "node scripts/lean-test.mjs",
@@ -29,7 +29,11 @@
     "test:graph-reading": "node --import tsx scripts/graph-reading-integration.ts",
     "test:inspection": "node --import tsx scripts/inspection-integration.ts",
     "test:definition-previews": "node --import tsx scripts/definition-preview-integration.ts",
-    "test:corpus": "node --import tsx scripts/corpus-audit.ts"
+    "test:corpus": "node --import tsx scripts/corpus-audit.ts",
+    "test:restricted": "node --import tsx scripts/restricted-integration.ts",
+    "test:restricted-reading": "node --import tsx scripts/restricted-reading-integration.ts",
+    "test:structure-export": "node --import tsx scripts/structure-export-integration.ts",
+    "test:decomposition": "node --import tsx scripts/decomposition-integration.ts"
   },
   "engines": {
     "node": ">=22.12"

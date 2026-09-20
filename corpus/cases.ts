@@ -29,6 +29,12 @@ const setImage = '∀ (X Y : Type) (f : X → Y) (s : Set X) (t : Set Y) (x : X)
 const renamedSetImage = '∀ (A B : Type) (h : A → B) (u : Set A) (v : Set B) (p : A), p ∈ u → Set.image h u ⊆ v → h p ∈ v';
 const wrapped = '∀ x : ℝ, Corpus.Uncharted (x ∈ Metric.ball 0 1)';
 const localMap = '∀ (X Y : Type) [TopologicalSpace X] [TopologicalSpace Y] (e : OpenPartialHomeomorph X Y) (x : X), x ∈ e.source → e.symm (e x) = x';
+const partialMap = '∀ (A B : Type) (e : PartialEquiv A B) (x : A), x ∈ e.source → e.symm (e x) = x';
+const renamedPartialMap = '∀ (M N : Type) (chart : PartialEquiv M N) (p : M), p ∈ chart.source → chart.symm (chart p) = p';
+const inverseRegions = '∀ (A B : Type) (e : PartialEquiv A B) (y : B), y ∈ e.symm.source → e.symm.symm (e.symm y) = y';
+const wrappedLocalMap = '∀ (A B : Type) (e : PartialEquiv A B) (x : A), Corpus.UnchartedPoint (e.symm (e x))';
+const customPartialCoercion = '∀ (A B : Type) (inst : CoeFun (PartialEquiv A B) (fun _ => A → B)) (e : PartialEquiv A B) (x : A), (@CoeFun.coe (PartialEquiv A B) (fun _ => A → B) inst e x) = (@CoeFun.coe (PartialEquiv A B) (fun _ => A → B) inst e x)';
+const aliasedPartialMap = '∀ (A B : Type) (e : RegionCorrespondence A B) (x : A), x ∈ e.source → e.symm (e x) = x';
 const localRank = '∀ (D : ℝ → (ℝ →ₗ[ℝ] ℝ)) (U : Set ℝ) (r : ℕ), ∀ x ∈ U, Module.finrank ℝ (LinearMap.range (D x)) = r';
 const topological = '∀ (X Y : Type) [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y) (s : Set X) (t : Set Y), Continuous f → s ⊆ Set.preimage f t';
 const coloring = '∀ (V : Type) (G : SimpleGraph V) (c : G.Coloring (Fin 4)) (u v : V), G.Adj u v → c u ≠ c v';
@@ -69,9 +75,9 @@ export const corpusCases: readonly CorpusCase[] = [
   { id: 'dependent-section', title: 'A section as a dependent function in local context', category: 'supported', mode: 'editor', source: 'example (B : Type) (E : B → Type) (s : (x : B) → E x) (x : B) : s x = s x := rfl\n', selection: 's x = s x',
     expected: { relationKinds: ['application', 'equality'], noOpaque: true, dependentSignature: true, binderRoles: ['parameter', 'parameter', 'parameter', 'parameter'] },
     interpretation: 'The dependent signature and equality are represented. This does not introduce bundle, smoothness, or vector-space semantics.', missing: [] },
-  { id: 'local-homeomorphism', title: 'Local inverse law with a source restriction', category: 'partially-supported', mode: 'editor', source: editor(['Mathlib.Topology.OpenPartialHomeomorph.Defs'], localMap), selection: localMap,
-    expected: { relationKinds: ['membership', 'equality'], opaqueHeads: ['PartialEquiv.source'], noNumericalScenes: true },
-    interpretation: 'The source membership and equality are understood, but local-map projections and inverse semantics remain opaque.', missing: ['Source/target-restricted maps, inverse laws, and continuity of a local homeomorphism.'] },
+  { id: 'local-homeomorphism', title: 'Local inverse law with a source restriction', category: 'supported', mode: 'editor', source: editor(['Mathlib.Topology.OpenPartialHomeomorph.Defs'], localMap), selection: localMap,
+    expected: { relationKinds: ['restricted-equivalence', 'restricted-region', 'restricted-application', 'membership', 'equality'], noOpaque: true, noNumericalScenes: true },
+    interpretation: 'The bundled map, source restriction, nested inverse applications, and equality share one scoped reading. Openness and continuity on the valid regions are bundled annotations, not a general continuity grammar or a manifold atlas.', missing: [] },
   { id: 'local-linear-rank', title: 'Constant rank of a family on a subset', category: 'partially-supported', mode: 'editor', source: editor(['Mathlib.Data.Real.Basic', 'Mathlib.LinearAlgebra.Dimension.Finrank'], localRank), selection: localRank,
     expected: { relationKinds: ['membership', 'equality'], opaqueHeads: ['Module.finrank'], noNumericalScenes: true },
     interpretation: 'The local quantification, set condition, and equality are retained. D is a supplied family of linear maps, not an inferred derivative.', missing: ['Linear-map range and dimension/rank; derivatives and chart normal forms are not supplied by this fixture.'] },
@@ -90,4 +96,25 @@ export const corpusCases: readonly CorpusCase[] = [
   { id: 'fake-graph-name', title: 'Project-local familiar graph spelling', category: 'currently-unsupported', mode: 'editor', source: 'namespace SimpleGraph\ndef Adj (x y : Nat) : Prop := x = y\nend SimpleGraph\n#check ∀ x y : Nat, SimpleGraph.Adj x y\n', selection: '∀ x y : Nat, SimpleGraph.Adj x y',
     expected: { absentKinds: ['graph-adjacency'], opaqueHeads: ['SimpleGraph.Adj'], noNumericalScenes: true },
     interpretation: 'A same-spelled project constant is not the canonical graph relation.', missing: ['The project-local definition has no assigned semantic contract.'] },
+  { id: 'restricted-inverse', title: 'An inverse law valid on the source region', category: 'supported', mode: 'editor', source: editor(['Mathlib.Logic.Equiv.PartialEquiv'], partialMap), selection: partialMap,
+    expected: { relationKinds: ['restricted-equivalence', 'restricted-region', 'restricted-application', 'membership', 'equality'], noOpaque: true, noNumericalScenes: true },
+    interpretation: 'The bundled map decomposes into carriers, valid regions, forward/inverse arrows, and region-guarded laws. The chosen point stays under its source-membership assumption.', missing: [] },
+  { id: 'renamed-restricted-inverse', title: 'Renaming preserves a restricted inverse diagram', category: 'supported', mode: 'editor', source: editor(['Mathlib.Logic.Equiv.PartialEquiv'], renamedPartialMap), selection: renamedPartialMap,
+    expected: { relationKinds: ['restricted-equivalence', 'restricted-region', 'restricted-application', 'membership', 'equality'], noOpaque: true, noNumericalScenes: true, compareRenameWith: 'restricted-inverse' },
+    interpretation: 'The same source-restricted round trip with all user binder names changed.', missing: [] },
+  { id: 'inverse-region-orientation', title: 'Inverse source is the original target region', category: 'supported', mode: 'editor', source: editor(['Mathlib.Logic.Equiv.PartialEquiv'], inverseRegions), selection: inverseRegions,
+    expected: { relationKinds: ['restricted-equivalence', 'restricted-region', 'restricted-application', 'membership', 'equality'], noOpaque: true, noNumericalScenes: true },
+    interpretation: 'Nested symm changes direction and swaps valid-region roles while retaining the original bundled map identity.', missing: [] },
+  { id: 'wrapped-restricted-map', title: 'Restricted maps inside an unknown predicate', category: 'partially-supported', mode: 'editor', source: `import Mathlib.Logic.Equiv.PartialEquiv\ndef Corpus.UnchartedPoint {A : Type} (x : A) : Prop := x = x\n#check ${wrappedLocalMap}\n`, selection: wrappedLocalMap,
+    expected: { relationKinds: ['restricted-equivalence', 'restricted-application'], opaqueHeads: ['Corpus.UnchartedPoint'], rootOpaque: true, noNumericalScenes: true },
+    interpretation: 'Forward and inverse applications remain expression structure within the project definition; neither application is promoted to a separate assertion.', missing: ['The project wrapper has not been expanded or assigned semantics.'] },
+  { id: 'custom-partial-coercion', title: 'A separate coercion is not the bundled forward map', category: 'partially-supported', mode: 'editor', source: editor(['Mathlib.Logic.Equiv.PartialEquiv'], customPartialCoercion), selection: customPartialCoercion,
+    expected: { relationKinds: ['restricted-equivalence', 'equality'], absentKinds: ['restricted-application'], opaqueHeads: ['CoeFun.coe'], noNumericalScenes: true },
+    interpretation: 'The actual PartialEquiv value has its bundled contract, but an arbitrary supplied CoeFun instance is not identified with its forward map.', missing: ['The supplied coercion instance has no audited relationship to the bundled map.'] },
+  { id: 'fake-restricted-projection', title: 'Project-local familiar projection spelling', category: 'partially-supported', mode: 'editor', source: 'namespace PartialEquiv\ndef source (n : Nat) : Nat := n\nend PartialEquiv\n#check ∀ n : Nat, PartialEquiv.source n = n\n', selection: '∀ n : Nat, PartialEquiv.source n = n',
+    expected: { relationKinds: ['equality'], absentKinds: ['restricted-region', 'restricted-equivalence', 'restricted-application'], opaqueHeads: ['PartialEquiv.source'], noNumericalScenes: true },
+    interpretation: 'The equality is retained; a project function merely named PartialEquiv.source does not define a valid region.', missing: ['The project-local function has no assigned semantic contract.'] },
+  { id: 'aliased-restricted-map', title: 'A user type alias shares the restricted-map grammar', category: 'supported', mode: 'editor', source: `import Mathlib.Logic.Equiv.PartialEquiv\nabbrev RegionCorrespondence (A B : Type) := PartialEquiv A B\n#check ${aliasedPartialMap}\n`, selection: aliasedPartialMap,
+    expected: { relationKinds: ['restricted-equivalence', 'restricted-region', 'restricted-application', 'membership', 'equality'], noOpaque: true, noNumericalScenes: true },
+    interpretation: 'A bounded, checked type-head expansion connects the user alias to the shared grammar while preserving its declared name. There is no rule keyed to RegionCorrespondence.', missing: [] },
 ];
