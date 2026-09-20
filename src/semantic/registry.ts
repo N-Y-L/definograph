@@ -1,6 +1,7 @@
 import { headName, numericOperator, comparisonArguments } from '../core/expression';
 import type { Expr } from '../core/types';
 import type { SemanticPlugin, SemanticRuleMatch } from './types';
+import { visibleApplicationArguments } from './expression';
 
 const arg = (role: string, expression: Expr) => ({ role, expression });
 const match = (kind: SemanticRuleMatch['kind'], label: string, args: SemanticRuleMatch['arguments'], conditions: readonly string[] = []): SemanticRuleMatch => ({ kind, label, arguments: args, fidelity: 'symbolic', conditions });
@@ -32,7 +33,7 @@ export const builtInSemanticPlugins: readonly SemanticPlugin[] = [
       const name = headName(expr);
       if (name && ['Function.Injective', 'Function.Surjective', 'Function.Bijective'].includes(name) && hasValues(expr, 1) && returns(expr, 'proposition')) return match('function-property', name.replace('Function.', '').toLowerCase(), [arg('function', expr.args.at(-1)!)]);
       if (expr.fn.kind === 'var' || expr.fn.kind === 'lambda') {
-        const args = expr.args.filter((_, i) => !expr.argumentKinds || expr.argumentKinds[i] === 'value');
+        const args = visibleApplicationArguments(expr);
         if (expr.fn.kind === 'var' && expr.fn.typeDescriptor?.kind === 'relation') return match('predicate', expr.fn.name, [arg('relation', expr.fn), ...args.map((e, i) => arg(`argument ${i + 1}`, e))], ['An abstract relation on these objects; no additional properties are inferred.']);
         return match('application', 'maps to', [arg('function', expr.fn), ...args.map((e, i) => arg(`input ${i + 1}`, e)), arg('output', expr)]);
       }

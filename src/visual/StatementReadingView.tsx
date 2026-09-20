@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import type { ReadingBinder, ReadingDocument, ReadingNode, ReadingPanel, ReadingStep } from '../reading/types';
+import type { ReadingBinder, ReadingDocument, ReadingNode, ReadingPanel } from '../reading/types';
+import { planReadingPresentation, visibleReadingNodes, type ReadingPresentation, type ReadingRegion } from '../reading/presentation';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
+import { TypedConstructionFigure } from '../constructions';
 import { compactLabel } from './layout';
 import './statement-reading.css';
 
@@ -14,7 +16,7 @@ export interface StatementReadingViewProps {
   renderGeometry?: (panel: ReadingPanel) => ReactNode;
 }
 
-const palette = ['#497c72', '#927044', '#667da5', '#92759c', '#ad7063', '#6d8555', '#4c8197', '#977d5b'];
+const palette = ['#387b79', '#596a9d', '#77648c', '#947149', '#3f748c', '#886b60', '#63784f', '#6c7594'];
 export function readingObjectColor(id: string): string {
   let hash = 0;
   for (let index = 0; index < id.length; index++) hash = (Math.imul(hash, 31) + id.charCodeAt(index)) | 0;
@@ -23,7 +25,7 @@ export function readingObjectColor(id: string): string {
 const roleText: Record<ReadingBinder['role'], string> = { universal: 'For every', existential: 'There is', parameter: 'Given parameter', lambda: 'For input', assumption: 'Assuming' };
 const roleSymbol: Record<ReadingBinder['role'], string> = { universal: '∀', existential: '∃', parameter: '↦', lambda: '↦', assumption: '⇒' };
 type Maps = { objects: Map<string, SemanticObject>; relations: Map<string, SemanticRelation>; panels: Map<string, ReadingPanel> };
-type RenderContext = StatementReadingViewProps & Maps & { visibleNodes: Set<string> };
+type RenderContext = StatementReadingViewProps & Maps & { visibleNodes: Set<string>; presentation: ReadingPresentation };
 
 function keyActivate(event: KeyboardEvent<SVGGElement>, action?: () => void) {
   if (action && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); action(); }
@@ -142,19 +144,38 @@ function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelati
 }
 
 function BinderStrip({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: RenderContext }) {
-  return <div className="sr-binder-strip" aria-label="Quantifiers and parameters in statement order">{nodes.map((node, index) => {
+  return <div className="sr-binder-strip" aria-label="Quantifiers and parameters in statement order">{nodes.map(node => {
     const binder = node.binder!;
     return <div key={node.id} className={`sr-binder sr-binder-${binder.role}`}>
-      {index > 0 && <span className="sr-choice-next" aria-hidden="true">›</span>}
-      <span className="sr-binder-role"><b>{roleSymbol[binder.role]}</b>{roleText[binder.role]}</span>
-      <button type="button" className={`sr-binder-name${binder.objectId === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} style={{ '--object-color': readingObjectColor(binder.objectId ?? binder.binderId) } as CSSProperties} data-reading-object={binder.objectId} onClick={() => binder.objectId ? ctx.onObjectSelect?.(binder.objectId) : ctx.onNodeSelect?.(node.id)} aria-pressed={binder.objectId === ctx.selectedObjectId} title={`${binder.name} : ${binder.type}`}><strong>{binder.name}</strong><span>{compactLabel(binder.type, 42)}</span></button>
+      <button type="button" className={`sr-binder-name${binder.objectId === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} style={{ '--object-color': readingObjectColor(binder.objectId ?? binder.binderId) } as CSSProperties} data-reading-object={binder.objectId} onClick={() => binder.objectId ? ctx.onObjectSelect?.(binder.objectId) : ctx.onNodeSelect?.(node.id)} aria-pressed={binder.objectId === ctx.selectedObjectId} title={`${binder.name} : ${binder.type}`}><strong>{binder.name}</strong><span className="sr-binder-colon">:</span><span>{binder.type}</span></button>
       {binder.role === 'existential' && <span className="sr-binder-dependency">{binder.dependsOn.length ? `may use ${binder.dependsOn.map(id => ctx.objects.get(id)?.label ?? id).join(', ')}` : 'independent of later choices'}</span>}
     </div>;
   })}</div>;
 }
 
 function SourceButton({ node, ctx, children }: { node: ReadingNode; ctx: RenderContext; children: ReactNode }) {
-  return <button type="button" className="sr-source-button" onClick={() => ctx.onNodeSelect?.(node.id)} title={node.lean} aria-label={`Inspect ${node.phrase || node.lean}`}>{children}</button>;
+  return <button type="button" className="sr-source-button" onClick={() => ctx.onNodeSelect?.(node.id)} title={node.lean} aria-label={`Focus ${node.phrase || node.lean}`}>{children}</button>;
+}
+
+function InlineObject({ id, ctx }: { id: string; ctx: RenderContext }) {
+  const object = ctx.objects.get(id);
+  return <button type="button" className={`sr-inline-object${id === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} data-reading-object={id} style={{ '--object-color': readingObjectColor(id) } as CSSProperties} onClick={() => ctx.onObjectSelect?.(id)} title={object?.type} aria-label={`${object?.label ?? id}${object?.type ? ` : ${object.type}` : ''}`}>{object?.label ?? id}</button>;
+}
+
+function ContainedExpressions({ panel, ctx }: { panel: ReadingPanel; ctx: RenderContext }) {
+  const [limit, setLimit] = useState(3);
+  const roots = new Set(panel.rootRelationIds);
+  const groups = panel.groups.map(group => ({ ...group, relations: group.relationIds.flatMap(id => !roots.has(id) && ctx.relations.has(id) ? [ctx.relations.get(id)!] : []) })).filter(group => group.relations.length);
+  const count = groups.reduce((sum, group) => sum + group.relations.length, 0);
+  if (!count) return null;
+  let preceding = 0;
+  return <details className="sr-contained-expressions"><summary>Inside this expression <span>{count} {count === 1 ? 'relation' : 'relations'}</span></summary><p className="sr-contained-note">These are parts of the expression, not separate assertions.</p>{groups.map(group => {
+    const visible = group.relations.slice(0, Math.max(0, limit - preceding));
+    preceding += group.relations.length;
+    if (!visible.length) return null;
+    const scopeRelations = group.relationIds.flatMap(id => ctx.relations.has(id) ? [ctx.relations.get(id)!] : []);
+    return <section className="sr-contained-group" key={group.id} data-expression-scope={group.scopeId} aria-label={group.role === 'local-expression' ? 'Inside a local expression scope' : 'Inside this clause expression'}>{group.role === 'local-expression' && <p className="sr-local-note">Local binders apply only within this expression.</p>}{visible.map(relation => <RelationFigure key={relation.id} relation={relation} relations={scopeRelations} ctx={ctx}/>)}</section>;
+  })}{count > limit && <button type="button" className="sr-show-more" onClick={() => setLimit(current => current + 3)}>Show {Math.min(3, count - limit)} more contained relations</button>}</details>;
 }
 
 function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
@@ -166,46 +187,61 @@ function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
   const relations = (panel?.relationIds ?? node.relationIds).flatMap(id => ctx.relations.has(id) ? [ctx.relations.get(id)!] : []).filter(relation => !relationScopeIds.size || relationScopeIds.has(relation.scopeId));
   const roots = [...new Set(relationIds)].flatMap(id => ctx.relations.has(id) ? [ctx.relations.get(id)!] : []);
   const geometry = panel && ctx.renderGeometry?.(panel);
-  const selected = node.id === ctx.reading.selection.nodeId;
-  return <section className={`sr-clause${selected ? ' sr-clause-selected' : ''}`} data-reading-node={node.id} aria-label={node.phrase || 'Statement condition'}>
+  const root = roots[0];
+  const left = root && port(root, 'left'), right = root && port(root, 'right');
+  const simpleConstraint = !geometry && roots.length === 1 && ['equality', 'inequality'].includes(root.kind) && left && right && !(root.kind === 'equality' && (expressionMapPath(left, relations).maps.length || expressionMapPath(right, relations).maps.length));
+  const contained = panel && (panel.coverage === 'partial' || roots.some(relation => relation.fidelity === 'structural' || ['predicate', 'equality', 'inequality'].includes(relation.kind)) || panel.groups.some(group => group.role === 'local-expression')) ? <ContainedExpressions panel={panel} ctx={ctx}/> : null;
+  if (simpleConstraint && left && right) return <><div className="sr-inline-constraint" data-reading-node={node.id} aria-label={node.phrase}><span className="sr-constraint-math"><InlineObject id={left} ctx={ctx}/><span className="sr-inline-relation">{root.label}</span><InlineObject id={right} ctx={ctx}/></span><SourceButton node={node} ctx={ctx}><span className="sr-source-glyph" aria-hidden="true">↗</span></SourceButton></div>{contained}</>;
+  return <section className="sr-clause" data-reading-node={node.id} aria-label={node.phrase || 'Statement condition'}>
     <div className="sr-clause-heading"><SourceButton node={node} ctx={ctx}>{node.phrase || 'Condition'} <span aria-hidden="true">↗</span></SourceButton>{panel?.coverage === 'partial' && <span className="sr-coverage-note">partly interpreted</span>}</div>
-    {geometry || (roots.length > 0 ? <div className={`sr-clause-figures${roots.length > 1 ? ' sr-multiple-roots' : ''}`}>{(showAllRelations ? roots : roots.slice(0, 3)).map(relation => <RelationFigure key={relation.id} relation={relation} relations={relations} ctx={ctx}/>)}{roots.length > 3 && !showAllRelations && <button type="button" className="sr-show-more" onClick={() => setShowAllRelations(true)}>Show {roots.length - 3} further relations in this clause</button>}</div> : <div className="sr-symbolic-clause"><span className="sr-symbolic-mark" aria-hidden="true">◇</span><code>{node.lean}</code><p>This clause is retained symbolically; no geometric interpretation is assigned.</p></div>)}
-    {panel?.groups.some(group => group.role === 'local-expression') && <p className="sr-local-note">This expression contains locally bound structure. Inspect the fragment for its inner scopes.</p>}
+    {geometry || (roots.length > 0 ? <div className={`sr-clause-figures${roots.length > 1 ? ' sr-multiple-roots' : ''}`}>{(showAllRelations ? roots : roots.slice(0, 3)).map(relation => <RelationFigure key={relation.id} relation={relation} relations={relations} ctx={ctx}/>)}{roots.length > 3 && !showAllRelations && <button type="button" className="sr-show-more" onClick={() => setShowAllRelations(true)}>Show {roots.length - 3} further relations in this clause</button>}</div> : <div className="sr-symbolic-clause"><code>{node.lean}</code><p>This clause is retained symbolically; no geometric interpretation is assigned.</p></div>)}
+    {contained}
+    {panel?.groups.some(group => group.role === 'local-expression') && <p className="sr-local-note">This expression contains local binders. Inspect the fragment to follow their scopes.</p>}
   </section>;
 }
 
-const connectiveTitles: Record<string, string> = { implies: 'Given the assumption, require the conclusion', and: 'These conditions are required together', or: 'At least one alternative is required', iff: 'The two conditions imply each other', not: 'Negate the enclosed condition' };
-const logicSymbols: Record<string, string> = { forall: '∀', exists: '∃', parameter: '↦', implies: '→', and: '∧', or: '∨', iff: '↔', not: '¬', predicate: '·' };
-
-function StepContext({ step, ctx }: { step: ReadingStep; ctx: RenderContext }) {
-  const positions = step.branchPath.filter(position => !['body', 'result'].includes(position.edge.role));
-  return positions.length ? <div className="sr-step-context" aria-label="Enclosing logical context">{positions.map((position, index) => {
-    const { edge } = position;
-    const label = edge.role === 'assumption' ? 'Given' : edge.role === 'conclusion' ? 'Conclusion' : edge.role === 'conjunct' ? `Required condition ${edge.index + 1}` : edge.role === 'alternative' ? `Alternative ${edge.index + 1} · at least one` : edge.role === 'negated' ? 'Under negation' : edge.role === 'equivalence-left' ? 'First equivalent condition' : 'Second equivalent condition';
-    return <button key={`${position.nodeId}:${index}`} type="button" className={`sr-step-context-${edge.role}`} onClick={() => ctx.onNodeSelect?.(position.nodeId)}>{label}</button>;
-  })}</div> : null;
+function RegionHeader({ region, title, symbol, ctx, detail, lead }: { region: ReadingRegion; title: string; symbol?: string; ctx: RenderContext; detail?: string; lead?: string }) {
+  return <header className="sr-region-heading"><SourceButton node={region.node} ctx={ctx}>{lead && <span className="sr-heading-lead">{lead}</span>}{symbol && <span className="sr-region-symbol" aria-hidden="true">{symbol}</span>}<span>{title}</span></SourceButton>{detail && <p>{detail}</p>}</header>;
 }
 
-function VisualSequence({ ctx }: { ctx: RenderContext }) {
-  const nodes = new Map(ctx.reading.nodes.map(node => [node.id, node]));
-  const groups = new Map(ctx.reading.quantifierGroups.map(group => [group.nodeIds[0], group]));
-  const consumed = new Set<string>();
-  const steps = ctx.reading.sequence.filter(step => ctx.visibleNodes.has(step.nodeId)).flatMap(step => {
-    if (consumed.has(step.nodeId)) return [];
-    const group = groups.get(step.nodeId);
-    const binders = group?.nodeIds.filter(id => ctx.visibleNodes.has(id)).flatMap(id => nodes.has(id) ? [nodes.get(id)!] : []) ?? [];
-    binders.forEach(node => consumed.add(node.id));
-    return [{ step, node: nodes.get(step.nodeId)!, binders }];
-  });
-  return <ol className="sr-visual-sequence" aria-label="Ordered visual reading of the statement">{steps.map(({ step, node, binders }, index) => <li key={step.id} className={`sr-sequence-step sr-sequence-${step.kind}${node.id === ctx.reading.selection.nodeId ? ' sr-step-focused' : ''}`} data-reading-step={node.id}>
-    <span className="sr-step-number">{index + 1}</span><div className="sr-step-content"><StepContext step={step} ctx={ctx}/>
-    {step.kind === 'binder' ? <div className="sr-sequence-binders"><div className="sr-sequence-binder-title">{node.kind === 'forall' ? 'Start with arbitrary objects' : node.kind === 'exists' ? 'A witness is required' : 'Parameters of the definition'}</div><BinderStrip nodes={binders.length ? binders : [node]} ctx={ctx}/></div> : step.kind === 'connective' ? <div className={`sr-sequence-connective sr-sequence-logic-${node.kind}`}><span className="sr-sequence-logic-symbol" aria-hidden="true">{logicSymbols[node.kind]}</span><div><SourceButton node={node} ctx={ctx}>{connectiveTitles[node.kind] ?? node.phrase}</SourceButton>{node.kind === 'or' && <p>The alternatives remain separate; either or both may hold.</p>}{node.kind === 'not' && <p>The following condition is the one being negated.</p>}{node.kind === 'iff' && <div className="sr-sequence-directions">{node.directions?.map(direction => <button type="button" key={direction.id} onClick={() => ctx.onNodeSelect?.(direction.conclusionNodeId)}>{direction.label}</button>)}</div>}</div></div> : <Clause node={node} ctx={ctx}/>}
-    </div></li>)}</ol>;
+function AtlasRegion({ region, ctx, depth = 0, lead }: { region: ReadingRegion; ctx: RenderContext; depth?: number; lead?: string }): ReactNode {
+  if (!region.sourceNodeIds.some(id => ctx.visibleNodes.has(id))) return <div className="sr-folded-region"><button type="button" onClick={() => ctx.onNodeSelect?.(region.id)}>Continue with {compactLabel(region.node.phrase || region.node.lean, 70)} <span aria-hidden="true">↗</span></button></div>;
+  const focused = region.sourceNodeIds.includes(ctx.reading.selection.nodeId) && ctx.reading.selection.nodeId !== ctx.reading.root.id;
+  let body: ReactNode;
+  if (region.kind === 'binders') {
+    const binders = region.binders.filter(node => ctx.visibleNodes.has(node.id));
+    const role = region.node.binder!.role;
+    body = <><div className="sr-object-introduction"><RegionHeader region={region} ctx={ctx} lead={lead} symbol={roleSymbol[role]} title={role === 'universal' ? 'For every' : role === 'existential' ? 'A witness is required' : 'Parameters'}/><BinderStrip nodes={binders} ctx={ctx}/><TypedConstructionFigure document={ctx.document} binders={binders.map(node => node.binder!)} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>{binders.length < region.binders.length && <button type="button" className="sr-show-more" onClick={() => ctx.onNodeSelect?.(region.binders[binders.length].id)}>Read the next {region.binders.length - binders.length} binders</button>}</div>{region.body && <AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/>}</>;
+  } else if (region.kind === 'implication') {
+    body = <div className="sr-implication-regions"><section className="sr-given-region" aria-label="Given assumptions"><h3 className="sr-role-heading">Given</h3><div className="sr-region-stack">{region.assumptions.map(assumption => <AtlasRegion key={assumption.id} region={assumption} ctx={ctx} depth={depth + 1}/>)}</div></section><section className="sr-then-region" aria-label="Then the conclusion is required">{region.conclusion.kind !== 'binders' && <h3 className="sr-role-heading"><span aria-hidden="true">→</span> Then</h3>}<AtlasRegion region={region.conclusion} ctx={ctx} depth={depth + 1} lead={region.conclusion.kind === 'binders' ? 'Then' : undefined}/></section></div>;
+  } else if (region.kind === 'all') {
+    body = <><RegionHeader region={region} ctx={ctx} symbol="∧" title="Together" detail="Every condition below is required."/><div className="sr-conjuncts">{region.children.map(child => <AtlasRegion key={child.id} region={child} ctx={ctx} depth={depth + 1}/>)}</div></>;
+  } else if (region.kind === 'alternatives') {
+    body = <><RegionHeader region={region} ctx={ctx} symbol="∨" title="At least one alternative" detail="Either or both may hold."/><div className="sr-alternatives">{region.children.map((child, index) => <section key={child.id} className="sr-alternative" aria-label={`Alternative ${index + 1}`}><h3 className="sr-branch-label">Alternative {index + 1}</h3><AtlasRegion region={child} ctx={ctx} depth={depth + 1}/></section>)}</div></>;
+  } else if (region.kind === 'equivalence') {
+    body = <><RegionHeader region={region} ctx={ctx} symbol="↔" title="Equivalent conditions" detail="Each condition implies the other."/><div className="sr-equivalent-conditions">{region.children.map((child, index) => <section key={child.id}><h3 className="sr-branch-label">{index === 0 ? 'First' : 'Second'} equivalent condition</h3><AtlasRegion region={child} ctx={ctx} depth={depth + 1}/></section>)}</div><div className="sr-equivalence-directions">{region.node.directions?.map(direction => <button type="button" key={direction.id} onClick={() => ctx.onNodeSelect?.(direction.conclusionNodeId)}>{direction.label}</button>)}</div></>;
+  } else if (region.kind === 'negation') {
+    body = <><RegionHeader region={region} ctx={ctx} symbol="¬" title="Not" detail="Negation applies to the entire enclosed condition."/><div className="sr-negated-body" aria-label="Under negation"><AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/></div></>;
+  } else if (region.kind === 'structure') {
+    body = <><RegionHeader region={region} ctx={ctx} title={region.node.phrase}/>{region.children.map(child => <AtlasRegion key={child.id} region={child} ctx={ctx} depth={depth + 1}/>)}</>;
+  } else body = <Clause node={region.node} ctx={ctx}/>;
+  return <section className={`sr-atlas-region sr-region-${region.kind}${focused ? ' sr-region-focused' : ''}${depth > 3 ? ' sr-deep-region' : ''}`} data-reading-step={region.id} data-reading-region={region.kind} data-source-nodes={region.sourceNodeIds.join(' ')}>{body}</section>;
 }
 
-function LogicOverview({ node, ctx, depth = 0 }: { node: ReadingNode; ctx: RenderContext; depth?: number }) {
-  if (depth > 18 || !ctx.visibleNodes.has(node.id)) return <button type="button" className="sr-overview-more" onClick={() => ctx.onNodeSelect?.(node.id)}>Further structure…</button>;
-  return <div className={`sr-overview-node sr-overview-${node.kind}`}><button type="button" className={node.id === ctx.reading.selection.nodeId ? 'sr-overview-selected' : ''} onClick={() => ctx.onNodeSelect?.(node.id)} title={node.lean}><span aria-hidden="true">{logicSymbols[node.kind]}</span><span>{node.binder && node.kind !== 'implies' ? `${roleText[node.binder.role]} ${node.binder.name}` : node.kind === 'implies' ? 'Given → conclusion' : node.kind === 'and' ? 'All conditions' : node.kind === 'or' ? 'At least one alternative' : node.kind === 'iff' ? 'Both directions' : node.kind === 'not' ? 'Not' : compactLabel(node.phrase || node.lean, 54)}</span></button>{node.children.length > 0 && <div className="sr-overview-children">{node.children.map(child => <div key={child.id}>{child.edgeFromParent && !['body', 'result'].includes(child.edgeFromParent.role) && <span className="sr-overview-edge-label">{child.edgeFromParent.role === 'assumption' ? 'Given' : child.edgeFromParent.role === 'conclusion' ? 'Conclusion' : child.edgeFromParent.label}</span>}<LogicOverview node={child} ctx={ctx} depth={depth + 1}/></div>)}</div>}</div>;
+function overviewTitle(region: ReadingRegion): string {
+  if (region.kind === 'binders') return `${roleText[region.node.binder!.role]} ${region.binders.map(node => node.binder!.name).join(', ')}`;
+  if (region.kind === 'implication') return 'Given → conclusion';
+  if (region.kind === 'all') return 'All conditions';
+  if (region.kind === 'alternatives') return 'At least one alternative';
+  if (region.kind === 'equivalence') return 'Both directions';
+  if (region.kind === 'negation') return 'Not';
+  return compactLabel(region.node.phrase || region.node.lean, 70);
+}
+
+function LogicOverview({ region, ctx, depth = 0 }: { region: ReadingRegion; ctx: RenderContext; depth?: number }): ReactNode {
+  if (!region.sourceNodeIds.some(id => ctx.visibleNodes.has(id))) return <button type="button" className="sr-overview-more" onClick={() => ctx.onNodeSelect?.(region.id)}>{compactLabel(overviewTitle(region), 44)}…</button>;
+  const children: { region: ReadingRegion; role?: string }[] = region.kind === 'binders' ? region.body ? [{ region: region.body }] : [] : region.kind === 'implication' ? [...region.assumptions.map(assumption => ({ region: assumption, role: 'Given' })), { region: region.conclusion, role: 'Then' }] : region.kind === 'negation' ? [{ region: region.body, role: 'Negated' }] : region.kind === 'clause' ? [] : region.children.map((child, index) => ({ region: child, role: region.kind === 'alternatives' ? `Alternative ${index + 1}` : region.kind === 'equivalence' ? `${index === 0 ? 'First' : 'Second'} condition` : undefined }));
+  return <div className={`sr-overview-node${depth > 3 ? ' sr-overview-deep' : ''}`}><button type="button" className={region.sourceNodeIds.includes(ctx.reading.selection.nodeId) ? 'sr-overview-selected' : ''} onClick={() => ctx.onNodeSelect?.(region.id)} title={region.node.lean}>{overviewTitle(region)}</button>{children.length > 0 && <div className="sr-overview-children">{children.map(child => <div key={child.region.id}>{child.role && <span className="sr-overview-edge-label">{child.role}</span>}<LogicOverview region={child.region} ctx={ctx} depth={depth + 1}/></div>)}</div>}</div>;
 }
 
 export function StatementReadingView(props: StatementReadingViewProps) {
@@ -215,42 +251,31 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   const previousSelection = useRef(reading.selection.nodeId);
   const [traces, setTraces] = useState<{ id: string; path: string }[]>([]);
   const maps = useMemo<Maps>(() => ({ objects: new Map(semantic.objects.map(object => [object.id, object])), relations: new Map(semantic.relations.map(relation => [relation.id, relation])), panels: new Map(reading.panels.map(panel => [panel.id, panel])) }), [semantic, reading]);
-  const shared = useMemo(() => {
-    const counts = new Map<string, number>();
-    reading.panels.forEach(panel => [...new Set(panel.objectIds)].forEach(id => counts.set(id, (counts.get(id) ?? 0) + 1)));
-    return [...counts.entries()].filter(([id, count]) => count > 1 && maps.objects.has(id) && maps.objects.get(id)!.binder?.role !== 'assumption' && !['literal', 'expression', 'type'].includes(maps.objects.get(id)!.kind)).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  }, [reading, maps]);
-  const traceObjectId = selectedObjectId ?? shared[0]?.[0];
+  const presentation = useMemo(() => planReadingPresentation(reading), [reading]);
   useLayoutEffect(() => {
     const root = surface.current;
-    if (!root || !traceObjectId) { setTraces([]); return; }
+    if (!root || !selectedObjectId) { setTraces([]); return; }
     const update = () => {
       const box = root.getBoundingClientRect();
-      const nodes = [...root.querySelectorAll<HTMLElement>('[data-reading-object]')].filter(element => element.getAttribute('data-reading-object') === traceObjectId);
+      const nodes = [...root.querySelectorAll<HTMLElement>('[data-reading-object]')].filter(element => element.getAttribute('data-reading-object') === selectedObjectId);
       const points = nodes.slice(0, 16).map(element => { const r = element.getBoundingClientRect(); return { x: r.x - box.x + r.width / 2, y: r.y - box.y + r.height / 2 }; });
-      setTraces(points.slice(1).map((point, index) => { const prior = points[index]; const midY = (prior.y + point.y) / 2; return { id: `${traceObjectId}:${index}`, path: `M${prior.x} ${prior.y} C${prior.x} ${midY},${point.x} ${midY},${point.x} ${point.y}` }; }));
+      setTraces(points.slice(1).map((point, index) => { const prior = points[index]; const midY = (prior.y + point.y) / 2; return { id: `${selectedObjectId}:${index}`, path: `M${prior.x} ${prior.y} C${prior.x} ${midY},${point.x} ${midY},${point.x} ${point.y}` }; }));
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(root);
     return () => observer.disconnect();
-  }, [reading, traceObjectId]);
+  }, [reading, selectedObjectId]);
   useEffect(() => {
     const selected = reading.selection.nodeId;
     if (previousSelection.current === selected) return;
     previousSelection.current = selected;
-    const group = reading.quantifierGroups.find(candidate => candidate.nodeIds.includes(selected));
-    const stepId = group?.nodeIds[0] ?? selected;
-    const target = [...(surface.current?.querySelectorAll<HTMLElement>('[data-reading-step]') ?? [])].find(element => element.getAttribute('data-reading-step') === stepId);
+    const regionId = presentation.nodeToRegionId[selected] ?? selected;
+    const target = [...(surface.current?.querySelectorAll<HTMLElement>('[data-reading-step]') ?? [])].find(element => element.getAttribute('data-reading-step') === regionId);
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     target?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start', inline: 'nearest' });
-  }, [reading.selection.nodeId, reading.quantifierGroups]);
-  const prioritized = reading.selection.nodeId === reading.root.id ? [] : [reading.selection.nodeId, ...reading.selection.ancestorNodeIds, ...reading.selection.assumptionNodeIds, ...reading.selection.descendantNodeIds].slice(0, 80);
-  const visibleNodes = new Set([...new Set([...prioritized, ...reading.nodes.map(node => node.id)])].slice(0, nodeLimit));
-  const ctx: RenderContext = { ...props, ...maps, visibleNodes };
-  return <div className="statement-reading-view"><div className="sr-reading-intro"><span className="sr-reading-label">Follow the statement</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div className="sr-sequence-layout"><div ref={surface} className="sr-reading-surface"><svg className="sr-identity-traces" aria-hidden="true"><g style={{ stroke: traceObjectId ? readingObjectColor(traceObjectId) : undefined }}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg><div className="sr-reading-content"><VisualSequence ctx={ctx}/></div></div><aside className="sr-overview"><div className="sr-overview-heading">Whole statement</div><LogicOverview node={reading.root} ctx={ctx}/><p>Reading order is not proof order. Each branch keeps its own logical role.</p></aside></div>
-    {shared.length > 0 && <div className="sr-shared-objects"><span>Same objects throughout</span>{shared.map(([id, count]) => <button type="button" key={id} className={selectedObjectId === id ? 'sr-object-selected' : ''} style={{ '--object-color': readingObjectColor(id) } as CSSProperties} onClick={() => props.onObjectSelect?.(id)} aria-pressed={selectedObjectId === id} title={`${maps.objects.get(id)!.label} occurs in ${count} clauses`}><i aria-hidden="true"/>{compactLabel(maps.objects.get(id)!.label, 22)}<small>{count} clauses</small></button>)}</div>}
-    {reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {reading.nodes.length} logical nodes with the selected fragment in context. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {Math.min(100, reading.nodes.length - visibleNodes.size)} nodes</button></div>}
-    <p className="sr-reading-note">Each diagram depicts the condition at its place in the statement. “Given,” alternatives, and negation determine how it is used. Region shapes are schematic; only named elements are drawn.</p>
-  </div>;
+  }, [reading.selection.nodeId, presentation]);
+  const visibleNodes = visibleReadingNodes(reading, nodeLimit);
+  const ctx: RenderContext = { ...props, ...maps, visibleNodes, presentation };
+  return <div className="statement-reading-view"><div className="sr-atlas-layout"><div className="sr-atlas-main"><div className="sr-reading-intro"><span className="sr-reading-label">Visual reading</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div ref={surface} className="sr-reading-surface">{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ stroke: readingObjectColor(selectedObjectId) }}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label="Ordered visual reading of the statement"><AtlasRegion region={presentation.root} ctx={ctx}/></div></div>{reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {reading.nodes.length} logical nodes, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {Math.min(100, reading.nodes.length - visibleNodes.size)} nodes</button></div>}<p className="sr-reading-note">Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.</p></div><aside className="sr-overview"><div className="sr-overview-heading">Whole statement</div><LogicOverview region={presentation.root} ctx={ctx}/></aside></div></div>;
 }

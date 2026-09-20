@@ -24,7 +24,7 @@ def permittedSyntax : Array Name := #[
   `Lean.Parser.Level.paren, `Lean.Parser.Level.max, `Lean.Parser.Level.imax, `Lean.Parser.Level.addLit,
   `Lean.Parser.Term.implicitBinder, `Lean.Parser.Term.strictImplicitBinder,
   `Lean.Parser.Term.instBinder, `Lean.Parser.Term.typeSpec,
-  `Lean.Parser.Term.arrow, `Lean.Parser.Term.app, `Lean.Parser.Term.paren,
+  `Lean.Parser.Term.arrow, `Lean.Parser.Term.depArrow, `Lean.Parser.Term.app, `Lean.Parser.Term.paren,
   `Lean.Parser.Term.hygienicLParen, `Lean.Parser.Term.typeAscription,
   `Lean.Parser.Term.fun, `Lean.Parser.Term.basicFun, `Lean.Parser.Term.proj,
   `Lean.Parser.Term.explicit, `Lean.Parser.Term.anonymousCtor, `Lean.Parser.Term.tuple,
@@ -164,7 +164,8 @@ partial def encode (e : Expr) (bs : Bounds) (path : String) (depth : Nat := 0) :
   if depth > 80 then return obj [("kind", str "opaque"), ("text", str "Expression depth limit")]
   let e := e.consumeMData
   match e with
-  | .const name _ => return obj [("kind", str "const"), ("name", str name.toString),
+  | .const name levels => return obj [("kind", str "const"), ("name", str name.toString),
+      ("levels", toJson (levels.map toString)),
       ("type", str (← pp (← inferType e))), ("typeDescriptor", ← describeType (← inferType e))]
   | .fvar id =>
     if let some b := bs.find? (·.fvar == id) then

@@ -8,12 +8,26 @@ export function applicationParts(expr: Expr): { fn: Expr; args: Expr[] } {
   return { fn: inner.fn, args: [...inner.args, ...expr.args] };
 }
 
+/** Proposition expressions inhabit Prop (a sort), so Lean correctly marks them as
+ * type arguments. They are still mathematical inputs to a higher-order predicate.
+ * A dependent forall is a proposition precisely when its body is a proposition. */
+function propositionArgument(expr: Expr, depth = 0): boolean {
+  if (depth > 80) return false;
+  if ('typeDescriptor' in expr && expr.typeDescriptor?.kind === 'proposition') return true;
+  return expr.kind === 'forall' && propositionArgument(expr.body, depth + 1);
+}
+
+export function visibleApplicationArguments(expr: Extract<Expr, { kind: 'app' }>): Expr[] {
+  return expr.args.filter((argument, index) => !expr.argumentKinds || expr.argumentKinds[index] === 'value'
+    || expr.argumentKinds[index] === 'type' && propositionArgument(argument));
+}
+
 export function expressionKey(expr: Expr, identities: ReadonlyMap<string, string> = new Map(), depth = 0): string {
   if (depth > 128) return 'depth-limit';
   const key = (e: Expr) => expressionKey(e, identities, depth + 1);
   switch (expr.kind) {
     case 'var': return `var:${identities.get(expr.id) ?? expr.id}`;
-    case 'const': return `const:${expr.name}`;
+    case 'const': return expr.levels?.length ? JSON.stringify(['const', expr.name, expr.levels]) : `const:${expr.name}`;
     case 'literal': return `literal:${typeof expr.value}:${expr.value}`;
     case 'sort': return `sort:${expr.name}`;
     case 'opaque': return `opaque:${expr.text}`;
@@ -52,7 +66,7 @@ export function formatExpression(expr: Expr, depth = 0): string {
     case 'app': {
       const name = headName(expr);
       const op = numericOperator(expr);
-      const argumentValues = expr.args.filter((_, i) => !expr.argumentKinds || expr.argumentKinds[i] === 'value');
+      const argumentValues = visibleApplicationArguments(expr);
       const isPartial = expr.typeDescriptor?.kind === 'map' || expr.typeDescriptor?.kind === 'relation';
       if (!isPartial && op === 'ofNat' && expr.args[1]) return format(expr.args[1]);
       const symbols: Record<string, string> = { add: '+', sub: '−', mul: '·', div: '/', pow: '^', eq: '=', ne: '≠', lt: '<', le: '≤' };

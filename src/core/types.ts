@@ -29,7 +29,7 @@ export interface Binder {
 }
 
 export type Expr =
-  | { kind: 'const'; name: string; type?: string; typeDescriptor?: TypeDescriptor }
+  | { kind: 'const'; name: string; levels?: string[]; type?: string; typeDescriptor?: TypeDescriptor }
   | { kind: 'var'; id: string; name: string; type: string; typeDescriptor?: TypeDescriptor }
   | { kind: 'literal'; value: number | string }
   | { kind: 'app'; fn: Expr; args: Expr[]; metric?: Metric; metricInstance?: string; dimension?: number; domain?: Domain; standard?: boolean; type?: string; operator?: NumericOperator; typeDescriptor?: TypeDescriptor; argumentKinds?: ('instance' | 'proof' | 'type' | 'value')[] }

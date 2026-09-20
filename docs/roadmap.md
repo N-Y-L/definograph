@@ -2,7 +2,7 @@
 
 The goal is general mathematical statement visualization. Named theorems can be regression inputs, but the implementation should grow through reusable semantic and representation rules.
 
-The current 0.3 foundation separates Lean extraction, semantic interpretation, complete statement reading, rendering, and optional numerical exploration. The primary experience is a visual sequence with its overview alongside. Abstract objects and maps do not require coordinates; a statement must be understandable before the user changes any numerical value. It also permits deeper inspection of definitions. It is not the completed universal visualizer.
+The current 0.4 foundation separates Lean extraction, semantic interpretation, complete statement reading, rendering, and optional numerical exploration. The primary experience is a visual sequence with its overview alongside. Abstract objects and maps do not require coordinates; a statement must be understandable before the user changes any numerical value. It also derives coordinate-free maps and dependent families from type expressions and permits deeper inspection of definitions. It is not the completed universal visualizer.
 
 ## Next foundations
 

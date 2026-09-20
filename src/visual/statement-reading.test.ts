@@ -19,7 +19,7 @@ function render(tree: StatementNode, selectedNodeId?: string) {
   return { html, document, reading };
 }
 
-describe('statement-first visual sequence', () => {
+describe('mathematical atlas reading', () => {
   it('keeps arbitrary objects, assumptions, and conclusions in source order with a whole-statement overview', () => {
     const A = binder('A', 'Set ℝ'), B = binder('B', 'Set ℝ'), x = binder('x');
     const tree = node('bind-A', 'forall', [node('bind-B', 'forall', [node('bind-x', 'forall', [node('implication', 'implies', [leaf('premise', app('Set.Subset', [variable(A), variable(B)])), leaf('conclusion', app('Set.Mem', [variable(B), variable(x)]))])], x)], B)], A);
@@ -28,8 +28,10 @@ describe('statement-first visual sequence', () => {
     expect(html).toContain('Given → conclusion');
     expect(html.indexOf('data-reading-step="bind-A"')).toBeLessThan(html.indexOf('data-reading-step="premise"'));
     expect(html.indexOf('data-reading-step="premise"')).toBeLessThan(html.indexOf('data-reading-step="conclusion"'));
-    expect(html).toContain('sr-step-context-assumption');
-    expect(html).toContain('sr-step-context-conclusion');
+    expect(html).toContain('aria-label="Given assumptions"');
+    expect(html).toContain('aria-label="Then the conclusion is required"');
+    expect(html).not.toContain('sr-sequence-connective');
+    expect(html).toContain('data-source-nodes="bind-A bind-B bind-x"');
     expect(html).not.toContain('type="range"');
     expect(html).not.toContain('type="number"');
   });
@@ -40,9 +42,10 @@ describe('statement-first visual sequence', () => {
     const { html, document } = render(tree);
     expect(html).toContain('The sets may be equal');
     expect(html).toContain('sr-set-outline');
-    expect(html).toContain('Same objects throughout');
+    expect(html).not.toContain('Same objects throughout');
+    expect(html).not.toContain('sr-identity-traces');
     const a = document.objects.find(object => object.binder?.id === 'A')!;
-    expect(html.split(`data-reading-object="${a.id}"`).length - 1).toBe(3);
+    expect(html.split(`data-reading-object="${a.id}"`).length - 1).toBeGreaterThanOrEqual(3);
     expect(html).toContain(readingObjectColor(a.id));
   });
 
@@ -57,9 +60,10 @@ describe('statement-first visual sequence', () => {
 
   it('keeps alternatives distinct from conjunction and makes the negation scope explicit', () => {
     const { html } = render(node('options', 'or', [node('negative', 'not', [leaf('p')]), leaf('q')]));
-    expect(html).toContain('At least one alternative is required');
-    expect(html).toContain('Alternative 1 · at least one');
-    expect(html).toContain('Alternative 2 · at least one');
+    expect(html).toContain('At least one alternative');
+    expect(html).toContain('Either or both may hold');
+    expect(html).toContain('Alternative 1');
+    expect(html).toContain('Alternative 2');
     expect(html).toContain('Under negation');
     expect(html).not.toContain('These conditions are required together');
   });
@@ -106,6 +110,42 @@ describe('statement-first visual sequence', () => {
     const selected = render(tree, 'condition-119').html;
     expect(selected).toContain('data-reading-step="condition-119"');
     expect(selected).toContain('Show the next 21 nodes');
+  });
+
+  it('keeps scalar premises inline while retaining their source identity and logical placement', () => {
+    const epsilon = variable(binder('ε'));
+    const { html } = render(node('if', 'implies', [leaf('positive', app('LT.lt', [constant('0'), epsilon], { operator: 'lt', standard: true })), leaf('conclusion')]));
+    expect(html).toContain('class="sr-inline-constraint" data-reading-node="positive"');
+    expect(html).not.toContain('sr-figure-inequality');
+    expect(html.indexOf('aria-label="Given assumptions"')).toBeLessThan(html.indexOf('data-reading-node="positive"'));
+    expect(html.indexOf('data-reading-node="positive"')).toBeLessThan(html.indexOf('aria-label="Then the conclusion is required"'));
+  });
+
+  it('keeps a proposition wrapper primary and exposes its geometry as parts of the expression', () => {
+    const predicate: Expr = { kind: 'var', id: 'F', name: 'F', type: 'Prop → Prop', typeDescriptor: { kind: 'relation', lean: 'Prop → Prop' } };
+    const proposition = app('Set.Mem', [app('Metric.ball', [constant('c'), constant('r')]), constant('x')], { typeDescriptor: { kind: 'proposition', lean: 'Prop' } });
+    const expression: Expr = { kind: 'app', fn: predicate, args: [proposition], argumentKinds: ['type'] };
+    const { html, document, reading } = render(leaf('wrapper', expression));
+    const root = document.relations.find(relation => relation.id === reading.panels[0].rootRelationIds[0])!;
+    expect(root.kind).toBe('predicate');
+    expect(html).toContain('Inside this expression');
+    expect(html).toContain('These are parts of the expression, not separate assertions.');
+    expect(html).toContain('<details class="sr-contained-expressions">');
+    expect(html.indexOf('Inside this expression')).toBeLessThan(html.indexOf('Membership condition · the named element belongs'));
+    expect(html.indexOf('sr-figure-predicate')).toBeLessThan(html.indexOf('sr-contained-expressions'));
+  });
+
+  it('reveals a constructed set operand without replacing the outer equality by an image claim', () => {
+    const image = app('Set.image', [variable(binder('f', 'X → Y')), variable(binder('A', 'Set X'))]);
+    const { html, document, reading } = render(leaf('equation', app('Eq', [image, variable(binder('B', 'Set Y'))])));
+    expect(reading.panels[0].rootRelationIds).toHaveLength(1);
+    expect(document.relations.find(relation => relation.id === reading.panels[0].rootRelationIds[0])?.kind).toBe('equality');
+    expect(html).toContain('class="sr-inline-constraint" data-reading-node="equation"');
+    expect(html).toContain('Inside this expression');
+    expect(html).toContain('sr-figure-image');
+    expect(html.indexOf('data-reading-node="equation"')).toBeLessThan(html.indexOf('Inside this expression'));
+    expect(html.indexOf('Inside this expression')).toBeLessThan(html.indexOf('sr-figure-image'));
+    expect(html).toContain('These are parts of the expression, not separate assertions.');
   });
 
   it('shows function composition as ordered map paths in an abstract equality', () => {

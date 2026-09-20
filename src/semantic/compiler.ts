@@ -1,7 +1,7 @@
 import { discoverScenes } from '../core/scenes';
 import { headName, numericOperator } from '../core/expression';
 import type { Binder, Expr, StatementNode, TypeDescriptor } from '../core/types';
-import { expressionKey, formatExpression, stableHash } from './expression';
+import { expressionKey, formatExpression, stableHash, visibleApplicationArguments } from './expression';
 import { createSemanticRegistry } from './registry';
 import { SEMANTIC_DOCUMENT_VERSION } from './types';
 import type { AnalysisInput, FragmentCoverage, OpaqueRegion, Provenance, QuantifierChoice, SemanticDocument, SemanticObject, SemanticObjectKind, SemanticPlugin, SemanticRelation, SemanticScope } from './types';
@@ -145,7 +145,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
           return;
         }
         const relationBefore = relations.length;
-        const args = expression.args.filter((_, i) => !expression.argumentKinds || expression.argumentKinds[i] === 'value');
+        const args = visibleApplicationArguments(expression);
         const symbolId = object(expression.fn, currentScopeId, provenance(node.id, `${path}.function`));
         fragmentObjects.add(symbolId);
         const ports = [{ role: 'symbol', objectId: symbolId }, ...args.map((arg, i) => {

@@ -1,8 +1,31 @@
+## Release 0.4 checks
+
+The atlas iteration passes strict TypeScript, the production build, and **357 automated checks**:
+
+| Suite | Passed | Added assurance |
+|---|---:|---|
+| `npm test` | 183 | Typed constructions, exact carrier identities, ordered inputs, dependent families, logical-region grouping, contained expressions, and existing semantic/numerical checks |
+| `npm run test:server` | 26 | Local transport, cancellation, request bounds, and asset containment |
+| `npm run test:lean` | 46 | Kernel checks, syntax isolation, and constant universe metadata |
+| `npm run test:integration` | 17 | All 16 interface examples and combined geometry/dependency behavior |
+| `npm run test:semantic` | 21 | Typed semantic recognition and scope |
+| `npm run test:reading` | 20 | Whole-statement logic, witnesses, and abstract relationships |
+| `npm run test:notation` | 23 | Every interface example through LeanTeX and strict KaTeX, plus bounded fallback and identity checks |
+| `npm run test:atlas` | 21 | Real Lean through typed constructions, grouped regions, and the actual React renderer, including universe-distinct carriers and deep selection |
+
+Browser checks covered the default geometry, abstract map paths, dependent type families, contained-expression disclosure, mathematical notation, object inspection, and declaration body/signature switching. Editing invalidates old diagrams immediately; invalid input reports Lean's diagnostic and recovers to valid input. Default reading has no numerical sliders, while the separate exploration panel exposes sample choices. Native dialogs restore focus after Escape and keep editing available during the initial analysis. At browser-reported widths 1272, 650, and 500 pixels, the checked layout had no horizontal document overflow. Widths below 500 pixels were not verified by this browser backend.
+
+A preview rebuild exposed a missing lazy editor chunk that previously blanked the reader. Optional editor and notation components now have local error boundaries. A fault-injection check temporarily withheld the generated editor asset: the existing statement remained visible, a basic text editor accepted a new expression, and native Lean analysis succeeded. The asset was restored immediately. Ordinary final workflows produced no browser console errors; the fault-injection case intentionally produced a handled loading error.
+
+Review also corrected a pending analysis dismissing a different drawer opened after submission. Completion now dismisses only the drawer that initiated that request. Arrow routing separates adjacent maps from a longer composed route.
+
+See [the atlas review](atlas-iteration.md) for semantic boundaries and [the visual-method research](visual-method.md) for the 3Blue1Brown reference and proposed guided-reading foundation. This release adds no Manim dependency and no extra Mathlib import. Existing formal projects and global toolchain settings remain unchanged.
+
 # Verification record
 
 Verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
 
-## Release 0.3 checks
+## Historical release 0.3 checks
 
 The statement-first release passes strict TypeScript, the production build, and **305 automated checks**:
 

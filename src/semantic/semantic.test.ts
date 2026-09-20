@@ -167,6 +167,39 @@ describe('semantic rules and honest coverage', () => {
     expect(doc.objects.some(o => o.label === 'instFoo' || o.label === 'proof')).toBe(false);
   });
 
+  it('keeps proposition arguments and their recognized children inside an uninterpreted wrapper', () => {
+    const proposition = app('Set.Mem', [c('A'), c('x')], { argumentKinds: ['value', 'value'], typeDescriptor: { kind: 'proposition', lean: 'Prop' } });
+    const expression = app('Unknown.wrapper', [c('Real'), proposition, { kind: 'opaque', text: 'instance' }, { kind: 'opaque', text: 'proof' }], { argumentKinds: ['type', 'type', 'instance', 'proof'] });
+    const doc = compile(leaf('wrapped', expression));
+    expect(doc.relations.map(relation => relation.kind)).toEqual(['predicate', 'membership']);
+    expect(doc.relations[0]!.ports.map(port => port.role)).toEqual(['symbol', 'argument 1']);
+    expect(doc.relations[0]!.fidelity).toBe('structural');
+    expect(doc.relations[1]!.provenance.expressionPath).not.toBe('expression');
+    expect(doc.opaqueRegions[0]!.supportedRelationIds).toContain(doc.relations[1]!.id);
+    expect(doc.objects.some(object => ['instance', 'proof', 'Real'].includes(object.label))).toBe(false);
+    expect(formatExpression(expression)).toContain('Set.Mem(A, x)');
+  });
+
+  it('preserves proposition inputs of abstract predicates without treating proof arguments as propositions', () => {
+    const predicate: Expr = { kind: 'var', id: 'F', name: 'F', type: 'Prop → Prop', typeDescriptor: { kind: 'relation', lean: 'Prop → Prop' } };
+    const proposition: Expr = { kind: 'var', id: 'P', name: 'P', type: 'Prop', typeDescriptor: { kind: 'proposition', lean: 'Prop' } };
+    const expression: Expr = { kind: 'app', fn: predicate, args: [proposition, { ...proposition, id: 'proof', name: 'proof' }], argumentKinds: ['type', 'proof'] };
+    const doc = compile(leaf('wrapped', expression));
+    expect(doc.relations[0]!.ports.map(port => doc.objects.find(object => object.id === port.objectId)!.label)).toEqual(['F', 'P']);
+    expect(formatExpression(expression)).toBe('F(P)');
+  });
+
+  it('retains quantified propositions in their local scope while ordinary function types stay hidden', () => {
+    const input = bind('local-x', 'x');
+    const body = app('Eq', [variable(input), lit(0)], { argumentKinds: ['value', 'value'], typeDescriptor: { kind: 'proposition', lean: 'Prop' } });
+    const quantified: Expr = { kind: 'forall', binder: input, binderType: c('Real'), body };
+    const arrow: Expr = { ...quantified, body: { kind: 'const', name: 'Real', typeDescriptor: { kind: 'type', lean: 'Type' } } };
+    const doc = compile(leaf('wrapped', app('Unknown.wrapper', [quantified, arrow], { argumentKinds: ['type', 'type'] })));
+    expect(doc.relations.map(relation => relation.kind)).toEqual(['predicate', 'equality']);
+    expect(doc.relations[0]!.ports).toHaveLength(2);
+    expect(doc.relations[1]!.scopeId).not.toBe(doc.relations[0]!.scopeId);
+  });
+
   it('does not conflate expressions using different metric instances', () => {
     const args = [lit(0), lit(1)];
     const euclideanExpr = app('Metric.ball', args, { metric: 'euclidean2', metricInstance: 'l2', dimension: 2 });

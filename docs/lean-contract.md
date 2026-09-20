@@ -61,6 +61,8 @@ Logical nodes have stable path-based `id` values, a `kind`, display text, `child
 
 The portable expression represents constants, local variables, literals, applications, lambdas, dependent function types, sorts, and opaque terms. Applications retain fully elaborated arguments, including implicit type arguments. Class arguments are rendered as opaque descriptive text after auditing. The optional `binderType` expression preserves the domain of a lambda or universal binder; for implication, it is the antecedent. Tree children are the authoritative representation of logical structure. The export is intended for conservative interpretation; it is not a proof certificate or a complete lossless serialization of Lean's internal expression type.
 
+Encoded Lean constants additionally retain `levels: string[]`, in Lean's universe-argument order, with each level written as a symbolic Lean universe expression. For example, two `ULift` applications can have levels `["1", "0"]` and `["2", "0"]` even when their ordinary printed labels agree. Expression identity includes these levels; constructor recognition and display labels still use the constant name. The frontend field is optional for compatibility with older exports and synthesized logical heads; monomorphic constants export an empty array.
+
 ## Version 2 inputs and provenance
 
 The request retains the original `source` and optional `requestId` fields. Additional options are:

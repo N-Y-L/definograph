@@ -6,10 +6,11 @@ The goal is a general mathematical statement visualizer. Extensions describe reu
 
 ## Read a statement
 
-Enter a Lean expression or choose an example, then select **Interpret statement**. The editor supports syntax highlighting, search, history, and Lean symbol abbreviations such as `\forall` followed by Tab. The **Structure** tab lets you focus on part of a long statement while retaining its enclosing context.
+Choose a statement from the top bar to read it immediately. To enter your own, open **Lean source**, enter a Lean expression, and select **Interpret statement**. Editing and inspection use focused panels so the mathematical sequence and overview have the main surface. The editor supports syntax highlighting, search, history, and Lean symbol abbreviations such as `\forall` followed by Tab. The **Structure** tab lets you focus on part of a long statement while retaining its enclosing context.
 
-- **Connected objects:** sets, membership, inclusion, functions, applications, images, preimages, relations, and metric regions share object identities across fragments. Select an object to inspect its type and occurrences.
-- **A complete visual reading:** each logical node remains in the sequence and overview. Negation, alternatives, equivalence directions, and implication roles stay visible. Selecting a fragment focuses it without removing the surrounding statement. Abstract objects and maps need no coordinates. Coverage distinguishes mathematical interpretation from faithful logical structure.
+- **Connected objects:** sets, membership, inclusion, functions, applications, images, preimages, relations, and metric regions share object identities across fragments. Select an object to inspect its type and occurrences. **Inspect** also exposes coverage and definition expansion.
+- **Typed constructions:** abstract maps connect their domain and codomain from Lean type expressions. Curried maps retain their ordered inputs, and dependent families retain which earlier arguments their types use. No coordinate model or finite cardinality is invented.
+- **A complete visual reading:** every logical node is retained; binders and connected logical regions are composed into a reading sequence with an overview. Negation, alternatives, equivalence directions, and implication roles stay visible. Selecting a fragment focuses it without removing the surrounding statement. Abstract objects and maps need no coordinates. Coverage distinguishes mathematical interpretation from faithful logical structure.
 - **Quantifier dependencies:** `∀` introduces an arbitrary choice; `∃` asks for a candidate witness using earlier choices in its branch. Hypotheses and definition parameters are labeled separately. Numerical witness controls appear only in optional exploration; changing an earlier numerical choice clears dependent witnesses.
 - **Symbolic geometry:** audited metrics distinguish intervals, circular balls, and maximum-metric square balls without choosing sample coordinates. Unknown radius signs retain their positive, zero, and negative cases. Higher-dimensional balls and spheres use their distance condition without selecting a projection. **Explore a sample** opens optional numerical slices and distance profiles.
 - **Declarations and definitions:** look up a declaration such as `Metric.mem_ball` or `Function.comp`. Theorems expose their statements; definitions expose their bodies and typed signatures separately. Explicitly expand a trusted definition such as `Function.Injective` to reveal its logical structure.
@@ -56,7 +57,9 @@ The production application listens at [127.0.0.1:4317](http://127.0.0.1:4317). T
 
 ## Product direction
 
-The target is general mathematical statements, including abstract definitions and maps. Reusable rules recognize constructions rather than named theorems. The default is a visual sequence with a linked overview; examples and coordinates do not supply unstated assumptions. See [the statement-first review](docs/statement-first-review.md) for concrete acceptance cases and [the reading contract](src/reading/types.ts) for the renderer-independent representation.
+The target is general mathematical statements, including abstract definitions and maps. Reusable rules recognize constructions rather than named theorems. The default is a visual sequence with a linked overview; examples and coordinates do not supply unstated assumptions. See [the atlas iteration](docs/atlas-iteration.md) for typed construction and reading-region boundaries, [the statement-first review](docs/statement-first-review.md) for concrete acceptance cases and [the reading contract](src/reading/types.ts) for the renderer-independent representation.
+
+The [visual-method notes](docs/visual-method.md) document lessons from 3Blue1Brown and Manim: persistent object identity, ordered constructions, and a future guided-reading layer that preserves the same logical scope as the static diagrams.
 
 ## Scope and isolation
 

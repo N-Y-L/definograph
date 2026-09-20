@@ -7,6 +7,11 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(await readFile(path.join(root, '.local/config.json'), 'utf8'));
 const tests = [
+  ['polymorphic constants retain their exact universe arguments', '∀ (A : Type) (B : Type 1) (a : A) (b : B), a = a ∧ b = b', result => {
+    const equalities = collect(result.originalExpression, x => x.kind === 'const' && x.name === 'Eq');
+    assert.ok(equalities.some(x => JSON.stringify(x.levels) === '["1"]'));
+    assert.ok(equalities.some(x => JSON.stringify(x.levels) === '["2"]'));
+  }],
   ['product ball has the canonical sup metric', '∀ (ε : ℝ) (c P : ℝ × ℝ), 0 < ε → P ∈ Metric.ball c ε → dist P c < ε', result => metric(result, 'Metric.ball', 'sup2', 2)],
   ['Euclidean ball uses L2', '∀ p : EuclideanSpace ℝ (Fin 2), p ∈ Metric.closedBall 0 1', result => metric(result, 'Metric.closedBall', 'euclidean2', 2)],
   ['a 4D sphere preserves its ambient dimension', '∀ p : EuclideanSpace ℝ (Fin 4), p ∈ Metric.sphere 0 1', result => metric(result, 'Metric.sphere', 'euclideanN', 4)],
