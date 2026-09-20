@@ -90,7 +90,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (panel && engine !== resolvedEngine) panel.dispose();
       engine = resolvedEngine;
       if (!panel) {
-        panel = vscode.window.createWebviewPanel('statementLens', 'Statement Lens', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
+        panel = vscode.window.createWebviewPanel('statementLens', 'Definograph', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
           enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.file(path.join(engine, 'dist'))],
         });
         const createdPanel = panel;
@@ -130,7 +130,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       } else { panel.reveal(vscode.ViewColumn.Beside, true); await refresh(); }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Statement Lens could not open.';
+      const message = error instanceof Error ? error.message : 'Definograph could not open.';
       if (opening && lifecycle.accepts(opening)) post({ type: 'statementlens.error', requestId: opening.requestId, document: opening.document, message });
       void vscode.window.showErrorMessage(message);
     }

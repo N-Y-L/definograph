@@ -1,12 +1,12 @@
 # Lean editor context adapter
 
-Statement Lens 0.5 includes a local VS Code extension that exports selected mathematical propositions from the project's actual Lean environment. The standalone website still uses its separately pinned, closed-term worker. The editor adapter does not copy a selected string into that fixed environment.
+Definograph includes a local VS Code extension that exports selected mathematical propositions from the project's actual Lean environment. The standalone website still uses its separately pinned, closed-term worker. The editor adapter does not copy a selected string into that fixed environment.
 
 ## Install and use
 
 The first adapter supports Lean **4.28.0**, local macOS and Linux installations, and existing compiled project dependencies. Native Windows linking is not supported. Remote VS Code hosts have not been validated.
 
-From the Statement Lens checkout:
+From the Definograph checkout:
 
 ```sh
 npm ci
@@ -16,9 +16,9 @@ npm ci --prefix extension --ignore-scripts
 npm run package --prefix extension
 ```
 
-Install `.local/statement-lens-editor-0.7.0.vsix` with **Extensions: Install from VSIX…**. Set `statementLens.engineDirectory` to the absolute checkout path. The VSIX contains the extension controller; its local engine and browser assets remain in that checkout. No extension is installed into the user's VS Code profile by building or packaging it.
+Install `.local/statement-lens-editor-0.7.1.vsix` with **Extensions: Install from VSIX…**. Set `statementLens.engineDirectory` to the absolute checkout path. The VSIX contains the extension controller; its local engine and browser assets remain in that checkout. No extension is installed into the user's VS Code profile by building or packaging it.
 
-With the official Lean extension enabled, open a saved `.lean` file in a trusted workspace. Select a complete proposition and run **Statement Lens: Visualize Selection**. A nonempty selection must match an elaborated proposition or proof term, apart from surrounding whitespace. An empty selection chooses the smallest containing proposition or proof term with a proposition type. Arbitrarily selecting a variable does not silently expand a nonempty selection into a different statement.
+With the official Lean extension enabled, open a saved `.lean` file in a trusted workspace. Select a complete proposition and run **Definograph: Visualize Selection**. A nonempty selection must match an elaborated proposition or proof term, apart from surrounding whitespace. An empty selection chooses the smallest containing proposition or proof term with a proposition type. Arbitrarily selecting a variable does not silently expand a nonempty selection into a different statement.
 
 The active buffer may have unsaved changes. Imported definitions come from the project's **built `.olean` dependencies**, as in Lean's normal import workflow. Save and build changed dependencies with the project's normal tools before refreshing; saved source alone is not a fresh compiled dependency. Other dirty Lean buffers in the same workspace are refused. Changes to another open Lean buffer in that workspace invalidate the view as well.
 

@@ -1,0 +1,42 @@
+name: Build and application checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: application-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    name: Web, server, and extension (no Lean setup)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            extension/package-lock.json
+      - name: Install application dependencies
+        run: npm ci --ignore-scripts
+      - name: Install extension dependencies
+        run: npm ci --prefix extension --ignore-scripts
+      - name: Build production application
+        run: npm run build
+      - name: Run unit and renderer checks
+        run: npm test
+      - name: Run server checks
+        run: npm run test:server
+      - name: Check and package extension
+        run: npm run check:extension
+      # Native suites are intentionally separate: see CONTRIBUTING.md.
+      # This workflow does not install Lean, run Lake, or fetch mathlib.

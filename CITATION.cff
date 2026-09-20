@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, cite the repository and the commit used."
-title: "StatementLens: visual reading of Lean mathematical statements"
+title: "Definograph: visual reading of Lean mathematical statements"
 type: software
-version: 0.7.0
+version: 0.7.1
 date-released: 2026-09-19
 authors:
   - given-names: Neil Yuanting
@@ -12,3 +12,4 @@ abstract: >-
   A local Lean-backed application for reading mathematical statements through
   typed constructions, scoped visual sequences, and symbolic geometry.
   Developed by Codex under the supervision of Neil Yuanting Li.
+repository-code: "https://github.com/N-Y-L/definograph"

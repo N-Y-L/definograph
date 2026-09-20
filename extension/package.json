@@ -1,8 +1,8 @@
 {
   "name": "statement-lens-editor",
-  "displayName": "Statement Lens \u2014 Lean context",
-  "description": "Read selected Lean propositions in their actual project context with Statement Lens.",
-  "version": "0.7.0",
+  "displayName": "Definograph — Lean",
+  "description": "Read selected Lean propositions through typed diagrams in their project context. Experimental.",
+  "version": "0.7.1",
   "publisher": "statement-lens-local",
   "license": "Apache-2.0",
   "engines": {
@@ -27,7 +27,7 @@
     "commands": [
       {
         "command": "statementLens.visualizeSelection",
-        "title": "Statement Lens: Visualize Selection",
+        "title": "Definograph: Visualize Selection",
         "enablement": "editorLangId == lean4 && isWorkspaceTrusted"
       }
     ],
@@ -41,13 +41,13 @@
       ]
     },
     "configuration": {
-      "title": "Statement Lens",
+      "title": "Definograph",
       "properties": {
         "statementLens.engineDirectory": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Absolute path to the built Statement Lens repository (npm run build and npm run setup:lean). Empty uses the parent of this extension folder."
+          "description": "Absolute path to the built Definograph repository (npm run build and npm run setup:lean). Empty uses the parent of this extension folder."
         },
         "statementLens.libraryPaths": {
           "type": "array",
@@ -77,5 +77,14 @@
   },
   "extensionDependencies": [
     "leanprover.lean4"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/N-Y-L/definograph.git",
+    "directory": "extension"
+  },
+  "homepage": "https://github.com/N-Y-L/definograph#readme",
+  "bugs": {
+    "url": "https://github.com/N-Y-L/definograph/issues"
+  }
 }

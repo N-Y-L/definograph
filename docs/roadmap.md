@@ -1,40 +1,72 @@
-# Direction and acceptance criteria
+# Roadmap
 
-The goal is general mathematical statement visualization through deterministic decomposition and a small shared vocabulary of visual primitives. Mathematical objects are assembled from definitions and conditions; the implementation should expose and compose those ingredients instead of requiring a dedicated renderer for every library object. Optional adapters can provide concise views of familiar contracts, but an expanding name catalogue is not the general solution.
+The objective is to help a reader understand mathematical statements from their formal definitions and context. The primary presentation is a visual sequence with a logical overview alongside it. Interaction and numerical examples are secondary. Abstract mathematics must not require coordinates.
 
-The implemented foundation includes direct Lean structure-field reflection, scoped law trees, checked type-head aliases, bounded proposition unfolding, shared expression identities, typed maps and data, logical composition, and explicit unknown regions. Existing graph, set, metric, and restricted-map views complement this foundation. It is not the completed general visualizer.
+The current program is a research prototype. Direct record reflection, checked aliases, scoped reading, and a few specialized views are implemented. The general architecture is not. The next work should establish a reusable decomposition path and evaluate its explanatory value before expanding the catalogue of mathematical lenses. See [the architecture reset](design/architecture-reset.md) for the proposed contracts and [the code map](architecture.md) for the baseline.
 
-The primary experience remains a visual sequence with its overview alongside. Abstract objects and relationships must work without coordinates. Examples or samples cannot supply unstated assumptions or erase quantifiers.
+## 0. Establish the baseline and regression boundary
 
-## Next general foundations
+**Deliver:** a reproducible local setup, explicit known limitations, preserved source/context identities, and a small benchmark with expected *meaning*, not just accepted output shapes.
 
-1. **Extend checked decomposition beyond direct records.** Current reflection reads direct fields and laws, follows at most two type-head aliases, and leaves inherited subobjects explicit. Develop bounded recursive inspection of nested records, arbitrary definition values, and inductive data while preserving exact identities and original names. Every stop must retain the uninterpreted expression and a reason; unrestricted unfolding is not an acceptable substitute.
-2. **Compose shared primitives into useful explanations.** Reuse types, elements, maps, dependent families, sets, relations, quantifiers, and conditional laws. Intermediate expressions must be shared across applications and comparisons. Select useful levels of abstraction so a large definition does not become an unreadable field inventory. A diagram of a record's laws must remain conditional on its owning object and lexical context.
-3. **Expose the mathematical frontier.** Distinguish a definition that was read, a law whose logic was decomposed, a relation with a visual meaning, and a condition whose mathematical meaning remains opaque. Make partial progress inspectable without suggesting complete understanding. Recognize equivalent exposed structures through checked expressions, not field-name resemblance.
-4. **Evaluate unseen definitions and statement reading.** Use fresh project-defined records, renamed fields, dependent carriers, opaque predicates, nested scopes, limits, and malformed metadata. These tests must work without changing the recognizer table. Assess visual usefulness separately from extraction and compositional correctness; no fixed corpus provides a percentage of all mathematics.
-5. **Choose representations automatically while preserving information.** Related conditions should compose without crossing branch boundaries. A coordinate model, projection, slice, graph, or abstract relationship view must say which information it encodes. No numerical sample proves a quantifier. The present planner is a bounded heuristic, not a verified optimum.
-6. **Deepen prover integration.** The VS Code controller and native InfoTree sidecar use active project context. Actual VS Code GUI installation/use still needs validation. More Lean versions, incremental extraction, and useful incomplete-term recovery remain future work. A Rocq adapter needs its own tested term, structure, and context export before sharing the reader.
+**Gate:** reproduce existing checks, record toolchain and dependency versions, and retain failures as failures. Distinguish successful extraction, structural reading, justified mathematical interpretation, numerical realization, and human comprehension. An unsupported fixture passing its expected fallback is not a fully visualized statement.
 
-## Mathematical stress tests
+Keep the present renderer usable while changing its inputs. No large file move or broad rewrite is a milestone by itself. Existing tests are regression evidence; their count is not the progress metric.
 
-Fibers, projections, and sections test whether dependent families and maps compose into understandable relationships. Tangent bundles and vector fields additionally require their actual geometric and algebraic conditions; a dependent function alone is not a smooth field.
+## 1. One checked decomposition path for objects and laws
 
-Linear maps, derivatives, and rank conditions test whether shared algebraic structure and local hypotheses expose a useful statement reading. Constant-rank normal forms involve more than drawing two arrows and an equality. Restricted equivalences and open partial homeomorphisms now have a concise audited view, but this does not implement arbitrary charts, bundle trivializations, or the constant-rank theorem.
+**Deliver:** a bounded, demand-driven decomposition graph that can inspect a primary term, a field's type, a nested record, or a supplementary law using the same operation and evidence contract. Preserve the original named expression as a folded node. Share repeated terms and expose fold reasons.
 
-Graph coloring tests relations and quantifier-dependent assignments. Current symbolic constraints do not construct a finite graph or establish planarity. A complete graph view needs actual finite data; a planar view needs an appropriate embedding. The four-color theorem remains an unfinished case, as does the hairy-ball theorem.
+Start with a Lean implementation and a small prover-neutral result schema. Do not add a second prover yet. Initial operations are alias/definition exposure, direct field inspection, and logical decomposition. Reuse existing checks; replace separate preview and reflection routing incrementally.
 
-These are probes of reusable foundations, not requests to hardcode a presentation of each named theorem.
+**Gate:** the vertical slice in [the reset proposal](design/architecture-reset.md#first-vertical-slice) passes. It must include unseen and renamed user definitions, a nested record, a law hidden behind ordinary definitions, an existing library structure, alternating quantifiers, opaque boundaries, repeated subterms, and budget termination. The same supported law must read the same way at the root and inside a record. No fixture-specific recognizer may be added to pass the gate.
 
-## Definition unfolding and upstream reuse
+## 2. Compose an explanatory view from the shared representation
 
-The existing automatic inspection considers a few small proposition definitions in the original elaboration context and chooses at most one useful checked expansion. Type aliases and direct structure fields now provide additional general decomposition. These mechanisms preserve the original statement, use bounded work, and do not replay source commands. Recursive value and inductive decomposition remain future work.
+**Deliver:** reusable introduction, application, constraint, dependent-family, and logical-frame operations. Render directly from their typed ports and scopes. Add a trace showing which source facts each visual component encodes.
 
-Reuse checked mathematical and rendering infrastructure when it supplies a concrete capability. Lean's structure metadata and projection APIs directly support generic reflection. Mathlib supplies actual mathematical definitions. 3Blue1Brown/Manim and Penrose inform ordered constructions, persistent identity, and separation of relationships from presentation; they are credited design references rather than bundled runtimes. See [the architecture](architecture.md), [structure reflection](structure-reflection.md), and [visual-method notes](visual-method.md).
+Use deterministic candidate selection with explicit admissibility rules before any readability score. Open definitions only when they reveal relevant relationships at an acceptable complexity. Preserve a folded overview and let the reader inspect what was omitted. Do not replace a useful abstraction with a full record inventory merely because its fields are available.
 
-## Decisions that benefit from mathematical judgment
+**Gate:** the milestone 1 fixtures remain useful with specialized lenses disabled. Renaming symbols preserves representation topology; changing quantifier order or branch scope changes the relevant dependencies. A candidate that hides an unsatisfied constraint cannot win by being smaller. The selection trace explains its choice, and fixed inputs give reproducible selections.
 
-- What level of definition detail makes a statement comprehensible without hiding its main mathematical content?
-- Which relationships must remain visible when a representation cannot preserve every geometric feature?
-- When do two checked decompositions support the same visual abstraction, and what evidence justifies that substitution?
+Conduct a small, recorded reading evaluation: can readers correctly identify the objects, the conclusion, required assumptions, and witness dependencies? Compare with the original formal statement and a readable typeset version. Report errors and confusion. Do not infer comprehension from screenshots or renderer tests.
 
-These guide evaluation and architecture. They should not require the user to choose a renderer manually for each statement.
+## 3. Recursive, inductive, and dependent definitions
+
+**Deliver:** finite descriptions of constructors, alternatives, indexed families, and recursive references. Expose one useful layer on demand; never enumerate an infinite type or normalize an arbitrary program merely to obtain a picture. Preserve constructor conditions and branch-specific indices.
+
+**Gate:** unseen inductive and mutually referenced examples terminate with explicit fold reasons; dependent indices remain attached to the correct branch. Repeated references share semantic nodes without merging occurrences from incompatible scopes. Cache invalidation includes the actual environment and selected context. Unsupported elimination principles remain explicit rather than receiving guessed semantics.
+
+This milestone may require revising the proposed IR. Keep the revision evidence and migration small; do not claim that one minimal vocabulary has been proved sufficient for all mathematics.
+
+## 4. Certified abstraction rules and optional models
+
+**Deliver:** reusable abstraction rules over exposed structure, with explicit premises and evidence. For example, display a map with a return law because the law is available, regardless of field spelling. A theorem-backed replacement must carry its checked application and hypotheses; a visual resemblance is insufficient.
+
+Introduce optional extensional models through a separate interface: concrete finite graphs, coordinate geometry, numerical functions, or supplied witnesses. Each model states its relation to the abstract object and any approximation or omitted information. A chosen realization must not alter the source statement.
+
+**Gate:** mathematically different instances with similar syntax remain distinct; every stronger interpretation has visible evidence. Removing a required premise invalidates the abstraction. Concrete samples do not discharge universal conditions or create existential witnesses. High-dimensional views explain their preserved information without implying that a slice is the ambient object.
+
+## 5. Serious mathematical stress tests
+
+Use related families of statements rather than a single polished theorem demonstration:
+
+- Fibers, sections, local charts, and bundle maps test dependency, locality, and composition.
+- Tangent fields and nonvanishing conditions test whether geometric structure and quantified obstructions become understandable; a dependent function alone is not a smooth vector field.
+- Linear maps, derivatives, and constant-rank hypotheses test algebraic structure and local normal forms; two arrows are not a visualization of the constant-rank theorem.
+- Coloring constraints and planar embeddings test the distinction between abstract relations, finite data, and geometric assumptions; a coloring diagram is not the four-color theorem.
+
+**Gate:** explain new members of each family from shared rules, report the remaining mathematical frontier, and repeat the reading evaluation. Hairy-ball, constant-rank, and four-color statements are ambitious tests of generality, not renderer dispatch keys. No release should claim these are supported merely because some component objects are drawn.
+
+## 6. Reliable editor use and broader environments
+
+**Deliver:** verified installation and use in an actual Lean editor host, incremental context reuse, cancellation, stale-result rejection, and a supported toolchain policy. Keep project dependencies and configuration unchanged unless explicitly requested.
+
+**Gate:** a user can select a statement in a real project, inspect nested definitions, edit the buffer, and obtain an updated reading without stale context or unintended project writes. Measure latency and memory on declared hardware. Native Windows and additional Lean versions need their own checks.
+
+A Rocq adapter becomes appropriate only after the shared representation handles the Lean milestone fixtures without depending on Lean-specific rendering logic. It will need its own checked treatment of contexts, universes, coercions, modules, and inductive definitions.
+
+## Guidance for later agents
+
+Start at the first unmet gate. Read the design proposal and the relevant current module before editing. Build one complete path from real Lean output through composition to a usable reading; avoid adding disconnected infrastructure or another named-object showcase. Delegate independent validation or bounded modules, with one owner for the contract they share.
+
+Record what is implemented, what remains proposed, and what the checks actually establish. Update the known limitations when a boundary moves. Ask the project owner about mathematical usefulness and acceptable information loss when examples expose a real tradeoff; routine technical defaults do not need a decision.

@@ -12,12 +12,12 @@ const worker = createWorkerBackend({ rootDir, configPath: process.env.STATEMENTL
 const server = createLocalServer({ worker, port, distDir: path.join(rootDir, 'dist') });
 server.on('error', (error: NodeJS.ErrnoException) => {
   console.error(error.code === 'EADDRINUSE'
-    ? `StatementLens port ${port} is already in use.`
-    : `StatementLens server failed: ${error.message}`);
+    ? `Definograph port ${port} is already in use.`
+    : `Definograph server failed: ${error.message}`);
   process.exitCode = 1;
 });
 server.listen(port, '127.0.0.1', () => {
-  console.log(`StatementLens local API: http://127.0.0.1:${port}`);
+  console.log(`Definograph local API: http://127.0.0.1:${port}`);
 });
 
 function shutdown() {

@@ -1,14 +1,14 @@
-# Statement Lens for Lean
+# Definograph for Lean
 
 Read a selected Lean proposition as a visual sequence of typed objects, assumptions, and mathematical relationships in its actual project context.
 
-This is an optional local extension for a built Statement Lens checkout. It currently supports Lean **4.28.0** projects on macOS and Linux. It does not modify a project's source, Lake configuration, toolchain, or compiled dependencies, and it does not run Lake or download dependencies.
+This is an optional local extension for a built Definograph checkout. It currently supports Lean **4.28.0** projects on macOS and Linux. It does not modify a project's source, Lake configuration, toolchain, or compiled dependencies, and it does not run Lake or download dependencies.
 
-1. In the Statement Lens checkout, run `npm run build` and `npm run setup:lean` after the documented initial Lean setup.
+1. In the Definograph checkout, run `npm run build` and `npm run setup:lean` after the documented initial Lean setup.
 2. Install the locally produced VSIX using **Extensions: Install from VSIX…**.
 3. Set `statementLens.engineDirectory` to the absolute path of that checkout.
 4. Open a saved Lean file in a trusted workspace with its dependencies already built.
-5. Select a complete proposition and run **Statement Lens: Visualize Selection** from the command palette or editor context menu. With an empty selection, the nearest enclosing elaborated proposition is used.
+5. Select a complete proposition and run **Definograph: Visualize Selection** from the command palette or editor context menu. With an empty selection, the nearest enclosing elaborated proposition is used.
 
 The active buffer may have unsaved changes. Other unsaved Lean buffers in the same workspace must be saved and built first. **Refresh** uses the current selection when that Lean editor is visible; otherwise it uses the remembered selection. Editing or closing the analyzed document invalidates its previous diagram. **Reveal** returns to the original source.
 

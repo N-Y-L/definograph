@@ -2,7 +2,28 @@
 
 Verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
 
-## Release 0.7 checks
+## Publication cleanup 0.7.1
+
+The Definograph identity and repository handoff change passes strict TypeScript,
+the production build, **369 unit/renderer checks**, **29 server checks**, and
+**4 extension checks** (402 automated checks total). The extension packages as
+`.local/statement-lens-editor-0.7.1.vsix`; packaging is not an additional test.
+Native Lean code and mathematical interpretation were unchanged, so the full
+native baseline below was not rerun for this documentation and identity change.
+
+The production reader was checked in the in-app browser at desktop and a
+400 CSS-pixel narrow viewport. The wordmark and controls fit without horizontal
+overflow; website attribution and the old footer were absent. The default
+metric example and an abstract-predicate example loaded. This is a layout and
+regression check, not evidence that the current mathematical explanation is
+sufficient. A 320 CSS-pixel viewport was not verified because the browser's
+minimum viewport and existing zoom produced a wider viewport.
+
+Portable GitHub CI now covers the build, unit, server, and extension commands.
+It does not install Lean or download mathlib. Its remote result is separate from
+the local results recorded here.
+
+## Historical release 0.7 checks
 
 The deterministic decomposition iteration passes strict TypeScript, the production build, and **725 automated checks**: 721 in `npm run check`, plus four extension checks. Counts come from `.local/check-0.7.log` and `.local/extension-check-0.7.log`; builds and packaging are not tests.
 

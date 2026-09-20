@@ -1,6 +1,6 @@
 # Lean worker contract
 
-StatementLens type-checks **statements**, not proofs. In particular, `False` is a valid input because it has type `Prop`; acceptance does not establish that it is true. The plotting code is an approximate interpretation of selected typed fragments and is outside Lean's trusted kernel.
+Definograph type-checks **statements**, not proofs. In particular, `False` is a valid input because it has type `Prop`; acceptance does not establish that it is true. The plotting code is an approximate interpretation of selected typed fragments and is outside Lean's trusted kernel.
 
 ## Reproducible setup
 
@@ -8,7 +8,7 @@ The worker is pinned to Lean **4.28.0** and mathlib commit **`8f9d9cff6bd728b17a
 
 Use the Lean 4.28.0 release for your platform from the [official release](https://github.com/leanprover/lean4/releases/tag/v4.28.0). Extracting a release into a dedicated directory does not require changing an existing Elan default or formal project. Supply its actual `bin/lean` path below.
 
-For an existing, built cache at this revision, run from the StatementLens repository:
+For an existing, built cache at this revision, run from the Definograph repository:
 
 ```sh
 node scripts/lean-build.mjs \
@@ -86,7 +86,7 @@ The request retains the original `source` and optional `requestId` fields. Addit
 
 `provenance` contains `assistant: "lean"`, `inputMode`, `inspected` (`statement`, `signature`, or `proposition-definition`), `mathlibRevision`, and either a declaration record or `null`. A declaration record contains `name`, `kind`, `type`, `module`, `canExpand`, and `universeParameters`. `module` is obtained from Lean’s imported environment, rather than inferred from the name. The record distinguishes theorems, definitions, axioms, opaque declarations, inductives, constructors, recursors, and quotient primitives.
 
-The fixed imported environment is still a deliberate boundary: an otherwise valid name from an unimported mathlib module is unknown. Arbitrary project imports and partial elaboration recovery are not implemented. Generality here means a uniform typed representation for accepted mathematics, not a claim that every installed Lean project is currently accessible.
+The fixed imported environment is still a deliberate boundary: an otherwise valid name from an unimported mathlib module is unknown. Arbitrary imports are not accepted by this standalone worker. The separate editor adapter reads trusted project environments; partial elaboration recovery is not implemented. Generality here means a uniform typed representation for accepted mathematics, not a claim that every installed Lean project is currently accessible.
 
 ## Definition expansion
 
@@ -173,7 +173,7 @@ A statement may mix supported geometry with abstract types, higher-order conditi
 
 ## Editor and Rocq adapter direction
 
-Lean’s [InfoTree API](https://lean-lang.org/doc/api/Lean/Elab/InfoTree/Types.html) stores elaborated terms, local contexts, and source syntax. A future Lean editor adapter can extract the same v2 representation from the active document’s environment instead of reparsing terms against this fixed environment. [Lean RPC](https://lean-lang.org/doc/api/Lean/Server/Rpc/Basic.html) provides session-relative references for heavy server objects. [ProofWidgets](https://github.com/leanprover-community/ProofWidgets4) provides React components and Lean widget integration. These are suitable foundations for an infoview panel; they do not supply the mathematical abstraction and view-selection semantics of this project.
+Lean’s [InfoTree API](https://lean-lang.org/doc/api/Lean/Elab/InfoTree/Types.html) stores elaborated terms, local contexts, and source syntax. The current [editor adapter](editor-integration.md) extracts the same v2 representation from the active document’s environment in an isolated sidecar process. Direct integration with the editor’s existing Lean server remains future work. [Lean RPC](https://lean-lang.org/doc/api/Lean/Server/Rpc/Basic.html) provides session-relative references for heavy server objects. [ProofWidgets](https://github.com/leanprover-community/ProofWidgets4) provides React components and Lean widget integration. These are suitable foundations for an infoview panel; they do not supply the mathematical abstraction and view-selection semantics of this project.
 
 A Rocq adapter is architecturally feasible at the typed semantic-document boundary, but is not implemented. [Rocq LSP](https://github.com/rocq-community/rocq-lsp) supplies document checking and tooling interfaces built on Flèche. Its kernel terms, universes, coercions, modules, and local contexts differ from Lean’s; a separate extractor and validation suite would be necessary. Sharing renderers and view contracts is plausible; reusing the Lean parser or pretending the two expression formats are interchangeable is not.
 

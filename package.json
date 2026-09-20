@@ -1,8 +1,8 @@
 {
-  "name": "statement-lens",
-  "version": "0.7.0",
+  "name": "definograph",
+  "version": "0.7.1",
   "private": true,
-  "description": "Read Lean mathematical statements through a faithful visual sequence and a linked logical overview.",
+  "description": "An experimental, Lean-backed foundation for compositional visualization of mathematical statements.",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {
@@ -57,5 +57,13 @@
     "typescript": "7.0.2",
     "vite": "8.3.0",
     "vitest": "5.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/N-Y-L/definograph.git"
+  },
+  "homepage": "https://github.com/N-Y-L/definograph#readme",
+  "bugs": {
+    "url": "https://github.com/N-Y-L/definograph/issues"
   }
 }

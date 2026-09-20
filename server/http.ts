@@ -151,7 +151,7 @@ export function createLocalServer(options: { worker: WorkerBackend; port?: numbe
     const hosts = new Set([`127.0.0.1:${actualPort}`, `localhost:${actualPort}`]);
     if (!hosts.has(request.headers.host ?? '')) {
       request.resume();
-      sendError(response, 403, 'FORBIDDEN_HOST', 'Only the local StatementLens address is allowed.');
+      sendError(response, 403, 'FORBIDDEN_HOST', 'Only the local Definograph address is allowed.');
       return;
     }
     const origins = new Set([
@@ -161,7 +161,7 @@ export function createLocalServer(options: { worker: WorkerBackend; port?: numbe
     const origin = request.headers.origin;
     if ((origin && !origins.has(origin)) || (!origin && request.headers['sec-fetch-site'] === 'cross-site')) {
       request.resume();
-      sendError(response, 403, 'FORBIDDEN_ORIGIN', 'Only the local StatementLens app may use this service.');
+      sendError(response, 403, 'FORBIDDEN_ORIGIN', 'Only the local Definograph app may use this service.');
       return;
     }
     if (origin) {
