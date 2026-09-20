@@ -1,6 +1,6 @@
 {
   "name": "statement-lens",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Read Lean mathematical statements through a faithful visual sequence and a linked logical overview.",
   "type": "module",
@@ -12,7 +12,7 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:server": "tsx --test server/*.test.ts",
-    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation && npm run test:atlas",
+    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation && npm run test:atlas && npm run test:cues && npm run test:sets && npm run test:editor",
     "start": "tsx server/index.ts",
     "setup:lean": "node scripts/lean-build.mjs",
     "test:lean": "node scripts/lean-test.mjs",
@@ -20,7 +20,11 @@
     "test:semantic": "node --import tsx scripts/semantic-integration.ts",
     "test:reading": "node --import tsx scripts/reading-integration.ts",
     "test:notation": "node --import tsx scripts/notation-integration.ts",
-    "test:atlas": "node --import tsx scripts/atlas-integration.ts"
+    "test:atlas": "node --import tsx scripts/atlas-integration.ts",
+    "test:cues": "node --import tsx scripts/cues-integration.ts",
+    "test:sets": "node --import tsx scripts/set-construction-integration.ts",
+    "test:editor": "node --import tsx scripts/editor-integration.ts",
+    "check:extension": "npm --prefix extension run check && npm --prefix extension test && npm --prefix extension run package"
   },
   "engines": {
     "node": ">=22.12"

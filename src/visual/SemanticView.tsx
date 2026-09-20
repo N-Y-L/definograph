@@ -12,7 +12,7 @@ export interface SemanticViewProps {
 }
 
 const objectGlyph: Record<SemanticObject['kind'], string> = { variable: 'x', scalar: 'a', point: '•', set: '{ }', function: '↦', type: 'T', literal: '#', expression: '⋯', symbol: 's' };
-const relationName: Record<RelationKind, string> = { membership: 'Membership', subset: 'Set inclusion', equality: 'Equality', inequality: 'Comparison', application: 'Function application', image: 'Image of a set', preimage: 'Preimage of a set', 'function-property': 'Function property', 'metric-region': 'Metric region', distance: 'Distance', predicate: 'Symbolic relation' };
+const relationName: Record<RelationKind, string> = { membership: 'Membership', subset: 'Set inclusion', equality: 'Equality', inequality: 'Comparison', application: 'Function application', image: 'Image of a set', preimage: 'Preimage of a set', 'function-property': 'Function property', 'set-construction': 'Set construction', 'metric-region': 'Metric region', distance: 'Distance', predicate: 'Symbolic relation' };
 const choiceSymbol: Record<QuantifierChoice['role'], string> = { universal: '∀', existential: '∃', assumption: '⇒', lambda: '↦', parameter: '↦' };
 const choiceName: Record<QuantifierChoice['role'], string> = { universal: 'Arbitrary choice', existential: 'Candidate witness', assumption: 'Assumption', lambda: 'Function input', parameter: 'Definition parameter' };
 

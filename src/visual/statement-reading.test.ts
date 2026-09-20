@@ -89,7 +89,9 @@ describe('mathematical atlas reading', () => {
     const unary = render(leaf('member', app('Set.Mem', [constant('A'), application([variable(x)])]))).html;
     const binary = render(leaf('member', app('Set.Mem', [constant('A'), application([variable(x), variable(y)])]))).html;
     expect(unary).toContain('sr-map-arrow');
-    expect(binary).not.toContain('sr-map-arrow');
+    const membership = binary.slice(binary.indexOf('sr-figure-membership'), binary.indexOf('</figure>', binary.indexOf('sr-figure-membership')));
+    expect(membership).not.toContain('sr-map-arrow');
+    expect(binary).toContain('f(x, y)');
     expect(binary).toContain('f(x, y)');
   });
 
@@ -140,11 +142,13 @@ describe('mathematical atlas reading', () => {
     const { html, document, reading } = render(leaf('equation', app('Eq', [image, variable(binder('B', 'Set Y'))])));
     expect(reading.panels[0].rootRelationIds).toHaveLength(1);
     expect(document.relations.find(relation => relation.id === reading.panels[0].rootRelationIds[0])?.kind).toBe('equality');
-    expect(html).toContain('class="sr-inline-constraint" data-reading-node="equation"');
+    expect(html).toContain('data-reading-node="equation"');
+    expect(html).toContain('sc-regions-required-empty');
+    expect(html).toContain('The hatched membership regions must be empty');
     expect(html).toContain('Inside this expression');
-    expect(html).toContain('sr-figure-image');
+    expect(html).toContain('How this set is constructed');
     expect(html.indexOf('data-reading-node="equation"')).toBeLessThan(html.indexOf('Inside this expression'));
-    expect(html.indexOf('Inside this expression')).toBeLessThan(html.indexOf('sr-figure-image'));
+    expect(html.slice(html.indexOf('Inside this expression'))).toContain('sr-figure-image');
     expect(html).toContain('These are parts of the expression, not separate assertions.');
   });
 

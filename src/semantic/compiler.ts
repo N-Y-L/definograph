@@ -1,12 +1,13 @@
 import { discoverScenes } from '../core/scenes';
 import { headName, numericOperator } from '../core/expression';
 import type { Binder, Expr, StatementNode, TypeDescriptor } from '../core/types';
-import { expressionKey, formatExpression, stableHash, visibleApplicationArguments } from './expression';
+import { expressionKey, formatExpression, setConstructionParts, stableHash, visibleApplicationArguments } from './expression';
 import { createSemanticRegistry } from './registry';
 import { SEMANTIC_DOCUMENT_VERSION } from './types';
 import type { AnalysisInput, FragmentCoverage, OpaqueRegion, Provenance, QuantifierChoice, SemanticDocument, SemanticObject, SemanticObjectKind, SemanticPlugin, SemanticRelation, SemanticScope } from './types';
 
 function objectKind(expression: Expr, binder?: Binder): SemanticObjectKind {
+  if (setConstructionParts(expression)) return 'set';
   const descriptor: TypeDescriptor | undefined = binder?.typeDescriptor ?? ('typeDescriptor' in expression ? expression.typeDescriptor : undefined);
   if (descriptor?.kind === 'set') return 'set';
   if (descriptor?.kind === 'map' || descriptor?.kind === 'relation') return 'function';
@@ -130,7 +131,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
           fragmentObjects.add(id);
           return { role: argument.role, objectId: id };
         });
-        relations.push({ id: `relation:${node.id}:${stableHash(key)}:${rule.plugin.id}`, kind: matched.kind, label: matched.label, ports, expression, scopeId: currentScopeId, nodeId: node.id, pluginId: rule.plugin.id, fidelity: matched.fidelity, provenance: source, conditions: matched.conditions ?? [] });
+        relations.push({ id: `relation:${node.id}:${stableHash(key)}:${rule.plugin.id}`, kind: matched.kind, label: matched.label, ports, expression, scopeId: currentScopeId, nodeId: node.id, pluginId: rule.plugin.id, fidelity: matched.fidelity, provenance: source, conditions: matched.conditions ?? [], ...(matched.setOperation ? { setOperation: matched.setOperation } : {}) });
         matched.arguments.forEach(argument => { if (expressionKey(argument.expression, identities) !== key) walk(argument.expression, `${path}.${argument.role}`, exprDepth + 1, expressionScope, expressionObjects); });
         return;
       }
@@ -156,7 +157,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
         relations.push({ id: `relation:${node.id}:${stableHash(key)}:structural`, kind: 'predicate', label: formatExpression(expression.fn), ports, expression, scopeId: currentScopeId, nodeId: node.id, pluginId: 'structural', fidelity: 'structural', provenance: source, conditions: ['Application structure is preserved; the meaning of this definition has not been interpreted.'] });
         args.forEach((arg, i) => walk(arg, `${path}.argument${i}`, exprDepth + 1, expressionScope, expressionObjects));
         opaqueRegions.push({ id: `opaque:${node.id}:${stableHash(key)}`, nodeId: node.id, scopeId: currentScopeId, expression, label: formatExpression(expression), reason: 'No semantic rule interprets this application. Its typed objects, arguments, and recognized children remain available.', supportedRelationIds: relations.slice(relationBefore + 1).filter(r => r.fidelity !== 'structural').map(r => r.id), provenance: source });
-      } else if (expression.kind === 'opaque' || expression.kind === 'const' && path === 'expression' && !['True', 'False'].includes(expression.name)) {
+      } else if (expression.kind === 'opaque' || expression.kind === 'const' && path === 'expression' && !['True', 'False'].includes(headName(expression) ?? '')) {
         opaqueRegions.push({ id: `opaque:${node.id}:${stableHash(key)}`, nodeId: node.id, scopeId: currentScopeId, expression, label: formatExpression(expression), reason: expression.kind === 'opaque' ? 'The prover exported this subexpression without an inspectable internal structure.' : 'This proposition is retained symbolically; no semantic rule interprets its definition.', supportedRelationIds: [], provenance: source });
       }
     };
@@ -164,7 +165,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
     const fragmentRelations = relations.slice(relationStart);
     const fragmentOpaque = opaqueRegions.slice(opaqueStart);
     const meaningful = fragmentRelations.some(r => r.fidelity !== 'structural');
-    coverage.push({ nodeId: node.id, status: fragmentOpaque.length ? meaningful ? 'partial' : 'structural' : meaningful || node.expression.kind === 'const' && ['True', 'False'].includes(node.expression.name) ? 'interpreted' : 'structural', relationIds: fragmentRelations.map(r => r.id), sceneIds: scenes.filter(s => s.nodeId === node.id).map(s => s.id), opaqueRegionIds: fragmentOpaque.map(r => r.id), objectIds: [...fragmentObjects] });
+    coverage.push({ nodeId: node.id, status: fragmentOpaque.length ? meaningful ? 'partial' : 'structural' : meaningful || node.expression.kind === 'const' && ['True', 'False'].includes(headName(node.expression) ?? '') ? 'interpreted' : 'structural', relationIds: fragmentRelations.map(r => r.id), sceneIds: scenes.filter(s => s.nodeId === node.id).map(s => s.id), opaqueRegionIds: fragmentOpaque.map(r => r.id), objectIds: [...fragmentObjects] });
   };
   visitNode(analysis.tree, undefined, [], [], [], 0);
   return { schemaVersion: SEMANTIC_DOCUMENT_VERSION, prover: 'lean', source: analysis.source, tree: analysis.tree, objects: [...objects.values()], relations, scopes, choices, opaqueRegions, coverage, scenes, diagnostics };

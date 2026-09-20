@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, cite the repository and the commit used."
 title: "StatementLens: visual reading of Lean mathematical statements"
 type: software
-version: 0.4.0
+version: 0.5.0
 date-released: 2026-09-19
 authors:
   - given-names: Neil Yuanting

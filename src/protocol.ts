@@ -11,6 +11,6 @@ export const capabilities = {
   inputModes: ['term', 'declaration'],
   expansions: { maxConstants: 12, maxDepth: 3, policy: 'explicit-trusted-definitions' },
   source: { maxCharacters: 32_768, maxBytes: 65_536 },
-  features: ['typed-expressions', 'declaration-signatures', 'bounded-expansion', 'scoped-fragments', 'semantic-document', 'automatic-view-planning', 'statement-reading-sequence', 'logical-overview', 'optional-readable-math'],
+  features: ['typed-expressions', 'declaration-signatures', 'bounded-expansion', 'scoped-fragments', 'semantic-document', 'automatic-view-planning', 'statement-reading-sequence', 'logical-overview', 'optional-readable-math', 'guided-reading-cues', 'compositional-set-constructions'],
   executesUserCommands: false,
 } as const;

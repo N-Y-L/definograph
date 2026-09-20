@@ -19,7 +19,8 @@ export interface SemanticObject {
   readonly scopeId: string;
   readonly provenance: readonly Provenance[];
 }
-export type RelationKind = 'membership' | 'subset' | 'equality' | 'inequality' | 'application' | 'image' | 'preimage' | 'function-property' | 'metric-region' | 'distance' | 'predicate';
+export type SetOperation = 'union' | 'intersection' | 'difference' | 'complement';
+export type RelationKind = 'membership' | 'subset' | 'equality' | 'inequality' | 'application' | 'image' | 'preimage' | 'function-property' | 'metric-region' | 'distance' | 'predicate' | 'set-construction';
 export interface RelationPort {
   readonly role: string;
   readonly objectId: string;
@@ -36,6 +37,8 @@ export interface SemanticRelation {
   readonly fidelity: SemanticFidelity;
   readonly provenance: Provenance;
   readonly conditions: readonly string[];
+  /** Present only for audited set constructors; operand order is preserved in ports. */
+  readonly setOperation?: SetOperation;
 }
 export interface SemanticScope {
   readonly id: string;
@@ -97,6 +100,7 @@ export interface SemanticRuleMatch {
   readonly arguments: readonly { readonly role: string; readonly expression: Expr }[];
   readonly fidelity: SemanticFidelity;
   readonly conditions?: readonly string[];
+  readonly setOperation?: SetOperation;
 }
 /** Plugins recognize elaborated constructors, never theorem titles or source spelling. */
 export interface SemanticPlugin {

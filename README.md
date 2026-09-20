@@ -6,9 +6,10 @@ The goal is a general mathematical statement visualizer. Extensions describe reu
 
 ## Read a statement
 
-Choose a statement from the top bar to read it immediately. To enter your own, open **Lean source**, enter a Lean expression, and select **Interpret statement**. Editing and inspection use focused panels so the mathematical sequence and overview have the main surface. The editor supports syntax highlighting, search, history, and Lean symbol abbreviations such as `\forall` followed by Tab. The **Structure** tab lets you focus on part of a long statement while retaining its enclosing context.
+Choose a statement from the top bar to read it immediately. Use **Next** to follow its constructions in order, or jump through the overview. **Full visual statement** opens the complete static reading. To enter your own, open **Lean source**, enter a Lean expression, and select **Interpret statement**. Editing and inspection use focused panels so the mathematical sequence and overview have the main surface. The editor supports syntax highlighting, search, history, and Lean symbol abbreviations such as `\forall` followed by Tab. The **Structure** tab lets you focus on part of a long statement while retaining its enclosing context.
 
 - **Connected objects:** sets, membership, inclusion, functions, applications, images, preimages, relations, and metric regions share object identities across fragments. Select an object to inspect its type and occurrences. **Inspect** also exposes coverage and definition expansion.
+- **Compound sets:** union, intersection, difference, and complement compose inside membership, inclusion, and equality. Highlighted regions encode allowed membership combinations; hatching identifies combinations required to be empty. No sample element or nonempty intersection is invented.
 - **Typed constructions:** abstract maps connect their domain and codomain from Lean type expressions. Curried maps retain their ordered inputs, and dependent families retain which earlier arguments their types use. No coordinate model or finite cardinality is invented.
 - **A complete visual reading:** every logical node is retained; binders and connected logical regions are composed into a reading sequence with an overview. Negation, alternatives, equivalence directions, and implication roles stay visible. Selecting a fragment focuses it without removing the surrounding statement. Abstract objects and maps need no coordinates. Coverage distinguishes mathematical interpretation from faithful logical structure.
 - **Quantifier dependencies:** `∀` introduces an arbitrary choice; `∃` asks for a candidate witness using earlier choices in its branch. Hypotheses and definition parameters are labeled separately. Numerical witness controls appear only in optional exploration; changing an earlier numerical choice clears dependent witnesses.
@@ -55,17 +56,28 @@ npm start
 
 The production application listens at [127.0.0.1:4317](http://127.0.0.1:4317). The first analysis loads mathlib; later analyses reuse the imported environment while starting a fresh elaboration context.
 
+## Use your Lean editor
+
+The optional VS Code extension reads a selected proposition from a **Lean 4.28.0** project, including unsaved changes in the active buffer and its built imported definitions. It keeps local parameters and assumptions attached and invalidates diagrams after edits.
+
+```sh
+npm ci --prefix extension
+npm run check:extension
+```
+
+Install the resulting `.local/statement-lens-editor-0.5.0.vsix` with **Extensions: Install from VSIX…**, set `statementLens.engineDirectory` to this checkout, then run **Statement Lens: Visualize Selection** in a trusted Lean workspace. The package has not been published. [The editor guide](docs/editor-integration.md) explains exact selection, explicit definition expansion, project isolation, and the initial symbolic-only interpretation boundary.
+
 ## Product direction
 
 The target is general mathematical statements, including abstract definitions and maps. Reusable rules recognize constructions rather than named theorems. The default is a visual sequence with a linked overview; examples and coordinates do not supply unstated assumptions. See [the atlas iteration](docs/atlas-iteration.md) for typed construction and reading-region boundaries, [the statement-first review](docs/statement-first-review.md) for concrete acceptance cases and [the reading contract](src/reading/types.ts) for the renderer-independent representation.
 
-The [visual-method notes](docs/visual-method.md) document lessons from 3Blue1Brown and Manim: persistent object identity, ordered constructions, and a future guided-reading layer that preserves the same logical scope as the static diagrams.
+The [visual-method notes](docs/visual-method.md) document lessons from 3Blue1Brown and Manim: persistent object identity, ordered constructions, and the [guided-reading layer](docs/guided-reading.md), which preserves the same logical scope as the static diagrams.
 
 ## Scope and isolation
 
-This is a standalone local web application with a versioned Lean extraction contract and a renderer-independent semantic document. The same boundary is designed for a future Lean editor panel. A Rocq adapter is not implemented.
+This is a standalone local web application with a versioned Lean extraction contract and a renderer-independent semantic document. An optional VS Code extension reads a selected proposition from its actual Lean project context. See [the editor integration](docs/editor-integration.md) for installation, supported toolchains, and the separate trust boundary. A Rocq adapter is not implemented.
 
-Only fixed, trusted modules are loaded. Input passes a closed declarative syntax allowlist, elaboration, unresolved-placeholder checks, and a kernel type check. Existing formal projects are not opened or edited. Arbitrary imports, pasted proof scripts, and user command execution are outside the input contract. The full expression must elaborate before its parts can be inspected; incomplete-term recovery remains future work.
+In standalone browser mode, only fixed, trusted modules are loaded. Input passes a closed declarative syntax allowlist, elaboration, unresolved-placeholder checks, and a kernel type check. Standalone input does not open existing formal projects. Editor mode reads the selected trusted project and its imported environment in a separate process; the adapter does not rewrite project files or configuration. Arbitrary imports, pasted proof scripts, and user command execution are outside the standalone input contract. Editor mode elaborates trusted Lean source, which can run project elaborators and commands; the process is not a security sandbox. The selected expression must elaborate without unresolved placeholders; this is not general recovery from incomplete mathematical syntax.
 
 Custom metric and arithmetic instances remain symbolic unless their interpretation is audited. View rules use typed constructors and argument roles rather than matching theorem names or source spelling. Unsupported parts are retained with explicit coverage information. Numerical vectors have a resource bound of 256 coordinates; larger spaces retain typed structure rather than receiving a fabricated numerical model.
 
@@ -81,7 +93,7 @@ See [the architecture](docs/architecture.md) for the semantic registry, planner,
 npm run check
 ```
 
-This builds the application and runs unit, server, native Lean, and end-to-end semantic checks. [The verification record](docs/verification.md) records tested behaviors and limits. Passing these tests is not a claim that the application has no bugs.
+This builds the application and runs unit, server, native Lean, project-context, and end-to-end semantic checks. `npm run check:extension` additionally checks and packages the optional editor extension after installing its dependencies. [The verification record](docs/verification.md) records tested behaviors and limits. Passing these tests is not a claim that the application has no bugs.
 
 ## Attribution
 

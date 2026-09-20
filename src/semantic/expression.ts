@@ -1,5 +1,23 @@
 import { headName, numericOperator } from '../core/expression';
 import type { Expr } from '../core/types';
+import type { SetOperation } from './types';
+
+/** Exact constructor semantics from Mathlib.Data.Set.Defs. Overloaded notation
+ * requires the exporter's canonical-instance audit and a Set result type. */
+export function setConstructionParts(expr: Expr): { operation: SetOperation; operands: readonly Expr[] } | undefined {
+  if (expr.kind !== 'app') return;
+  const name = headName(expr);
+  const direct: Record<string, SetOperation> = { 'Set.union': 'union', 'Set.inter': 'intersection', 'Set.diff': 'difference', 'Set.compl': 'complement' };
+  const overloaded: Record<string, SetOperation> = { 'Union.union': 'union', 'Inter.inter': 'intersection', 'SDiff.sdiff': 'difference', 'Compl.compl': 'complement' };
+  const operation = name && (direct[name] ?? overloaded[name]);
+  if (!operation) return;
+  if (overloaded[name!] && (expr.standard !== true || expr.typeDescriptor?.kind !== 'set')) return;
+  if (expr.typeDescriptor && expr.typeDescriptor.kind !== 'set') return;
+  if (expr.argumentKinds && expr.argumentKinds.length !== expr.args.length) return;
+  const operands = expr.argumentKinds ? expr.args.filter((_, index) => expr.argumentKinds![index] === 'value') : expr.args;
+  if (operands.length !== (operation === 'complement' ? 1 : 2)) return;
+  return { operation, operands };
+}
 
 /** Flatten application association, while preserving the elaborator's argument order. */
 export function applicationParts(expr: Expr): { fn: Expr; args: Expr[] } {
@@ -23,26 +41,32 @@ export function visibleApplicationArguments(expr: Extract<Expr, { kind: 'app' }>
 }
 
 export function expressionKey(expr: Expr, identities: ReadonlyMap<string, string> = new Map(), depth = 0): string {
-  if (depth > 128) return 'depth-limit';
-  const key = (e: Expr) => expressionKey(e, identities, depth + 1);
-  switch (expr.kind) {
-    case 'var': return `var:${identities.get(expr.id) ?? expr.id}`;
-    case 'const': return expr.levels?.length ? JSON.stringify(['const', expr.name, expr.levels]) : `const:${expr.name}`;
-    case 'literal': return `literal:${typeof expr.value}:${expr.value}`;
-    case 'sort': return `sort:${expr.name}`;
-    case 'opaque': return `opaque:${expr.text}`;
-    case 'app': {
-      const { fn, args } = applicationParts(expr);
-      // Audited metric and operation metadata are part of meaning, not a rendering hint.
-      return JSON.stringify(['app', key(fn), args.map(key), expr.metric ?? null, expr.metricInstance ?? null, expr.dimension ?? null, expr.standard ?? null, expr.operator ?? null]);
+  type KeyData = string | number | boolean | null | KeyData[];
+  // Build a structural value, then serialize once. Serializing child keys as
+  // strings repeatedly escaped their quotes and grew exponentially with depth.
+  const encode = (current: Expr, names: ReadonlyMap<string, string>, level: number): KeyData => {
+    if (level > 128) return 'depth-limit';
+    const key = (child: Expr) => encode(child, names, level + 1);
+    switch (current.kind) {
+      case 'var': return `var:${names.get(current.id) ?? current.id}`;
+      case 'const': return current.levels?.length ? ['const', current.name, current.levels] : `const:${current.name}`;
+      case 'literal': return `literal:${typeof current.value}:${current.value}`;
+      case 'sort': return `sort:${current.name}`;
+      case 'opaque': return `opaque:${current.text}`;
+      case 'app': {
+        const { fn, args } = applicationParts(current);
+        return ['app', key(fn), args.map(key), current.metric ?? null, current.metricInstance ?? null, current.dimension ?? null, current.standard ?? null, current.operator ?? null];
+      }
+      case 'forall': case 'lambda': {
+        const local = new Map(names);
+        local.set(current.binder.id, `local:${level}`);
+        const type = current.binderType ?? current.binder.typeExpression;
+        return [current.kind, type ? key(type) : current.binder.type, encode(current.body, local, level + 1)];
+      }
     }
-    case 'forall': case 'lambda': {
-      const local = new Map(identities);
-      local.set(expr.binder.id, `local:${depth}`);
-      const type = expr.binderType ?? expr.binder.typeExpression;
-      return JSON.stringify([expr.kind, type ? key(type) : expr.binder.type, expressionKey(expr.body, local, depth + 1)]);
-    }
-  }
+  };
+  const data = encode(expr, identities, depth);
+  return typeof data === 'string' ? data : JSON.stringify(data);
 }
 
 /** Stable compact ids. The compiler additionally resolves collisions by comparing full keys. */
@@ -64,6 +88,8 @@ export function formatExpression(expr: Expr, depth = 0): string {
     case 'forall': return `∀ ${expr.binder.name}, ${format(expr.body)}`;
     case 'lambda': return `${expr.binder.name} ↦ ${format(expr.body)}`;
     case 'app': {
+      const set = setConstructionParts(expr);
+      if (set) return set.operation === 'complement' ? `${format(set.operands[0])}ᶜ` : `(${format(set.operands[0])} ${{ union: '∪', intersection: '∩', difference: '∖' }[set.operation]} ${format(set.operands[1])})`;
       const name = headName(expr);
       const op = numericOperator(expr);
       const argumentValues = visibleApplicationArguments(expr);

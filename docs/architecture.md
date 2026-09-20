@@ -80,3 +80,10 @@ The semantic document has a prover identifier and is independent of React and HT
 The application has generalized structure and a growing reusable visual vocabulary. It does not yet automatically discover a faithful geometric model for every mathematical construction. Fixed imports, limited supported input syntax, bounded semantic extraction, the numerical subset, incomplete-term recovery, richer layout planning, witness strategies, and active editor integration are engineering work still to do. High dimension is a representation-design problem, not grounds for rejecting a statement.
 
 The renderer has regression tests, not a formal correctness proof. The local server and allowlisted input are not an operating-system sandbox for arbitrary third-party Lean projects. Full transport and extraction details are in [the Lean contract](lean-contract.md).
+
+
+## Guided constructions and the Lean editor
+
+The 0.5 reader adds a pure source-linked attention plan in `src/reading/cues.ts`. Applications and set operations form reusable construction stages; quantifier order, branch roles, assumptions, and expression-local scopes stay attached. See [guided reading](guided-reading.md) and [set constructions](set-constructions.md). Object keys now serialize their structural representation once, avoiding recursive string-escaping growth.
+
+The optional [editor adapter](editor-integration.md) is a separate transport and execution boundary. Its VS Code controller reads the selected active buffer, tracks versioned requests, and sends checked fragments into the same frontend. Its native process shares the expression exporter with the standalone worker but imports the selected project's built environment. It does not add StatementLens imports to project source or expose filesystem paths through the browser's closed-term API. Project mode carries canonical-constructor provenance and conservatively disables numerical interpretation.

@@ -3,8 +3,11 @@ import type { ReadingBinder, ReadingDocument, ReadingNode, ReadingPanel } from '
 import { planReadingPresentation, visibleReadingNodes, type ReadingPresentation, type ReadingRegion } from '../reading/presentation';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { TypedConstructionFigure } from '../constructions';
+import { compileSetConstruction, SetConstructionFigure } from '../set-constructions';
 import { compactLabel } from './layout';
 import './statement-reading.css';
+import { compileReadingCues, type ReadingCue } from '../reading/cues';
+import { GuidedReading } from './GuidedReading';
 
 export interface StatementReadingViewProps {
   reading: ReadingDocument;
@@ -16,16 +19,12 @@ export interface StatementReadingViewProps {
   renderGeometry?: (panel: ReadingPanel) => ReactNode;
 }
 
-const palette = ['#387b79', '#596a9d', '#77648c', '#947149', '#3f748c', '#886b60', '#63784f', '#6c7594'];
-export function readingObjectColor(id: string): string {
-  let hash = 0;
-  for (let index = 0; index < id.length; index++) hash = (Math.imul(hash, 31) + id.charCodeAt(index)) | 0;
-  return palette[(hash >>> 0) % palette.length];
-}
+import { readingObjectColor } from './object-identity';
+export { readingObjectColor } from './object-identity';
 const roleText: Record<ReadingBinder['role'], string> = { universal: 'For every', existential: 'There is', parameter: 'Given parameter', lambda: 'For input', assumption: 'Assuming' };
 const roleSymbol: Record<ReadingBinder['role'], string> = { universal: '∀', existential: '∃', parameter: '↦', lambda: '↦', assumption: '⇒' };
 type Maps = { objects: Map<string, SemanticObject>; relations: Map<string, SemanticRelation>; panels: Map<string, ReadingPanel> };
-type RenderContext = StatementReadingViewProps & Maps & { visibleNodes: Set<string>; presentation: ReadingPresentation };
+type RenderContext = StatementReadingViewProps & Maps & { visibleNodes: Set<string>; presentation: ReadingPresentation; focusObjectIds?: ReadonlySet<string> };
 
 function keyActivate(event: KeyboardEvent<SVGGElement>, action?: () => void) {
   if (action && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); action(); }
@@ -35,7 +34,7 @@ function FigureObject({ id, ctx, children, title }: { id?: string; ctx: RenderCo
   const object = id ? ctx.objects.get(id) : undefined;
   const actionable = Boolean(object && ctx.onObjectSelect);
   const color = id ? readingObjectColor(id) : '#82918f';
-  return <g className={`sr-figure-object${id === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} style={{ '--object-color': color } as CSSProperties} data-reading-object={id} role={actionable ? 'button' : 'group'} tabIndex={actionable ? 0 : undefined} aria-label={object ? `${object.label}${object.type ? ` : ${object.type}` : ''}` : title} aria-pressed={actionable ? id === ctx.selectedObjectId : undefined} onClick={() => { if (id) ctx.onObjectSelect?.(id); }} onKeyDown={event => keyActivate(event, actionable && id ? () => ctx.onObjectSelect?.(id) : undefined)}>
+  return <g className={`sr-figure-object${id && ctx.focusObjectIds?.has(id) ? ' sr-cue-object' : ''}${id === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} style={{ '--object-color': color } as CSSProperties} data-reading-object={id} role={actionable ? 'button' : 'group'} tabIndex={actionable ? 0 : undefined} aria-label={object ? `${object.label}${object.type ? ` : ${object.type}` : ''}` : title} aria-pressed={actionable ? id === ctx.selectedObjectId : undefined} onClick={() => { if (id) ctx.onObjectSelect?.(id); }} onKeyDown={event => keyActivate(event, actionable && id ? () => ctx.onObjectSelect?.(id) : undefined)}>
     <title>{`${title ?? object?.label ?? ''}${object?.type ? ` : ${object.type}` : ''}`}</title>{children}
   </g>;
 }
@@ -90,6 +89,7 @@ function ExpressionPath({ objectId, relations, y, ctx }: { objectId: string; rel
 }
 
 function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
+  if (!['image', 'preimage'].includes(relation.kind) && compileSetConstruction(ctx.document, relation, relations)) return <SetConstructionFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   let body: ReactNode;
   let caption = relation.label;
   let mapPaths = false;
@@ -189,7 +189,7 @@ function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
   const geometry = panel && ctx.renderGeometry?.(panel);
   const root = roots[0];
   const left = root && port(root, 'left'), right = root && port(root, 'right');
-  const simpleConstraint = !geometry && roots.length === 1 && ['equality', 'inequality'].includes(root.kind) && left && right && !(root.kind === 'equality' && (expressionMapPath(left, relations).maps.length || expressionMapPath(right, relations).maps.length));
+  const simpleConstraint = !geometry && !(root && compileSetConstruction(ctx.document, root, relations)) && roots.length === 1 && ['equality', 'inequality'].includes(root.kind) && left && right && !(root.kind === 'equality' && (expressionMapPath(left, relations).maps.length || expressionMapPath(right, relations).maps.length));
   const contained = panel && (panel.coverage === 'partial' || roots.some(relation => relation.fidelity === 'structural' || ['predicate', 'equality', 'inequality'].includes(relation.kind)) || panel.groups.some(group => group.role === 'local-expression')) ? <ContainedExpressions panel={panel} ctx={ctx}/> : null;
   if (simpleConstraint && left && right) return <><div className="sr-inline-constraint" data-reading-node={node.id} aria-label={node.phrase}><span className="sr-constraint-math"><InlineObject id={left} ctx={ctx}/><span className="sr-inline-relation">{root.label}</span><InlineObject id={right} ctx={ctx}/></span><SourceButton node={node} ctx={ctx}><span className="sr-source-glyph" aria-hidden="true">↗</span></SourceButton></div>{contained}</>;
   return <section className="sr-clause" data-reading-node={node.id} aria-label={node.phrase || 'Statement condition'}>
@@ -244,38 +244,75 @@ function LogicOverview({ region, ctx, depth = 0 }: { region: ReadingRegion; ctx:
   return <div className={`sr-overview-node${depth > 3 ? ' sr-overview-deep' : ''}`}><button type="button" className={region.sourceNodeIds.includes(ctx.reading.selection.nodeId) ? 'sr-overview-selected' : ''} onClick={() => ctx.onNodeSelect?.(region.id)} title={region.node.lean}>{overviewTitle(region)}</button>{children.length > 0 && <div className="sr-overview-children">{children.map(child => <div key={child.region.id}>{child.role && <span className="sr-overview-edge-label">{child.role}</span>}<LogicOverview region={child.region} ctx={ctx} depth={depth + 1}/></div>)}</div>}</div>;
 }
 
+function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
+  const node = ctx.reading.nodes.find(candidate => candidate.id === cue.nodeId)!;
+  const focused = { ...ctx, focusObjectIds: new Set(cue.focusObjectIds) };
+  let body: ReactNode;
+  if (cue.intent === 'introduce') {
+    const nodes = cue.sourceNodeIds.flatMap(id => { const source = ctx.reading.nodes.find(candidate => candidate.id === id); return source?.binder ? [source] : []; });
+    body = <><BinderStrip nodes={nodes} ctx={focused}/><TypedConstructionFigure document={ctx.document} binders={cue.binders} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/></>;
+  } else if (cue.stage.kind === 'clause') {
+    body = <Clause node={node} ctx={focused}/>;
+  } else if (cue.stage.relationId) {
+    const relation = ctx.relations.get(cue.stage.relationId);
+    const panel = cue.panelId ? ctx.panels.get(cue.panelId) : undefined;
+    const group = panel?.groups.find(candidate => candidate.scopeId === cue.scopeId);
+    const relations = group?.relationIds.flatMap(id => ctx.relations.has(id) ? [ctx.relations.get(id)!] : []) ?? [];
+    const localContext = ctx.document.scopes.find(scope => scope.id === cue.scopeId)?.context ?? [];
+    body = <>{cue.stage.kind === 'construction' && <p className="rg-construction-context">Constructing part of <span title={node.lean}>{compactLabel(node.phrase || node.lean, 180)}</span></p>}{cue.stage.kind === 'contained' && <p className="rg-local-binders">Part of <code>{node.lean}</code>. This inner relation is not asserted separately.{group?.role === 'local-expression' && <> Local context: {localContext.join(' · ') || 'binders apply only inside this expression'}.</>}</p>}{relation && <RelationFigure relation={relation} relations={relations} ctx={focused}/>}</>;
+  } else if (cue.intent === 'logic') {
+    const grouped = cue.sourceNodeIds.flatMap(id => { const source = ctx.reading.nodes.find(candidate => candidate.id === id); return source?.kind === 'implies' ? [source] : []; });
+    const children = node.kind === 'implies' && grouped.length ? [...grouped.map(source => source.children[0]), grouped.at(-1)!.children[1]] : node.children;
+    body = <div className="rg-logic-children">{children.map((child, index) => <div className="rg-logic-child" key={child.id}><span>{node.kind === 'implies' ? index < children.length - 1 ? 'Given' : 'Then' : node.kind === 'or' ? `Alternative ${index + 1}` : node.kind === 'not' ? 'Negated condition' : node.kind === 'iff' ? `${index === 0 ? 'First' : 'Second'} condition` : `Condition ${index + 1}`}</span><button type="button" onClick={() => ctx.onNodeSelect?.(child.id)} title={child.lean}>{compactLabel(child.phrase || child.lean, 180)}</button></div>)}</div>;
+  } else body = <Clause node={node} ctx={focused}/>;
+  return <>{body}<details className="rg-source-context"><summary>Lean fragment and source context</summary><code>{node.lean}</code></details></>;
+}
+
 export function StatementReadingView(props: StatementReadingViewProps) {
   const { reading, document: semantic, selectedObjectId } = props;
   const surface = useRef<HTMLDivElement>(null);
+  const complete = useRef<HTMLDetailsElement>(null);
+  const [guideChoice, setGuideChoice] = useState<{ document: SemanticDocument; cueId: string; nodeId: string } | null>(null);
   const [nodeLimit, setNodeLimit] = useState(100);
   const previousSelection = useRef(reading.selection.nodeId);
   const [traces, setTraces] = useState<{ id: string; path: string }[]>([]);
   const maps = useMemo<Maps>(() => ({ objects: new Map(semantic.objects.map(object => [object.id, object])), relations: new Map(semantic.relations.map(relation => [relation.id, relation])), panels: new Map(reading.panels.map(panel => [panel.id, panel])) }), [semantic, reading]);
   const presentation = useMemo(() => planReadingPresentation(reading), [reading]);
+  const cuePlan = useMemo(() => compileReadingCues(reading, semantic), [reading, semantic]);
+  const activeCue = (guideChoice?.document === semantic && guideChoice.nodeId === reading.selection.nodeId ? cuePlan.cues.find(cue => cue.id === guideChoice.cueId) : undefined) ?? cuePlan.cues.find(cue => cue.sourceNodeIds.includes(reading.selection.nodeId)) ?? (reading.selection.nodeId === reading.root.id ? cuePlan.cues[0] : undefined);
+  function chooseCue(cue: ReadingCue) { setGuideChoice({ document: semantic, cueId: cue.id, nodeId: cue.nodeId }); props.onNodeSelect?.(cue.nodeId); }
+  function chooseNode(id: string) {
+    const cue = cuePlan.cues.find(candidate => candidate.sourceNodeIds.includes(id));
+    if (cue) setGuideChoice({ document: semantic, cueId: cue.id, nodeId: id });
+    else if (complete.current) complete.current.open = true;
+    props.onNodeSelect?.(id);
+  }
   useLayoutEffect(() => {
     const root = surface.current;
     if (!root || !selectedObjectId) { setTraces([]); return; }
     const update = () => {
       const box = root.getBoundingClientRect();
       const nodes = [...root.querySelectorAll<HTMLElement>('[data-reading-object]')].filter(element => element.getAttribute('data-reading-object') === selectedObjectId);
-      const points = nodes.slice(0, 16).map(element => { const r = element.getBoundingClientRect(); return { x: r.x - box.x + r.width / 2, y: r.y - box.y + r.height / 2 }; });
+      const points = nodes.map(element => element.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0).slice(0, 16).map(r => ({ x: r.x - box.x + r.width / 2, y: r.y - box.y + r.height / 2 }));
       setTraces(points.slice(1).map((point, index) => { const prior = points[index]; const midY = (prior.y + point.y) / 2; return { id: `${selectedObjectId}:${index}`, path: `M${prior.x} ${prior.y} C${prior.x} ${midY},${point.x} ${midY},${point.x} ${point.y}` }; }));
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(root);
     return () => observer.disconnect();
-  }, [reading, selectedObjectId]);
+  }, [reading, selectedObjectId, activeCue?.id]);
   useEffect(() => {
     const selected = reading.selection.nodeId;
+    if (!activeCue && complete.current) complete.current.open = true;
+    if (!complete.current?.open) { previousSelection.current = selected; return; }
     if (previousSelection.current === selected) return;
     previousSelection.current = selected;
     const regionId = presentation.nodeToRegionId[selected] ?? selected;
     const target = [...(surface.current?.querySelectorAll<HTMLElement>('[data-reading-step]') ?? [])].find(element => element.getAttribute('data-reading-step') === regionId);
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     target?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start', inline: 'nearest' });
-  }, [reading.selection.nodeId, presentation]);
+  }, [reading.selection.nodeId, presentation, activeCue]);
   const visibleNodes = visibleReadingNodes(reading, nodeLimit);
-  const ctx: RenderContext = { ...props, ...maps, visibleNodes, presentation };
-  return <div className="statement-reading-view"><div className="sr-atlas-layout"><div className="sr-atlas-main"><div className="sr-reading-intro"><span className="sr-reading-label">Visual reading</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div ref={surface} className="sr-reading-surface">{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ stroke: readingObjectColor(selectedObjectId) }}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label="Ordered visual reading of the statement"><AtlasRegion region={presentation.root} ctx={ctx}/></div></div>{reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {reading.nodes.length} logical nodes, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {Math.min(100, reading.nodes.length - visibleNodes.size)} nodes</button></div>}<p className="sr-reading-note">Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.</p></div><aside className="sr-overview"><div className="sr-overview-heading">Whole statement</div><LogicOverview region={presentation.root} ctx={ctx}/></aside></div></div>;
+  const ctx: RenderContext = { ...props, ...maps, onNodeSelect: chooseNode, visibleNodes, presentation };
+  return <div className="statement-reading-view"><div className="sr-atlas-layout"><div className="sr-atlas-main"><div className="sr-reading-intro"><span className="sr-reading-label">Visual reading</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div ref={surface} className="sr-reading-surface">{activeCue && <GuidedReading plan={cuePlan} cue={activeCue} reading={reading} document={semantic} onChoose={chooseCue} onObjectSelect={props.onObjectSelect}><CueFigure cue={activeCue} ctx={ctx}/></GuidedReading>}<details ref={complete} className="sr-complete-reading"><summary>Full visual statement</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ stroke: readingObjectColor(selectedObjectId) }}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label="Ordered visual reading of the statement"><AtlasRegion region={presentation.root} ctx={ctx}/></div></details></div>{reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {reading.nodes.length} logical nodes, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {Math.min(100, reading.nodes.length - visibleNodes.size)} nodes</button></div>}<p className="sr-reading-note">Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.</p></div><aside className="sr-overview"><div className="sr-overview-heading">Whole statement</div><LogicOverview region={presentation.root} ctx={ctx}/></aside></div></div>;
 }

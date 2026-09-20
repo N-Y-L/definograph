@@ -29,7 +29,7 @@ export interface Binder {
 }
 
 export type Expr =
-  | { kind: 'const'; name: string; levels?: string[]; type?: string; typeDescriptor?: TypeDescriptor }
+  | { kind: 'const'; name: string; levels?: string[]; canonical?: boolean; type?: string; typeDescriptor?: TypeDescriptor }
   | { kind: 'var'; id: string; name: string; type: string; typeDescriptor?: TypeDescriptor }
   | { kind: 'literal'; value: number | string }
   | { kind: 'app'; fn: Expr; args: Expr[]; metric?: Metric; metricInstance?: string; dimension?: number; domain?: Domain; standard?: boolean; type?: string; operator?: NumericOperator; typeDescriptor?: TypeDescriptor; argumentKinds?: ('instance' | 'proof' | 'type' | 'value')[] }
@@ -61,8 +61,8 @@ export interface Analysis {
   metrics: unknown[];
   diagnostics: unknown[];
   schemaVersion?: number;
-  validation?: 'kernel-type-checked-statement' | 'kernel-type-checked-declaration-type';
-  provenance?: { assistant: string; inputMode: 'term' | 'declaration'; declaration?: { name: string; kind: string; module?: string; type: string }; [key: string]: unknown };
+  validation?: 'kernel-type-checked-statement' | 'kernel-type-checked-declaration-type' | 'kernel-type-checked-context-fragment';
+  provenance?: { assistant: string; inputMode: 'term' | 'declaration' | 'editor'; declaration?: { name: string; kind: string; module?: string; type: string }; [key: string]: unknown };
   definitions?: { name: string; kind: string; type: string; module?: string; canExpand: boolean }[];
   sourceTerms?: { startByte: number; endByte: number; lean: string; type: string; isBinder: boolean; origin: 'lean-infotree' }[];
   readableMath?: {provider:'leantex';status:'rendered'|'unavailable';latex?:string;reason?:string};

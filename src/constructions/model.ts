@@ -1,4 +1,5 @@
 import type { Binder, Expr, StatementNode, TypeDescriptor } from '../core/types';
+import { headName } from '../core/expression';
 import type { ReadingBinder } from '../reading/types';
 import { applicationParts, expressionKey, formatExpression } from '../semantic/expression';
 import type { SemanticDocument, SemanticObject } from '../semantic/types';
@@ -68,7 +69,7 @@ function typeOfBinder(node: StatementNode, binder: Binder): Expr | undefined {
   if ((expression.kind === 'forall' || expression.kind === 'lambda') && expression.binder.id === binder.id) return expression.binderType ?? expression.binder.typeExpression;
   if (node.kind === 'exists' && expression.kind === 'app') {
     const { fn, args } = applicationParts(expression);
-    if (fn.kind === 'const' && fn.name === 'Exists' && args.length === 2) {
+    if (headName(fn) === 'Exists' && args.length === 2) {
       const body = args[1];
       if (body.kind === 'lambda' && body.binder.id === binder.id) return body.binderType ?? args[0];
     }
@@ -163,7 +164,7 @@ export function compileTypedConstruction(document: SemanticDocument, binders: re
       continue;
     }
     const { fn, args } = applicationParts(type);
-    if (descriptor?.kind === 'set' && fn.kind === 'const' && fn.name === 'Set' && args.length === 1) {
+    if (descriptor?.kind === 'set' && headName(fn) === 'Set' && args.length === 1) {
       members.push({ ...base, kind: 'set', typeId: addType(args[0], descriptor.element).id }); continue;
     }
     if (type.kind === 'opaque' || !completeIdentity(type)) {

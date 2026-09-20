@@ -2,6 +2,7 @@ export interface Example { id: string; title: string; description: string; sourc
 export const examples: Example[] = [
   { id: 'epsilon', title: 'A point in an ε-ball', description: 'An arbitrary point under a geometric assumption.', source: '∀ (c : EuclideanSpace ℝ (Fin 2)) (ε : ℝ),\n  0 < ε → ∀ P : EuclideanSpace ℝ (Fin 2),\n  P ∈ Metric.ball c ε → dist P c < ε' },
   { id: 'sets', title: 'Sets, membership, and inclusion', description: 'Shared objects connect conditions across the statement.', source: '∀ (A B : Set ℝ) (x : ℝ),\n  A ⊆ B → x ∈ A → x ∈ B' },
+  { id: 'set-algebra', title: 'A condition on compound sets', description: 'Union, intersection, complement, and difference compose over any type.', source: '∀ (α : Type) (A B C : Set α) (x : α),\n  x ∈ (A ∪ B) ∩ Cᶜ → x ∈ (A \\ C) ∪ (B \\ C)' },
   { id: 'maps', title: 'Functions between arbitrary types', description: 'Read symbolic structure without choosing numerical coordinates.', source: '∀ (α β : Type) (f : α → β),\n  Function.Injective f →\n  ∀ x y : α, f x = f y → x = y' },
   { id: 'paths', title: 'An equation between two map paths', description: 'Compare two routes through abstract objects, without coordinates.', source: '∀ (A B C : Type) (f : A → B) (g : B → C)\n  (h : A → C) (x : A), g (f x) = h x' },
   { id: 'family', title: 'A map into a family of types', description: 'The target type changes with the input; the witness stays in the corresponding fiber.', source: '∀ (A : Type) (B : A → Type)\n  (f : (a : A) → B a) (x : A),\n  ∃ y : B x, f x = y' },

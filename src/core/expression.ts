@@ -5,7 +5,9 @@ const UNKNOWN = (reason: string): NumericResult => ({ status: 'unknown', reason 
 const MAX_DEPTH = 128;
 
 export function headName(expr: Expr): string | undefined {
-  if (expr.kind === 'const') return expr.name;
+  // Editor projects can define familiar names without importing the intended
+  // library. Such constants keep their labels and identity, but no built-in meaning.
+  if (expr.kind === 'const') return expr.canonical === false ? undefined : expr.name;
   return expr.kind === 'app' ? headName(expr.fn) : undefined;
 }
 
@@ -25,6 +27,7 @@ const operators: Record<string, NumericOperator> = {
 export function numericOperator(expr: Expr): NumericOperator | undefined {
   if (expr.kind !== 'app') return undefined;
   const name = headName(expr);
+  if (!name) return undefined;
   if (name === 'Prod.mk') return 'pair';
   if (name === 'Prod.fst') return 'proj1';
   if (name === 'Prod.snd') return 'proj2';
@@ -181,7 +184,7 @@ export function evaluatePredicate(expression: Expr | StatementNode, scenario: Sc
       if (input.children.length >= 2) return combine(input.kind, evaluate(input.children[0]!, depth + 1), evaluate(input.children[1]!, depth + 1));
       return unknown('Incomplete logical expression.');
     }
-    if (input.kind === 'const' && (input.name === 'True' || input.name === 'False')) return { status: input.name === 'True' ? 'true' : 'false', approximate: true, explanation: 'Logical constant.' };
+    if (input.kind === 'const' && (headName(input) === 'True' || headName(input) === 'False')) return { status: input.name === 'True' ? 'true' : 'false', approximate: true, explanation: 'Logical constant.' };
     if (input.kind !== 'app') return unknown('No audited sample evaluation is available for this predicate.');
     const name = headName(input);
     const args = input.args;

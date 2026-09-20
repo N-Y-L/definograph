@@ -1,0 +1,81 @@
+{
+  "name": "statement-lens-editor",
+  "displayName": "Statement Lens \u2014 Lean context",
+  "description": "Read selected Lean propositions in their actual project context with Statement Lens.",
+  "version": "0.5.0",
+  "publisher": "statement-lens-local",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Visualization",
+    "Education"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onCommand:statementLens.visualizeSelection"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Lean project elaboration executes trusted project code."
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "statementLens.visualizeSelection",
+        "title": "Statement Lens: Visualize Selection",
+        "enablement": "editorLangId == lean4 && isWorkspaceTrusted"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "statementLens.visualizeSelection",
+          "when": "editorLangId == lean4 && isWorkspaceTrusted",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Statement Lens",
+      "properties": {
+        "statementLens.engineDirectory": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Absolute path to the built Statement Lens repository (npm run build and npm run setup:lean). Empty uses the parent of this extension folder."
+        },
+        "statementLens.libraryPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "description": "Additional existing built Lean library directories for custom Lake layouts, resolved relative to the project root. These are searched before standard project/manifest paths."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts",
+    "package": "node package.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.2",
+    "@types/vscode": "1.95.0",
+    "@vscode/vsce": "3.6.2",
+    "esbuild": "0.25.12",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2"
+  },
+  "extensionDependencies": [
+    "leanprover.lean4"
+  ]
+}

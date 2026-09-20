@@ -1,8 +1,9 @@
-import { useId, useMemo, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useMemo, type KeyboardEvent, type ReactNode, type CSSProperties } from 'react';
 import type { ReadingBinder } from '../reading/types';
 import type { SemanticDocument } from '../semantic/types';
 import { compileTypedConstruction, isUsefulConstruction, type ConstructionMap, type ConstructionType, type TypedConstruction } from './model';
 import './constructions.css';
+import { readingObjectColor } from '../visual/object-identity';
 
 export interface TypedConstructionFigureProps {
   document: SemanticDocument;
@@ -17,13 +18,13 @@ const roles = { universal: 'For every', existential: 'There exists', parameter: 
 type Interaction = Pick<TypedConstructionFigureProps, 'selectedObjectId' | 'onObjectSelect'>;
 
 function ObjectControl({ id, label, children, selectedObjectId, onObjectSelect }: Interaction & { id?: string; label: string; children: ReactNode }) {
-  return id ? <button type="button" className={`tc-object${selectedObjectId === id ? ' tc-selected' : ''}`} data-reading-object={id} title={label} aria-label={label} aria-pressed={selectedObjectId === id} onClick={() => onObjectSelect?.(id)}>{children}</button> : <span className="tc-object tc-symbolic" title={label}>{children}</span>;
+  return id ? <button type="button" className={`tc-object${selectedObjectId === id ? ' tc-selected' : ''}`} data-reading-object={id} style={id ? { '--object-color': readingObjectColor(id) } as CSSProperties : undefined} title={label} aria-label={label} aria-pressed={selectedObjectId === id} onClick={() => onObjectSelect?.(id)}>{children}</button> : <span className="tc-object tc-symbolic" title={label}>{children}</span>;
 }
 
 function SvgObject({ id, label, children, selectedObjectId, onObjectSelect }: Interaction & { id?: string; label: string; children: ReactNode }) {
   const actionable = !!id && !!onObjectSelect;
   const activate = (event: KeyboardEvent<SVGGElement>) => { if (actionable && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onObjectSelect(id); } };
-  return <g className={`tc-svg-object${selectedObjectId && selectedObjectId === id ? ' tc-selected' : ''}`} data-reading-object={id} aria-label={label} role={actionable ? 'button' : 'group'} aria-pressed={actionable ? selectedObjectId === id : undefined} tabIndex={actionable ? 0 : undefined} onKeyDown={activate} onClick={() => { if (id) onObjectSelect?.(id); }}><title>{label}</title>{children}</g>;
+  return <g className={`tc-svg-object${selectedObjectId && selectedObjectId === id ? ' tc-selected' : ''}`} data-reading-object={id} style={id ? { '--object-color': readingObjectColor(id) } as CSSProperties : undefined} aria-label={label} role={actionable ? 'button' : 'group'} aria-pressed={actionable ? selectedObjectId === id : undefined} tabIndex={actionable ? 0 : undefined} onKeyDown={activate} onClick={() => { if (id) onObjectSelect?.(id); }}><title>{label}</title>{children}</g>;
 }
 
 function MemberLabels({ type, model, ...interaction }: Interaction & { type: ConstructionType; model: TypedConstruction }) {

@@ -110,6 +110,10 @@ try {
   run(leanExecutable, ['-o', path.join(readableLibrary, 'StatementLens', 'Response.olean'), '-c', responseC, 'StatementLens/Response.lean'], {
     cwd: path.join(root, 'lean'), env: { ...process.env, LEAN_PATH: readableLibrary },
   });
+  const exportC = path.join(readableC, 'Export.c');
+  run(leanExecutable, ['-o', path.join(readableLibrary, 'StatementLens', 'Export.olean'), '-c', exportC, 'StatementLens/Export.lean'], {
+    cwd: path.join(root, 'lean'), env: { ...process.env, LEAN_PATH: readableLibrary },
+  });
   leanPath = [readableLibrary, ...leanPath.filter(candidate => candidate !== readableLibrary)];
   const workerExecutable = path.join(local, process.platform === 'win32' ? 'statementlens-worker.exe' : 'statementlens-worker');
   const cFile = path.join(local, 'worker.c');
@@ -119,9 +123,16 @@ try {
   // Do not overwrite the inode mapped by a running persistent worker. A completed
   // same-directory rename lets existing requests finish and new sessions use this build.
   const nextWorkerExecutable = `${workerExecutable}.next`;
-  run(leanc, ['-rdynamic', '-o', nextWorkerExecutable, cFile, responseC]);
+  run(leanc, ['-rdynamic', '-o', nextWorkerExecutable, cFile, responseC, exportC]);
   await rename(nextWorkerExecutable, workerExecutable);
-  await writeFile(path.join(local, 'config.json'), JSON.stringify({ leanExecutable, workerExecutable, leanPath, leanSysroot }, null, 2) + '\n');
+  const contextExecutable = path.join(local, 'statementlens-context');
+  const contextC = path.join(local, 'context.c');
+  run(leanExecutable, ['-c', contextC, 'StatementLens/Context.lean'], {
+    cwd: path.join(root, 'lean'), env: { ...process.env, LEAN_PATH: readableLibrary },
+  });
+  run(leanc, ['-rdynamic', '-o', `${contextExecutable}.next`, contextC, responseC, exportC]);
+  await rename(`${contextExecutable}.next`, contextExecutable);
+  await writeFile(path.join(local, 'config.json'), JSON.stringify({ leanExecutable, workerExecutable, contextExecutable, leanPath, leanSysroot }, null, 2) + '\n');
   console.log(`Built ${workerExecutable}\nLean 4.28.0; mathlib ${pin}; LeanTeX ${readableManifest.revision}. ${values.download ? "Dependencies were prepared only in the isolated repository cache." : "Existing project caches were only read."}`);
 } catch (error) {
   console.error(error.message);
