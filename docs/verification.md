@@ -2,7 +2,27 @@
 
 Verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
 
-## Release 0.2 checks
+## Release 0.3 checks
+
+The statement-first release passes strict TypeScript, the production build, and **305 automated checks**:
+
+| Suite | Passed | Added assurance |
+|---|---:|---|
+| `npm test` | 157 | Complete reading composition, scoped sequences, semantic diagrams, composed map paths, symbolic radius cases, identity preservation, bounded safe KaTeX rendering, and prior core checks |
+| `npm run test:server` | 26 | Local transport, cancellation, request limits, process replacement, and static asset containment |
+| `npm run test:lean` | 45 | Real Lean elaboration, kernel checks, instance audits, signatures/bodies, and rejection of executable input |
+| `npm run test:integration` | 15 | All 14 interface examples through the actual worker plus combined geometry/dependency behavior |
+| `npm run test:semantic` | 21 | Typed object/relationship recognition, scope, partial applications, and declaration behavior |
+| `npm run test:reading` | 20 | Whole-statement sequence and overview, negation, alternatives, both iff directions, witnesses, abstract composition, and dependent morphism families |
+| `npm run test:notation` | 21 | Actual LeanTeX output through strict KaTeX, binder order, logical grouping, definition bodies/signatures, custom instances, fallback recovery, and aggregate response limits |
+
+The default UI was checked in the in-app browser for symbolic geometry, abstract sets, an equation between composed maps, fixed-before-universal witness order, and negation inside a disjunction. No numerical sliders appear in the default reading; the separate exploration action retains the numerical views. Mathematical notation rendered from real worker output with local fonts. Mobile-width DOM checks at a browser-reported 500 pixels showed no horizontal document overflow. Deep overview indentation was capped after the desktop screenshot exposed narrow text columns. No console errors appeared in the final exercised workflows.
+
+Review found and corrected a diagram drawing the same center expression as two distinct points. It now shows one object and the distance-to-self condition. Native notation integration also required resolving duplicate printer-extension initialization; the final worker dynamically imports the fixed printer once and calls only its trusted entry point. Worker builds atomically replace the executable. Optional notation cannot enlarge an otherwise accepted response beyond the transport limit: it is dropped before required semantic fields.
+
+LeanTeX source is pinned and checksummed. Compatibility changes are applied only to isolated build copies. No additional Mathlib modules were introduced. See [the LeanTeX integration record](leantex-integration.md) and [the statement-first acceptance review](statement-first-review.md).
+
+## Historical release 0.2 checks
 
 `npm run check` passes: strict TypeScript, production build, and **213 automated checks**.
 
@@ -20,7 +40,7 @@ Higher-order partial applications of equality, image, and ball constructors are 
 
 Numerical tests include the final coordinate of 21D and 256D vectors in Euclidean and maximum distances, slices, and complete distance profiles. Larger numerical vectors remain symbolic. A million-coordinate type does not allocate a million controls. Other cases include negative/nonpositive radii, tangent intersections, filled maximum-metric sphere slices, huge integers, finite-domain numerals, division by zero, custom operations, and unknown predicates. `False` remains a valid proposition with no implied proof.
 
-## Browser checks
+## Historical release 0.2 browser checks
 
 The production interface was exercised in the Codex in-app browser:
 

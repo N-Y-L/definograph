@@ -1,8 +1,8 @@
 {
   "name": "statement-lens",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Inspect the geometry and logical structure of Lean mathematical statements locally.",
+  "description": "Read Lean mathematical statements through a faithful visual sequence and a linked logical overview.",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {
@@ -12,12 +12,14 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:server": "tsx --test server/*.test.ts",
-    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic",
+    "check": "npm run build && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation",
     "start": "tsx server/index.ts",
     "setup:lean": "node scripts/lean-build.mjs",
     "test:lean": "node scripts/lean-test.mjs",
     "test:integration": "node --import tsx scripts/core-integration.ts",
-    "test:semantic": "node --import tsx scripts/semantic-integration.ts"
+    "test:semantic": "node --import tsx scripts/semantic-integration.ts",
+    "test:reading": "node --import tsx scripts/reading-integration.ts",
+    "test:notation": "node --import tsx scripts/notation-integration.ts"
   },
   "engines": {
     "node": ">=22.12"
@@ -29,6 +31,7 @@
     "@codemirror/view": "6.43.12",
     "@lezer/highlight": "1.2.3",
     "codemirror": "6.0.2",
+    "katex": "0.18.7",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

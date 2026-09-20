@@ -12,6 +12,12 @@ The user interface uses React (MIT). Development tools include TypeScript
 Dependency licenses and notices remain in their respective packages.
 
 No third-party diagram implementation is vendored into this repository.
+The optional expression pretty printer vendors LeanTeX under Apache License 2.0;
+its license, pinned revision, and compatibility changes are recorded in vendor/LeanTeX.
+https://github.com/kmill/LeanTeX
+
+KaTeX supplies local mathematical typesetting under the MIT License.
+https://github.com/KaTeX/KaTeX
 
 CodeMirror and its supporting packages are used under the MIT License.
 https://github.com/codemirror/dev

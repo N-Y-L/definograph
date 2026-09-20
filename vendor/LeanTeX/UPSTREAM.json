@@ -1,0 +1,24 @@
+{
+  "repository": "https://github.com/kmill/LeanTeX",
+  "revision": "d66db4582b6cb4d9fa0b6309168103a248a5fd46",
+  "originalToolchain": "leanprover/lean4:v4.18.0-rc1",
+  "license": "Apache-2.0",
+  "modules": [
+    "Defs",
+    "LatexChar",
+    "MkAppN",
+    "Basic",
+    "RuleSyntax",
+    "Builtins",
+    "LatexCmd"
+  ],
+  "files": {
+    "LeanTeX/Defs.lean": "67cacb08d39518e07c11253e22e50c7711f895599a3337402aa757bdfd03a8cf",
+    "LeanTeX/LatexChar.lean": "f68fb4f8e2bf7aee43b7410d49091a6285dc105014ef8593a000c4447ac26dec",
+    "LeanTeX/MkAppN.lean": "ea36492c36b4bf8f29d77ab222f71bb46d53f024e00d19e25ff67615d8a75ccd",
+    "LeanTeX/Basic.lean": "95d86d97b17772c30357113be902d6c5284c197a8363a955cfb5c99b2e4b06a1",
+    "LeanTeX/RuleSyntax.lean": "2304c9e2041f50ad47e65f472fc3201d4ae5e224094eef5924ab9d721ee6f1f1",
+    "LeanTeX/Builtins.lean": "d165311a33092217e09af5fd42e53c350dac658443dc767c1d4b718facf2acf9",
+    "LeanTeX/LatexCmd.lean": "23c1af50baf81487b74115cd8cacb18fdccbfd7ae1037e60d0a6aeacd7649b3b"
+  }
+}

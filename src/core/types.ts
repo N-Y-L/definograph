@@ -57,6 +57,7 @@ export interface Analysis {
   type: string;
   tree: StatementNode;
   expression: Expr;
+  originalExpression?: Expr;
   metrics: unknown[];
   diagnostics: unknown[];
   schemaVersion?: number;
@@ -64,6 +65,8 @@ export interface Analysis {
   provenance?: { assistant: string; inputMode: 'term' | 'declaration'; declaration?: { name: string; kind: string; module?: string; type: string }; [key: string]: unknown };
   definitions?: { name: string; kind: string; type: string; module?: string; canExpand: boolean }[];
   sourceTerms?: { startByte: number; endByte: number; lean: string; type: string; isBinder: boolean; origin: 'lean-infotree' }[];
+  readableMath?: {provider:'leantex';status:'rendered'|'unavailable';latex?:string;reason?:string};
+  definitionReadableMath?: {provider:'leantex';status:'rendered'|'unavailable';latex?:string;reason?:string};
   definitionExpression?: Expr | null;
   definitionTree?: StatementNode | null;
   definitionBodyStatus?: 'available' | 'export-size-limit' | 'not-a-definition';

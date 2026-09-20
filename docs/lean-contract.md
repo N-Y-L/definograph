@@ -182,3 +182,11 @@ A Rocq adapter is architecturally feasible at the typed semantic-document bounda
 - [Pinned mathlib cache command](https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Cache/Main.lean)
 
 Developed by Codex under the supervision of Neil Yuanting Li.
+
+## Optional readable mathematical notation
+
+`readableMath` describes the original elaborated expression; `definitionReadableMath` describes an available bounded definition body separately. Each has `provider: "leantex"`, a `status` of `rendered` or `unavailable`, and either `latex` or a fallback `reason`. These are optional response fields; the typed semantic data remains authoritative.
+
+A pinned LeanTeX source subset and a small display adapter are built into this repository's ignored `.local/leantex/` directory. The worker dynamically imports that fixed adapter once, then calls its exact trusted declaration. Clients cannot choose an entry point, module, printer, or command. Pretty printing is bounded, restores its local state, and runs after required semantic extraction. If optional notation would exceed the aggregate response limit, the serializer removes it while preserving mandatory fields and request identity. The browser uses local KaTeX with external links, images, and arbitrary HTML disabled.
+
+See [LeanTeX integration](leantex-integration.md) for the upstream revision, compatibility patch, resource limits, and tests. This adds no Mathlib imports or changes to existing formal projects.

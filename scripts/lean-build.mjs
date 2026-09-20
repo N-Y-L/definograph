@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { access, copyFile, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { access, copyFile, mkdir, readFile, readdir, realpath, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -70,14 +71,58 @@ try {
   }
   await access(path.join(mathlibLibrary, 'Mathlib', 'Analysis', 'InnerProductSpace', 'PiL2.olean'));
   await mkdir(local, { recursive: true });
+  // Preserve the vendored originals. Only these checksummed, bounded compatibility edits
+  // are applied to copies in this repository's isolated build directory.
+  const readableVendor = path.join(root, 'vendor', 'LeanTeX');
+  const readableManifest = JSON.parse(await readFile(path.join(readableVendor, 'UPSTREAM.json'), 'utf8'));
+  if (readableManifest.revision !== 'd66db4582b6cb4d9fa0b6309168103a248a5fd46') throw new Error('Unexpected LeanTeX source revision.');
+  const readableRoot = path.join(local, 'leantex');
+  const readableSource = path.join(readableRoot, 'src');
+  const readableLibrary = path.join(readableRoot, 'lib', 'lean');
+  const readableC = path.join(readableRoot, 'c');
+  for (const directory of [readableRoot, readableSource, readableLibrary, readableC, path.join(readableSource, 'LeanTeX'), path.join(readableLibrary, 'LeanTeX'), path.join(readableLibrary, 'StatementLens')]) {
+    await mkdir(directory, { recursive: true });
+    if (await realpath(directory) !== directory) throw new Error('The isolated LeanTeX build directories must not be symlinks.');
+  }
+  const replacements = {
+    RuleSyntax: [['                aux_def', '                public aux_def', 3]],
+    Builtins: [[`match (s.split ('_' == ·)).map (fun part => part.foldl (λ s' t => s' ++ t.toLatex) "") with`, `match ((s.split ('_' == ·)).map (fun part => part.foldl (λ s' t => s' ++ t.toLatex) "")).toList with`, 1]],
+  };
+  const readableModules = ['Defs', 'LatexChar', 'MkAppN', 'Basic', 'RuleSyntax', 'Builtins'];
+  for (const module of readableModules) {
+    const relative = `LeanTeX/${module}.lean`;
+    let source = await readFile(path.join(readableVendor, 'upstream', relative), 'utf8');
+    const digest = createHash('sha256').update(source).digest('hex');
+    if (digest !== readableManifest.files[relative]) throw new Error(`Vendored LeanTeX source checksum mismatch: ${relative}`);
+    for (const [before, after, count] of replacements[module] ?? []) {
+      if (source.split(before).length - 1 !== count) throw new Error(`LeanTeX compatibility patch no longer matches: ${relative}`);
+      source = source.replaceAll(before, after);
+    }
+    await writeFile(path.join(readableSource, relative), source);
+    run(leanExecutable, ['-o', path.join(readableLibrary, 'LeanTeX', `${module}.olean`), relative], {
+      cwd: readableSource, env: { ...process.env, LEAN_PATH: readableLibrary },
+    });
+  }
+  run(leanExecutable, ['-o', path.join(readableLibrary, 'StatementLens', 'ReadableMath.olean'), 'StatementLens/ReadableMath.lean'], {
+    cwd: path.join(root, 'lean'), env: { ...process.env, LEAN_PATH: readableLibrary },
+  });
+  const responseC = path.join(readableC, 'Response.c');
+  run(leanExecutable, ['-o', path.join(readableLibrary, 'StatementLens', 'Response.olean'), '-c', responseC, 'StatementLens/Response.lean'], {
+    cwd: path.join(root, 'lean'), env: { ...process.env, LEAN_PATH: readableLibrary },
+  });
+  leanPath = [readableLibrary, ...leanPath.filter(candidate => candidate !== readableLibrary)];
   const workerExecutable = path.join(local, process.platform === 'win32' ? 'statementlens-worker.exe' : 'statementlens-worker');
   const cFile = path.join(local, 'worker.c');
-  run(leanExecutable, ['-c', cFile, path.join(root, 'lean', 'StatementLens', 'Worker.lean')], { env: { ...process.env, LEAN_PATH: '' } });
+  run(leanExecutable, ['-c', cFile, path.join(root, 'lean', 'StatementLens', 'Worker.lean')], { env: { ...process.env, LEAN_PATH: readableLibrary } });
   const leanc = path.join(leanSysroot, 'bin', process.platform === 'win32' ? 'leanc.exe' : 'leanc');
   if (process.platform === 'win32') throw new Error('Native Windows linking is not yet supported. Use WSL with Lean 4.28.0.');
-  run(leanc, ['-rdynamic', '-o', workerExecutable, cFile]);
+  // Do not overwrite the inode mapped by a running persistent worker. A completed
+  // same-directory rename lets existing requests finish and new sessions use this build.
+  const nextWorkerExecutable = `${workerExecutable}.next`;
+  run(leanc, ['-rdynamic', '-o', nextWorkerExecutable, cFile, responseC]);
+  await rename(nextWorkerExecutable, workerExecutable);
   await writeFile(path.join(local, 'config.json'), JSON.stringify({ leanExecutable, workerExecutable, leanPath, leanSysroot }, null, 2) + '\n');
-  console.log(`Built ${workerExecutable}\nLean 4.28.0; mathlib ${pin}. ${values.download ? "Dependencies were prepared only in the isolated repository cache." : "Existing project caches were only read."}`);
+  console.log(`Built ${workerExecutable}\nLean 4.28.0; mathlib ${pin}; LeanTeX ${readableManifest.revision}. ${values.download ? "Dependencies were prepared only in the isolated repository cache." : "Existing project caches were only read."}`);
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

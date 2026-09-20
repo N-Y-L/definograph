@@ -1,4 +1,5 @@
 import Lean
+import StatementLens.Response
 
 /- StatementLens never loads source files supplied by clients. The only user-controlled
    input is parsed as one term, checked against a closed syntax allowlist, elaborated
@@ -8,6 +9,7 @@ open Lean Meta Elab Term
 namespace StatementLens
 
 def imports : Array Import := #[
+  { module := `StatementLens.ReadableMath },
   { module := `Mathlib.Topology.MetricSpace.Basic },
   { module := `Mathlib.Analysis.InnerProductSpace.PiL2 }
 ]
@@ -347,7 +349,7 @@ partial def sourceTerms (infoTree : InfoTree) (out : Array Json := #[]) : MetaM 
     for child in children do out ← sourceTerms child out
     return out
 
-def analyze (source : String) (request : Json) : TermElabM Json := withoutErrToSorry do
+def analyze (source : String) (request : Json) (renderNotation : Expr → MetaM Json) : TermElabM Json := withoutErrToSorry do
   let env ← getEnv
   let policy ← readPolicy request
   let inputMode ← match request.getObjValAs? String "inputMode" with
@@ -359,6 +361,7 @@ def analyze (source : String) (request : Json) : TermElabM Json := withoutErrToS
     | .error err => throwError "{err}"
   let mut declaration := Json.null
   let mut definitionExpression := Json.null
+  let mut definitionMathExpression : Option Expr := none
   let mut definitionTree := Json.null
   let mut definitionBodyStatus := "not-a-definition"
   let mut inspected := "statement"
@@ -372,6 +375,7 @@ def analyze (source : String) (request : Json) : TermElabM Json := withoutErrToS
         let body := info.value!
         if body.approxDepth <= 80 && body.sizeWithoutSharing <= 1500 then
           checkWithKernel body
+          definitionMathExpression := some body
           definitionTree ← tree body #[] "definition" policy
           definitionExpression := expressionOf definitionTree
           definitionBodyStatus := "available"
@@ -405,10 +409,19 @@ def analyze (source : String) (request : Json) : TermElabM Json := withoutErrToS
       if info.isDefinition && !info.isUnsafe && !info.isPartial then
         let entry ← declarationJson info
         if !definitions.contains entry then definitions := definitions.push entry
+  -- Finish every required semantic operation before invoking optional presentation code.
+  let pretty ← pp expression
+  let printedType ← pp (← inferType expression)
+  let originalExpression ← encode expression #[] "original"
+  let readableMath ← renderNotation expression
+  let definitionReadableMath ← match definitionMathExpression with
+    | some body => renderNotation body
+    | none => pure (obj [("provider", toJson "leantex"), ("status", toJson "unavailable"),
+      ("reason", toJson "No bounded definition body is available for notation printing.")])
   return obj [
     ("ok", toJson true), ("schemaVersion", toJson (2 : Nat)),
     ("leanVersion", str Lean.versionString), ("source", str source),
-    ("pretty", str (← pp expression)), ("type", str (← pp (← inferType expression))),
+    ("pretty", str pretty), ("type", str printedType),
     ("validation", str (if proposition then "kernel-type-checked-statement" else "kernel-type-checked-declaration-type")),
     ("provenance", obj [("assistant", str "lean"), ("inputMode", str inputMode), ("inspected", str inspected),
       ("declaration", declaration), ("mathlibRevision", str "8f9d9cff6bd728b17a24e163c9402775d9e6a365")]),
@@ -416,7 +429,8 @@ def analyze (source : String) (request : Json) : TermElabM Json := withoutErrToS
     ("definitions", Json.arr definitions), ("sourceTerms", Json.arr terms),
     ("definitionExpression", definitionExpression), ("definitionTree", definitionTree),
     ("definitionBodyStatus", str definitionBodyStatus),
-    ("tree", result), ("expression", expressionOf result), ("originalExpression", ← encode expression #[] "original"),
+    ("readableMath", readableMath), ("definitionReadableMath", definitionReadableMath),
+    ("tree", result), ("expression", expressionOf result), ("originalExpression", originalExpression),
     ("metrics", Json.arr #[]), ("diagnostics", Json.arr #[])]
 
 def errorResult (message : String) : Json := obj [("ok", toJson false), ("schemaVersion", toJson (2 : Nat)), ("error", str message),
@@ -430,6 +444,11 @@ unsafe def main : IO Unit := do
   enableInitializersExecution
   let opts := ({} : Options).set `maxRecDepth (256 : Nat) |>.set `maxHeartbeats (400000 : Nat) |>.set `autoImplicit false
   let env ← importModules imports opts 0 (loadExts := true)
+  -- This exact, trusted declaration is the only optional printer entry point.
+  -- User expressions are data; no client-selected declaration is evaluated as code.
+  let renderNotation := (env.evalConst (Expr → MetaM Json) opts
+    `StatementLens.ReadableMath.render).toOption.getD (fun _ => pure
+      (Response.unavailable "The optional notation printer could not initialize."))
   let stdin ← IO.getStdin
   let stdout ← IO.getStdout
   repeat
@@ -440,11 +459,11 @@ unsafe def main : IO Unit := do
       let request ← IO.ofExcept (Json.parse line)
       let source ← IO.ofExcept (request.getObjValAs? String "source")
       if source.utf8ByteSize > 65536 then throw (IO.userError "Statement exceeds 65536 bytes.")
-      let action := MetaM.run' (TermElabM.run' (analyze source request))
+      let action := MetaM.run' (TermElabM.run' (analyze source request renderNotation))
       Core.CoreM.toIO' action { fileName := "<statement>", fileMap := FileMap.ofString source, options := opts } { env }
     catch err => pure (errorResult err.toString)
     let result := if requestId == Json.null then result else result.setObjVal! "requestId" requestId
-    stdout.putStrLn result.compress
+    stdout.putStrLn (Response.serializeResponse result)
     stdout.flush
 
 end StatementLens
