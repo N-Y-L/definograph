@@ -8,7 +8,7 @@ selection of the best visual abstraction.
 
 This page describes the underlying 0.7 implementation, retained in the 0.7.1
 identity and repository cleanup. The
-[architecture](architecture.md) maps current code; the [reset proposal](design/architecture-reset.md)
+[architecture](architecture.md) maps current code; the [architecture decision](design/architecture-decision.md), the earlier [reset proposal](design/architecture-reset.md)
 and [roadmap](roadmap.md) describe future work, not implemented behavior.
 
 ## What exists

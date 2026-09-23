@@ -11,7 +11,9 @@ different levels of progress.
 | --- | --- |
 | [Status](status.md) | What exists, principal gaps, code entry points, and validation commands |
 | [Current architecture](architecture.md) | Existing implementation, code paths, and limitations |
-| [Architecture reset](design/architecture-reset.md) | Proposed shared decomposition and composition design; next vertical slice |
+| [Architecture decision](design/architecture-decision.md) | Adopted design: fundamental objects, decomposition, composition algebra, meaning/presentation boundary, first vertical slice and reading gates |
+| [TNF specification](design/tnf-specification.md) | Round-1 design specification that the decision amends |
+| [Architecture reset](design/architecture-reset.md) | Earlier proposal and 0.7 findings; superseded by the decision where they differ |
 | [Roadmap](roadmap.md) | Next general capabilities and acceptance criteria |
 | [Lean contract](lean-contract.md) | Standalone extraction, expression metadata, kernel checks, setup, and limits |
 | [Editor integration](editor-integration.md) | Actual project context, source selection, execution trust, and host limits |

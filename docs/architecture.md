@@ -2,7 +2,7 @@
 
 Definograph is an experimental Lean statement reader. The current code can preserve logical context, expose direct structure fields, and compose several typed relationships. It does **not** yet implement the general decomposition and representation architecture needed for the project's objective.
 
-Read [the architecture reset](design/architecture-reset.md) for the proposed design and [the roadmap](roadmap.md) for delivery gates. This page describes the code that exists. Older iteration documents are historical records, not evidence that the general problem is solved. `StatementLens`, `statementLens`, and related protocol/module identifiers remain internal compatibility names.
+Read [the architecture decision](design/architecture-decision.md) for the adopted design (it amends the [TNF specification](design/tnf-specification.md) and supersedes [the architecture reset](design/architecture-reset.md) where they differ) and [the roadmap](roadmap.md) for delivery gates. This page describes the code that exists. Older iteration documents are historical records, not evidence that the general problem is solved. `StatementLens`, `statementLens`, and related protocol/module identifiers remain internal compatibility names.
 
 ## Existing data flow
 

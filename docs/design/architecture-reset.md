@@ -1,6 +1,6 @@
 # Architecture reset: from recognizers to compositional reading
 
-**Status: design proposal, not an implemented replacement.** Written against the 0.7 code after the generic-record iteration. The current code map is in [architecture.md](../architecture.md); delivery gates are in [roadmap.md](../roadmap.md).
+**Status: design proposal, not an implemented replacement; superseded by the [architecture decision](architecture-decision.md) where the two differ.** Written against the 0.7 code after the generic-record iteration. The current code map is in [architecture.md](../architecture.md); delivery gates are in [roadmap.md](../roadmap.md).
 
 ## Objective and standard of success
 

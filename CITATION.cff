@@ -11,5 +11,5 @@ license: Apache-2.0
 abstract: >-
   A local Lean-backed application for reading mathematical statements through
   typed constructions, scoped visual sequences, and symbolic geometry.
-  Developed by Codex under the supervision of Neil Yuanting Li.
+  Built for CS 124 at UIUC. The 0.7 prototype was developed by Codex; the architecture decision and further development are by Claude; both under the supervision of Neil Yuanting Li.
 repository-code: "https://github.com/N-Y-L/definograph"
