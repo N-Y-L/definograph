@@ -1,0 +1,359 @@
+<header class="page-head">
+  <h1 id="reference">Reference</h1>
+  <p class="lead">How to read Definograph’s views, what its checking evidence means, and the labels the views use.</p>
+  <p>This reference describes Definograph’s views and inspection tools. Recorded figures show the application at their stated recording dates; see <a href="/install/#try-it-yourself">Try it yourself</a> for source and setup information. Labels in <strong>bold</strong> are Definograph’s own.</p>
+</header>
+
+<nav class="on-page" aria-labelledby="reference-contents">
+  <p class="on-page-title" id="reference-contents">On this page</p>
+  <ul>
+    <li><a href="#recorded-views">Recorded views on this site</a></li>
+    <li><a href="#reading-the-views">How to read the views</a></li>
+    <li><a href="#four-kinds-of-information">Four kinds of information</a></li>
+    <li><a href="#checking-evidence">Checking evidence</a></li>
+    <li><a href="#context-and-identity">Context and identity</a></li>
+    <li><a href="#relations-between-expressions">Relations between expressions</a></li>
+    <li><a href="#attempts-prefixes-and-navigation">Attempts, prefixes, and navigation</a></li>
+    <li><a href="#a-law-belongs-to-its-owner">A law belongs to its owner</a></li>
+    <li><a href="#recorded-data-and-live-editor-context">Recorded data and live editor context</a></li>
+    <li><a href="#setup-and-support">Setup and support</a></li>
+    <li><a href="#generality-and-formal-foundations">Generality and formal foundations</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ul>
+</nav>
+
+<section>
+  <h2 id="recorded-views">Recorded views on this site</h2>
+  <p>A figure marked <strong>Recorded Definograph output</strong> is a saved copy of what Definograph drew for the Lean source printed with it. Definograph ran on a local computer; the figure reuses Definograph’s own HTML and SVG, so its text stays text and it scales without blurring. The label gives the Lean version and the date of the recording. A figure that Definograph drew from a saved history of editor inspections, rather than in a live editor, adds <strong>from a saved history</strong>; editor figures made otherwise, such as the screenshot of the panel in lesson 5, do not. Where these figures say where their data came from, they use Definograph’s wording for saved records, such as “This saved history has an unverified origin”, instead of the live panel’s.</p>
+  <p><strong>Recorded Definograph excerpt</strong> marks such a copy of only part of a panel: the top and bottom edges of its frame are dashed, and a dashed line inside it marks any place where part of the panel between the parts shown is left out. <strong>Recorded Definograph image</strong> and <strong>Recorded Definograph screenshot</strong> mark pictures of the app window rather than its HTML.</p>
+  <p>The site changes a few details of how the recorded figures are drawn, and nothing else: the outline that marks keyboard focus is dark blue; a step selector shows its whole entry instead of cutting it off; the “Whole statement” outline and the Structure view’s map are shown in full instead of in a scrolling box; and on wide screens, figures that still fit are drawn 1.125 times as large as in the app.</p>
+  <p>On a narrow screen a wide diagram keeps its own size and scrolls sideways inside its frame, so that its labels stay readable. A screenshot keeps the size of the window it records in the same way. On paper nothing can scroll, so the widest diagrams are printed a little smaller, to fit the page.</p>
+  <p>This site runs no Lean and does not check any input. A recording shows what Definograph drew for that source at that time. It is not a fresh check, and a newer version of Definograph may draw the same statement differently. Controls in a recording do nothing; in the app they select objects or steps.</p>
+  <p>The source beside a figure is exactly what Definograph read. It is either a statement typed into the <strong>Lean expression</strong> field of Definograph’s <strong>Lean source</strong> panel, which accepts a single statement term and has Lean read it with Definograph’s fixed imports, or a complete Lean file.</p>
+</section>
+
+<section>
+  <h2 id="reading-the-views">How to read the views</h2>
+  <p>Every view is a diagram of a statement’s structure. None of them is a proof. For a statement term, Definograph has Lean elaborate the term as a proposition, that is, resolve its notation and fill in every type and implicit argument, and then check the result with Lean’s kernel. That establishes that the statement is well formed, not that it is true.</p>
+  <p>Definograph works from this elaborated statement, not from its printed text or from theorem names. Objects keep their identity by where they were introduced, so two variables that print the same name stay distinct. Parts Definograph cannot interpret stay visible as typed or logical structure.</p>
+  <p>Definograph opens a statement with its <strong>Visual sequence</strong>. Under <strong>Explore a sample</strong>, the <strong>Choices</strong>, <strong>Relationships</strong> and <strong>Structure</strong> views appear as tabs, with numerical views such as <strong>Condition</strong> for some statements. The <strong>Mathematical notation</strong> button shows the statement typeset. In the app each view sits in a numbered card with a title, such as “Choices and dependencies”; the recorded figures on this site show the view without its card, on the card’s white background.</p>
+
+  <h3 id="quantifier-flow">Choices</h3>
+  <p>The <strong>Choices</strong> view, tagged “Scope and dependency”, lists what the statement introduces as numbered steps in reading order. Each step names its role: <strong>Arbitrary choice</strong> for a universal binder (∀, “a value from the full domain”), <strong>Candidate witness</strong> for an existential one (∃, “a candidate chosen at this stage”), and <strong>Assumption</strong>, <strong>Function input</strong> or <strong>Local definition</strong> where those occur.</p>
+  <p>Read it top to bottom. Under a candidate witness, <strong>May depend on</strong> lists the earlier choices in its scope that the witness is allowed to use. A candidate witness with no earlier choice in its scope says “Chosen without earlier values. Later choices cannot change this witness.”</p>
+  <p>What it leaves out: the condition the choices must satisfy, which you read in the source. A candidate witness is not a found witness: “Its existence remains an obligation.” A displayed sample of an arbitrary choice is one value, never every value. Choices in separate logical branches are not combined.</p>
+
+  <h3 id="relation-map">Relationships</h3>
+  <p>The <strong>Relationships</strong> view, tagged “Symbolic view”, shows each relation Definograph recognizes as a card: the relation as written, its kind (for example <strong>Membership</strong>, <strong>Set inclusion</strong>, <strong>Equality</strong>, <strong>Comparison</strong> or <strong>Function application</strong>), and the objects that fill its roles, such as element and set, subset and superset, or function, input and output. A card also notes when the relation sits under an assumption.</p>
+  <p>Read one card at a time, then follow an object that appears on several cards. The same object is the same mathematical object wherever it appears.</p>
+  <p>What it leaves out: “These are diagrams of mathematical roles. Relative position and distance carry no geometric meaning.” A relation drawn inside an assumption, a negation or an alternative is not a claim that the relation holds. The view shows at most eight relations and says so when there are more.</p>
+
+  <h3 id="semantic-map">Structure</h3>
+  <p>The <strong>Structure</strong> view, tagged “Structural view”, draws the objects of a statement in one column and its relations in another, with a connector from each relation to each object it uses. Select an object to highlight its connectors and trace it through all the conditions that mention it.</p>
+  <p>What it leaves out: which relations are assumed and which are required. Position, distance and the curvature of connectors carry no meaning. Definitions Definograph does not interpret are not expanded. Some objects are Definograph’s own, such as names given to hypotheses, and some appear under Lean’s internal names, such as <code>HasSubset.Subset(A, B)</code> for <code>A ⊆ B</code>. Large statements are cut to a display limit, which the view states.</p>
+
+  <h3 id="guided-reading">Visual sequence</h3>
+  <p>Definograph’s first presentation of a statement moves through it one step at a time with <strong>Previous</strong>, <strong>Next</strong> and a step selector. A <strong>Whole statement</strong> outline stays beside the steps, and the full visual statement is available below them. Each step introduces objects, follows a function application, compares two expressions or focuses on a logical condition, and names its role: parameter, arbitrary choice, requested witness, assumption, required conclusion, alternative or negated condition.</p>
+  <p>What it leaves out: a step that compares two expressions does not certify that they are equal. Alternatives are not accumulated as facts, and a negated condition stays under its negation.</p>
+
+  <h3 id="specialised-figures">Specialized figures</h3>
+  <p>For some recognized vocabulary, the reading adds a figure. The recognized vocabulary is interpretation Definograph supports, not recognition of every way Lean can express the same idea; other expressions stay as typed or logical structure. All of these figures are schematic.</p>
+
+  <h4 id="set-regions">Set expressions</h4>
+  <p>For up to three atomic sets, the figure divides the ambient type into membership regions: in or out of each set. A subset condition hatches the regions that must be empty. An equality hatches the regions where the two sides differ. A membership condition highlights where the element may lie, without choosing one region.</p>
+  <p>What it leaves out: “Regions encode membership combinations, not elements or sizes. Drawing a region does not assert that it contains an element.” With more than three sets Definograph lists construction steps instead.</p>
+
+  <h4 id="graph-constraints">Graphs and colorings</h4>
+  <p>For Mathlib’s simple graphs, the figure shows what a condition requires of an edge. For a proper coloring: “For any adjacent endpoint pair, a proper coloring assigns unequal labels.” For a graph homomorphism, every edge is sent to an edge. For <code>G.Colorable n</code>, the palette is the set of labels available.</p>
+  <p>What it leaves out: “Endpoint slots stand for arbitrary inputs to the rule. They do not instantiate vertices, assert that an edge exists, or determine the graph’s size or shape.” The palette shows available labels, not a coloring; “a coloring may use fewer labels.”</p>
+
+  <h4 id="metric-figures">Metric regions</h4>
+  <p>For open balls, closed balls and spheres, the figure shows the distance condition, whether the boundary is included, what happens when the radius is zero or negative, and any local assumption such as <code>0 &lt; ε</code>. Where the metric and dimension are supported and values are chosen, Definograph can draw a sampled region, an adjustable coordinate slice, or a distance profile of one point.</p>
+  <p>What it leaves out: symbolic positions choose no coordinates, and named points may coincide. Numerical samples and coordinate slices are illustrations under the chosen values, not the statement. A slice keeps its ambient dimension; points off the slice are not projected onto it. The distance profile plots the absolute coordinate displacements of one point; its bars discard sign and are not the shape of the region.</p>
+
+  <h4 id="restricted-maps">Maps inverse on a region</h4>
+  <p>For Mathlib’s <code>PartialEquiv</code> and <code>OpenPartialHomeomorph</code>, the figure shows two carriers, a source region and a target region, the forward and inverse maps, and the two round trips that return to their starting point on those regions.</p>
+  <p>What it leaves out: the carriers are abstract containers without geometry or coordinates. “Region frames indicate containment, not shape, size, dimension, connectedness, or a proper subset.” No inverse law is asserted outside the designated regions.</p>
+
+  <h3 id="structure-and-evidence">Structure and checking evidence in the editor</h3>
+  <p>In VS Code, <strong>Definograph: Visualize Selection</strong> reads a selected expression in a trusted Lean project. <strong>Source data</strong> keeps the selected expression, its local declarations and every recorded checking outcome. <strong>Structure</strong> shows the term, its inferred type and its complete context as constructors with their ordered parts, binder scopes and references to declarations. Explicit actions expose one definition, check a chosen part, inspect a type or read one layer of logical structure, and each keeps its own recorded outcomes.</p>
+  <p>What it leaves out: reading a term’s structure back does not establish its typing. A refused or unavailable operation is a limit of Definograph’s coverage, not a sign that the Lean is invalid. The sections below explain the evidence these panels record.</p>
+</section>
+
+<section>
+  <h2 id="four-kinds-of-information">Four kinds of information</h2>
+  <table class="stack-table" role="table">
+    <caption>Kinds of information</caption>
+    <thead role="rowgroup">
+      <tr role="row">
+        <th scope="col" role="columnheader">Kind</th>
+        <th scope="col" role="columnheader">What it contributes</th>
+      </tr>
+    </thead>
+    <tbody role="rowgroup">
+      <tr role="row">
+        <th scope="row" role="rowheader">Lean checking</th>
+        <td role="cell" data-label="What it contributes">A typing or conversion outcome for a particular submitted declaration in a particular environment. Read its dependencies and any unavailable audit.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader">Semantic interpretation</th>
+        <td role="cell" data-label="What it contributes">A supported reading of the extracted structure, such as quantifier order or an audited mathematical relation. Unknown expressions retain their boundaries.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader">Schematic visualization</th>
+        <td role="cell" data-label="What it contributes">A presentation of that reading. Spatial placement does not introduce coordinates, nonempty regions, or additional mathematical assumptions.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader">Numerical sampling</th>
+        <td role="cell" data-label="What it contributes">Particular evaluated cases, where supported. Samples do not prove a universal statement or automatically supply an existential proof.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>A claim about one layer is not automatically a claim about all four. In particular, kernel acceptance does not certify the rendered diagram or establish that its explanation is useful to you.</p>
+</section>
+
+<section>
+  <h2 id="checking-evidence">Checking evidence</h2>
+  <p>Several different facts can come with a reading. Keep them apart:</p>
+  <ul>
+    <li><strong>Accepted typing</strong>: Lean’s kernel accepted one submitted declaration in the captured environment. For a proposition, that shows the statement is well formed. It does not show the statement is true, unless the declaration supplies a proof, and then only relative to the environment and its axioms.</li>
+    <li><strong>Formation</strong>: evidence that an expression is a proposition, a type, a sort or an ordinary term. Forming a proposition does not prove it.</li>
+    <li><strong>Axiom audit</strong>: the global axioms a checked declaration depends on, or the reason the audit is unavailable. An empty audit for one check says nothing about another.</li>
+    <li><strong>Direct <code>sorry</code></strong>: Definograph refuses a statement term that contains <code>sorry</code>, and the editor marks placeholder-containing terms unsupported before checking.</li>
+    <li><strong>Transitive <code>sorryAx</code></strong>: a declaration can depend on an unfinished proof elsewhere. Only the axiom audit shows this dependency.</li>
+  </ul>
+  <p>Read the context, the recorded outcomes and the axioms together. Saved records are unverified and carry no current authority.</p>
+  <div class="source-with-note">
+    <figure class="source-file">
+      <figcaption><span class="filename">RecordedAxiom.lean</span><a href="/learn/examples/RecordedAxiom.lean" download>Download<span class="visually-hidden"> RecordedAxiom.lean</span></a></figcaption>
+{{source:RecordedAxiom.lean}}
+    </figure>
+    <div class="note note-axiom" id="recorded-axiom-note">
+      <p class="note-title">Read the placeholder dependency</p>
+      <p>This file deliberately leaves a proof unfinished with <code>sorry</code>. Lean accepts the declarations and warns that a declaration uses <code>sorry</code>. The placeholder introduces a dependency on <code>sorryAx</code>; referring to <code>claimed</code> in the second declaration retains that dependency.</p>
+      <p>Accepted typing here is relative to an environment containing the placeholder dependency. Neither declaration independently establishes the false equation <code>2 + 2 = 5</code>. Read the typing outcome together with its axiom audit; an empty audit for a different formation check cannot replace it.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 id="context-and-identity">Context and identity</h2>
+  <p><strong>Names in scope</strong> describes lexical availability. A context can contain user parameters, local definitions, recorded auxiliary declarations, and binders entered during inspection. These have different roles. Listing an entry does not assert that the selected term uses it.</p>
+  <p>Names alone do not establish identity. Read the context position, the expression&#39;s constructor path, and the relation through which it was reached. Two objects with the same displayed name need not be the same object. Fields and laws belong to their recorded owner and remain available within that owner&#39;s scope.</p>
+</section>
+
+<section>
+  <h2 id="relations-between-expressions">Relations between expressions</h2>
+  <table class="stack-table" role="table">
+    <caption>Reading relations</caption>
+    <thead role="rowgroup">
+      <tr role="row">
+        <th scope="col" role="columnheader">Relation</th>
+        <th scope="col" role="columnheader">Reading</th>
+        <th scope="col" role="columnheader">Boundary</th>
+      </tr>
+    </thead>
+    <tbody role="rowgroup">
+      <tr role="row">
+        <th scope="row" role="rowheader">Containment</th>
+        <td role="cell" data-label="Reading">An expression occurs at a particular constructor position inside another expression.</td>
+        <td role="cell" data-label="Boundary">Entering it does not construct a proof of it or specialize an enclosing proof.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader">Type-of</th>
+        <td role="cell" data-label="Reading">The second expression is the inferred type of the first at the captured universe levels.</td>
+        <td role="cell" data-label="Boundary">It is not interchangeable with an unchecked source annotation.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader">Projection</th>
+        <td role="cell" data-label="Reading">A field is taken from a particular recorded owner.</td>
+        <td role="cell" data-label="Boundary">Matching field names do not identify different owners.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader">Conversion</th>
+        <td role="cell" data-label="Reading">A requested definition-head or projection conversion has its own recorded outcome.</td>
+        <td role="cell" data-label="Boundary">It does not authorize arbitrary simplification.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader">Formation</th>
+        <td role="cell" data-label="Reading">Evidence supports reading the occurrence as a proposition, type, sort, or ordinary term, or leaves that reading unestablished or conflicting.</td>
+        <td role="cell" data-label="Boundary">Forming a proposition does not prove it.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader">Supply</th>
+        <td role="cell" data-label="Reading">Accepted typing and established proposition formation support a conditional proof-supply reading.</td>
+        <td role="cell" data-label="Boundary">Read the complete context and typing audit; neither axiom independence nor a separate proof of a contained expression follows.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>One physical check can serve more than one role. Counting it twice does not provide independent confirmation. Occurrence, relation, step, and outcome numbers refer to different things. The <a href="/reference/contracts/reader-relations.md">relations guide</a> (a Markdown file) gives the full reading and navigation boundaries.</p>
+</section>
+
+<section>
+  <h2 id="attempts-prefixes-and-navigation">Attempts, prefixes, and navigation</h2>
+  <p>An attempt records a bounded sequence of requested inspections and their outcomes. <strong>Step reading</strong>, <strong>Ordered provenance</strong>, and <strong>Supply reading</strong> describe the selected step or the prefix through it. <strong>Attempt outcomes</strong> retains the whole attempt, including checks outside that prefix.</p>
+  <p><strong>Section navigation</strong> and its return links move reading focus within the displayed attempt and step. They do not change the selected attempt, open disclosures, or run Lean. Explicit inspection actions make fresh captures; selecting retained data or changing its presentation does not.</p>
+  <p><strong>Inspect type</strong> makes the inferred type the next term. <strong>Read logical structure of this term (one layer)</strong> inspects the displayed term. To inspect the logical structure of its inferred type, inspect the type first. Operations are bounded and can be refused or unavailable; those states must remain visible.</p>
+</section>
+
+<section>
+  <h2 id="a-law-belongs-to-its-owner">A law belongs to its owner</h2>
+  <figure class="source-file">
+    <figcaption><span class="filename">RotorLaw.lean</span><a href="/learn/examples/RotorLaw.lean" download>Download<span class="visually-hidden"> RotorLaw.lean</span></a></figcaption>
+{{source:RotorLaw.lean}}
+  </figure>
+  <p>The example takes <code>owner : Rotor</code> as a parameter. Its <code>fixed</code> field already supplies a law about that owner&#39;s <code>turn</code>. The example does not construct a <code>Rotor</code> or independently establish its law.</p>
+  <p>The inspection route catalogs the fields, projects <code>fixed</code>, inspects its type, reads the universal layer, and enters its body. A field catalog by itself is not a typing check. Inspecting the equality inside the law does not produce a separately specialized proof of that equality.</p>
+  <p>Keep the full context, including <code>unused</code>, when reading the conditions. The presence of <code>unused</code> does not assert that the proof depends on it. Recorded auxiliary entries also retain their own kind.</p>
+  <p>The initial guided view of the selected structure value can refuse to produce a reading. The retained source and checked occurrence route is distinct from that guided response. The source&#39;s unused-variable warning is a diagnostic, not a rejected kernel outcome.</p>
+</section>
+
+<section>
+  <h2 id="recorded-data-and-live-editor-context">Recorded data and live editor context</h2>
+  <p>Saved records have an unverified origin. Recorded outcomes do not establish that a file describes the current buffer, engine, or imported environment. Format validation and internal consistency are not authentication of the recorded computation.</p>
+  <p>This site offers no live checking of your input.</p>
+  <p>In live editor use, changes to the buffer or selection invalidate the attachment. The editor sidecar elaborates the <strong>whole trusted buffer</strong>, including commands outside the selected range, against existing built dependencies. Lean commands and elaborators can execute code. A separate process and resource bounds do not make that execution a security sandbox.</p>
+</section>
+
+<section>
+  <h2 id="setup-and-support">Setup and support</h2>
+  <p>Running Definograph yourself currently means assembling it from source; <a href="/install/#try-it-yourself">Try it yourself</a> explains what is published. A matching public distribution with qualified installation, upgrade, rollback and uninstall paths is not yet established. A public clone, or the editor extension package alone, need not reproduce the build described here.</p>
+  <p>The <a href="/install/">Setup</a> page lists the requirements and the configurations that have been checked. For local assembly, the <a href="/install/local-setup/">local setup guide</a> gives the command sequence and qualifications. The lessons and recorded figures can be read without any of this setup.</p>
+</section>
+
+<section>
+  <h2 id="generality-and-formal-foundations">Generality and formal foundations</h2>
+  <p>The formal foundations already prove general results about specified encodings of Lean expressions and local source records: decoding an encoding recovers the expression’s structure, and the encoded forms can be printed as text and read back exactly. A readback result states what can be recovered by decoding an encoding. Two examples in the foundation dependency retained by this build are:</p>
+  <ul>
+    <li><code>ExprReferenceGraph.roundTrip_eq</code>: decoding the reference-graph encoding of a Lean expression recovers that expression after <code>eraseMetadata</code>. This is an explicit normalization boundary; the theorem does not assert preservation of expression metadata or original source text.</li>
+    <li><code>FoundationIntegration.encodeView_readback</code>: when encoding into the scoped view succeeds, decoding recovers the expression after the same metadata erasure. Its coverage result applies under the declared admission conditions.</li>
+  </ul>
+  <p>The recorded axiom dependency of each of these two readback theorems is <code>propext</code>, Lean&#39;s propositional extensionality axiom. These are formal results about the named representations and decoders. Separately, browser structural views implement independent reconstruction checks for their supported inputs. Neither fact establishes a Lean proof about the complete browser renderer, authenticates an imported record, or proves a proposition merely because it can be represented.</p>
+  <p>The goal remains a formally proved general visualization method for any valid Lean mathematical statement. The current application provides bounded structural inspection and selected guided readings; a universal guarantee connecting valid inputs to the rendered interactive view remains unproved. Extending the foundations across the complete application, including its context and scope handling, semantic readings, and renderer, remains open work. Interpreting unfamiliar mathematics, selecting useful abstractions, and demonstrating improvements in human understanding are further research questions.</p>
+  <p>What Definograph supports today can still be useful. Judge each reading by what it keeps: the expression, its context, any transformation, the evidence and the stated limits.</p>
+</section>
+
+<section>
+  <h2 id="glossary">Glossary</h2>
+  <p>Terms used on this site and labels that appear in Definograph, in alphabetical order.</p>
+  <dl class="glossary">
+    <dt>Arbitrary choice</dt>
+    <dd>Marked ∀. A variable for which the rest of the statement must hold whatever value it takes. A sample shows one value, never every value.</dd>
+    <dt>Assumption</dt>
+    <dd>The hypothesis of an implication, marked ⇒ in the Choices view. What follows it is required only when the hypothesis holds. An assumption that has no name in the statement is shown with the name Lean gives it, <code>a</code>; that <code>a</code> is a name, not a kind badge.</dd>
+    <dt>Attempt</dt>
+    <dd>One run of a history’s steps in the editor. Acting from an earlier step starts a new attempt and keeps the old one. Each attempt has a short random identifier.</dd>
+    <dt>Auxiliary entry</dt>
+    <dd>A context entry that Lean adds itself while it checks a declaration, such as <code>_example</code> for an <code>example</code>, or a theorem’s own name. Its recorded kind is <code>auxDecl</code>. It is not an assumption.</dd>
+    <dt>Axiom</dt>
+    <dd>A statement that Lean accepts without proof, such as <code>propext</code>, or <code>sorryAx</code>, which stands for a missing proof.</dd>
+    <dt>Axiom audit</dt>
+    <dd>The axioms that a checked declaration depends on, as Lean recorded them, or the reason they are unavailable. An empty audit for one check says nothing about another.</dd>
+    <dt>Binder</dt>
+    <dd>The place where a statement introduces a variable, such as <code>∀ x : ℝ</code>.</dd>
+    <dt>Candidate witness</dt>
+    <dd>Marked ∃. A variable that the statement asks to exist. The view names it but does not supply a value.</dd>
+    <dt>Carrier</dt>
+    <dd>The whole type that a map or a region lives in, as opposed to a region inside it.</dd>
+    <dt>Check</dt>
+    <dd>One declaration that Definograph submits to Lean’s kernel. Its outcome is accepted, rejected or unknown.</dd>
+    <dt>Choices</dt>
+    <dd>Under Explore a sample, the view that lists the choices and assumptions in the order the statement makes them, and which earlier choices each one may use. It leaves out the conditions the choices must satisfy.</dd>
+    <dt>Choices and dependencies</dt>
+    <dd>In the app window, the title of the card that holds the Choices view.</dd>
+    <dt>Condition</dt>
+    <dd>A numerical view under Explore a sample, for a comparison such as <code>x &lt; y</code>: it varies one variable while the other choices stay fixed. Also a stage label: a step that reads a relation such as membership or inclusion, assumed or required.</dd>
+    <dt>Conditional on the premise</dt>
+    <dd>A tag on a part of the statement that comes after the premise of an implication: it applies only when the premise holds.</dd>
+    <dt>Connected objects</dt>
+    <dd>In the app window, the title of the card that holds the Relationships view.</dd>
+    <dt>Context and component</dt>
+    <dd>The two halves of most checks: the declarations around the selection, and the selection itself in that context.</dd>
+    <dt>Context entry</dt>
+    <dd>A declaration available at the selection, such as a variable or a hypothesis. The editor shows each one with its recorded kind, such as <code>default</code> or <code>auxDecl</code>.</dd>
+    <dt>Continuation</dt>
+    <dd>A history built by acting on a selection step by step. “Current continuation” names the attempt shown.</dd>
+    <dt>Diagnostic</dt>
+    <dd>A warning or error that Lean reported while reading the file, listed under Lean diagnostics. It is separate from any check outcome.</dd>
+    <dt>Earlier choices in this scope</dt>
+    <dd>The choices made before this one within the same scope.</dd>
+    <dt>Elaborated statement</dt>
+    <dd>The statement after Lean has resolved its notation and filled in what the source leaves implicit, such as types and hidden arguments. Definograph reads this, not the printed text.</dd>
+    <dt>Excerpt</dt>
+    <dd>A recorded figure that shows only part of a panel.</dd>
+    <dt>Explore a sample</dt>
+    <dd>The group of tabs that holds the statement’s other views: Choices, Relationships and Structure, and for some statements numerical views such as Condition or Geometry. A numerical view shows one sample of values, never the statement.</dd>
+    <dt>Formation</dt>
+    <dd>Whether Definograph read an expression as a proposition, a type, a sort or an ordinary term. It reads this only from logical and type inspections, so “not established” can appear for an expression that is in fact a proposition.</dd>
+    <dt>Frame</dt>
+    <dd>In a supply reading, a relation passed on the way from the selection to the term, such as taking a field of a structure (a projection).</dd>
+    <dt>Function input</dt>
+    <dd>An input binder shown in an expression reading, including a lambda or a dependent-function binder. In a component reading, this label alone does not establish the binder’s logical role.</dd>
+    <dt>History</dt>
+    <dd>The steps you take from a selection in the editor, each one recorded with its checks.</dd>
+    <dt>Identity thread</dt>
+    <dd>In the Visual sequence, a faint dashed line that joins the places where one selected object appears. Its route means nothing.</dd>
+    <dt>Interpretation coverage</dt>
+    <dd>In the Inspect panel, the section that counts the parts of a statement Definograph could interpret, and names the definitions it left folded.</dd>
+    <dt>Kernel</dt>
+    <dd>The part of Lean that has the final say on whether a term has a given type.</dd>
+    <dt>Kind badge</dt>
+    <dd>The small mark before an object’s name that gives its kind: <code>a</code> for a number, <code>{ }</code> for a set, <code>↦</code> for a function, <code>T</code> for a type, <code>⋯</code> for an expression built from other objects and <code>x</code> for a variable of any other type; less often <code>•</code> for a point, <code>#</code> for a literal and <code>s</code> for a named constant.</dd>
+    <dt>Local definition</dt>
+    <dd>A name given a value inside the statement, with the value it stands for.</dd>
+    <dt>matched, new</dt>
+    <dd>Marks on the steps of a history: matched means that the step was computed again with the same result as before; new marks the step just requested.</dd>
+    <dt>Mathematical notation</dt>
+    <dd>The button that shows the statement typeset.</dd>
+    <dt>May depend on</dt>
+    <dd>The earlier choices a candidate witness is allowed to use. It permits dependence; it does not require it.</dd>
+    <dt>Occurrence</dt>
+    <dd>An expression that a history reached, numbered in order. Occurrence 1 is usually the selection.</dd>
+    <dt>Owner</dt>
+    <dd>The object whose fields a panel lists. Every field belongs to it, as <code>e.source</code> belongs to <code>e</code>.</dd>
+    <dt>Prefix</dt>
+    <dd>The part of a history up to the selected step.</dd>
+    <dt>Premise of an implication</dt>
+    <dd>A tag on a part of the statement that lies in the premise of an implication: it is assumed there, not claimed. Numerical views call it Assumption of an implication.</dd>
+    <dt>Receipt</dt>
+    <dd>A recorded check outcome that a reading rests on. One receipt can serve two roles, for example typing and formation.</dd>
+    <dt>Recorded context entry</dt>
+    <dd>In the Choices view, an entry that Lean added to the context itself, such as an auxiliary entry, shown with its own kind. It is not an assumption of the statement.</dd>
+    <dt>Recorded figure</dt>
+    <dd>A saved copy of Definograph’s output on this site. Nothing in it is computed again, and its buttons do nothing.</dd>
+    <dt>Relationships</dt>
+    <dd>Under Explore a sample, the view with one card per relation: each object in its role, and tags that give the relation’s place in the logic of the statement.</dd>
+    <dt>Saved record</dt>
+    <dd>A history or snapshot written to a file. Definograph marks its origin as unverified, and nothing in it is checked again.</dd>
+    <dt>Scope and dependency</dt>
+    <dd>The tag on the Choices view: it shows scope and permitted dependence, not values.</dd>
+    <dt>Source data</dt>
+    <dd>In the editor, the exact records of a selection, in four tabs: Original data, Checker input, Expected type and Check outcomes. In the browser app, the Source data link opens a page that inspects such data from a saved file.</dd>
+    <dt>Stage label</dt>
+    <dd>The small capitals above a step’s title in the Visual sequence, which say what kind of step it is. <strong>Objects and choices</strong> introduces variables; <strong>Logical structure</strong> sets out implications and other connectives; <strong>Condition</strong> reads a relation such as membership or inclusion, assumed or required; <strong>Compare</strong> reads an equation or inequality between two expressions; <strong>Construction</strong> reads how an object is built, for example by applying a function; <strong>Inside the expression</strong> reads a part of a larger expression; <strong>Recorded context</strong> shows an entry that Lean recorded in the context, such as <code>_example</code>.</dd>
+    <dt>Statement structure</dt>
+    <dd>In the app window, the title of the card that holds the Structure view.</dd>
+    <dt>Structural view</dt>
+    <dd>A view of expression structure only, with no geometric or numerical meaning.</dd>
+    <dt>Structure</dt>
+    <dd>Under Explore a sample, the view that shows the displayed objects and relations in one overview, with a line for each role. The Structure tab of the Lean source panel is different: it lists the statement’s logical parts.</dd>
+    <dt>Structure only, folded</dt>
+    <dd>A part that Definograph shows as a name and its arguments, without interpreting its meaning. Interpretation coverage counts such parts as structure only, and lists the definitions whose meaning is still folded.</dd>
+    <dt>Supply reading</dt>
+    <dd>A reading that a term supplies a proof of a statement, relative to the listed entries, frames and axioms.</dd>
+    <dt>Symbolic region · no coordinates assumed</dt>
+    <dd>A metric region drawn by its role (center, radius, region) without choosing coordinates.</dd>
+    <dt>Symbolic relation</dt>
+    <dd>A relation Definograph recognizes as a predicate applied to its arguments, without further interpretation.</dd>
+    <dt>Symbolic view</dt>
+    <dd>The tag on the Relationships view when Definograph recognizes the relations it shows, such as membership or set inclusion. The cards show roles, with no geometric meaning.</dd>
+    <dt>Under N assumptions</dt>
+    <dd>A tag that counts the assumptions in force at that point. In the Choices view, an assumption’s own step counts that assumption too. Numerical views say “Under 1 local assumption”.</dd>
+    <dt>Visual sequence</dt>
+    <dd>Definograph’s step-by-step reading of a statement, with the whole statement alongside, and the first thing it shows.</dd>
+    <dt>Well formed</dt>
+    <dd>Accepted by Lean as a proposition. It says nothing about whether the statement is true.</dd>
+    <dt>Whole statement</dt>
+    <dd>The outline beside the visual sequence: every choice, assumption and requirement in its logical place, with the current step highlighted.</dd>
+  </dl>
+</section>

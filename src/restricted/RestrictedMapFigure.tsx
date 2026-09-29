@@ -1,4 +1,5 @@
 import { useId, useMemo, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { FigureScroll } from '../components/FigureScroll';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { readingObjectColor } from '../visual/object-identity';
 import { compileRestrictedMap, type RestrictedMapStructure, type RestrictedRegion } from './model';
@@ -62,7 +63,7 @@ export function RestrictedRegionDiagram({ structure: model, selectedRegion, appl
   const continuity = model.properties.forwardContinuousOnSource && model.properties.inverseContinuousOnTarget ? 'continuous on these regions'
     : model.properties.forwardContinuousOnSource ? 'forward continuous on source'
       : model.properties.inverseContinuousOnTarget ? 'inverse continuous on target' : 'inverse on these regions';
-  return <svg className="rm-diagram" viewBox="0 0 680 270" role="group" aria-label="Two abstract carrier spaces with valid source and target regions, linked by mutually inverse restricted maps">
+  return <FigureScroll className="rm-scroll" label="Restricted map diagram; scroll to see all of it"><svg className="rm-diagram" viewBox="0 0 680 270" role="group" aria-label="Two abstract carrier spaces with valid source and target regions, linked by mutually inverse restricted maps">
     <defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L7 4 L1 7"/></marker></defs>
     <Region region={model.source} carrier={model.sourceCarrier} x={10} open={model.properties.sourceOpen} selected={selectedRegion === 'source'} {...interaction}/>
     <Region region={model.target} carrier={model.targetCarrier} x={466} open={model.properties.targetOpen} selected={selectedRegion === 'target'} {...interaction}/>
@@ -74,7 +75,7 @@ export function RestrictedRegionDiagram({ structure: model, selectedRegion, appl
     </SvgIdentity>
     <text className="rm-annotation" x="340" y="163" textAnchor="middle">{continuity}</text>
     <text className="rm-annotation" x="340" y="262" textAnchor="middle">{model.sameCarrier ? 'Two roles of the same carrier; the regions may overlap.' : 'Abstract containers; no geometry or coordinates are specified.'}</text>
-  </svg>;
+  </svg></FigureScroll>;
 }
 
 function RoundTrip({ model, role }: { model: RestrictedMapStructure; role: 'source' | 'target' }) {

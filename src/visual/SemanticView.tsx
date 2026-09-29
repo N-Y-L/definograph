@@ -1,7 +1,9 @@
 import { useMemo, type KeyboardEvent, type ReactNode } from 'react';
 import type { PlannedView, QuantifierChoice, RelationKind, SemanticDocument, SemanticObject, SemanticRelation, SemanticScope } from '../semantic/types';
 import { compactLabel, layoutSemanticMap } from './layout';
+import { FigureScroll } from '../components/FigureScroll';
 import './semantic-views.css';
+import { counted } from '../core/counted';
 
 export interface SemanticViewProps {
   document: SemanticDocument;
@@ -13,8 +15,9 @@ export interface SemanticViewProps {
 
 const objectGlyph: Record<SemanticObject['kind'], string> = { variable: 'x', scalar: 'a', point: '•', set: '{ }', function: '↦', type: 'T', literal: '#', expression: '⋯', symbol: 's' };
 const relationName: Record<RelationKind, string> = { membership: 'Membership', subset: 'Set inclusion', equality: 'Equality', inequality: 'Comparison', application: 'Function application', image: 'Image of a set', preimage: 'Preimage of a set', 'function-property': 'Function property', 'set-construction': 'Set construction', 'metric-region': 'Metric region', distance: 'Distance', predicate: 'Symbolic relation', 'graph-adjacency': 'Graph adjacency', 'graph-coloring': 'Proper coloring', 'graph-colorable': 'Coloring bound', 'graph-map': 'Graph map', 'restricted-equivalence': 'Restricted inverse maps', 'restricted-region': 'Validity region', 'restricted-application': 'Restricted map application' };
-const choiceSymbol: Record<QuantifierChoice['role'], string> = { universal: '∀', existential: '∃', assumption: '⇒', lambda: '↦', parameter: '↦' };
-const choiceName: Record<QuantifierChoice['role'], string> = { universal: 'Arbitrary choice', existential: 'Candidate witness', assumption: 'Assumption', lambda: 'Function input', parameter: 'Definition parameter' };
+const choiceSymbol: Record<QuantifierChoice['role'], string> = { universal: '∀', existential: '∃', assumption: '⇒', lambda: '↦', parameter: '↦', definition: ':=', auxiliary: '·' };
+const componentMode = (document: SemanticDocument): boolean => document.presentation?.kind === 'component';
+const choiceName: Record<QuantifierChoice['role'], string> = { universal: 'Arbitrary choice', existential: 'Candidate witness', assumption: 'Assumption', lambda: 'Function input', parameter: 'Definition parameter', definition: 'Local definition', auxiliary: 'Recorded context entry' };
 
 function activate(event: KeyboardEvent<SVGGElement>, action: (() => void) | undefined) {
   if (action && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); action(); }
@@ -46,9 +49,9 @@ function SemanticMap(props: SemanticViewProps) {
   const visibleScopes = [...new Set([...layout.objects.map(node => node.object.scopeId), ...layout.relations.map(node => node.relation.scopeId)])];
   const scopes = document.scopes.filter(scope => visibleScopes.includes(scope.id) && (scope.context.length > 0 || scope.assumptionNodeIds.length > 0));
   return <div className="sv-semantic-map">
-    <div className="sv-view-intro"><p>Shared objects connect the parts of this statement. Select an object to trace its relations.</p><span className="sv-fidelity">Structural view</span></div>
-    <div className="sv-map-scroll" tabIndex={0} aria-label="Objects and relations diagram; scroll to inspect all visible nodes">
-      <svg className="sv-map" viewBox={`0 0 ${layout.width} ${layout.height}`} style={{ minWidth: 650 }} role="group" aria-label={`Semantic map with ${layout.objects.length} objects and ${layout.relations.length} relations`}>
+    <div className="sv-view-intro"><p>Shared objects connect the parts of this {componentMode(document) ? 'expression' : 'statement'}.{onObjectSelect ? ' Select an object to trace its relations.' : ''}</p><span className="sv-fidelity">Structural view</span></div>
+    <FigureScroll className="sv-map-scroll" vertical label="Objects and relations diagram; scroll to inspect all visible nodes">
+      <svg className="sv-map" viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={`Semantic map with ${counted(layout.objects.length, 'object')} and ${counted(layout.relations.length, 'relation')}`}>
         <text x="26" y="31" className="sv-column-label">OBJECTS <tspan className="sv-column-count">{layout.totalObjects}</tspan></text>
         <text x="484" y="31" className="sv-column-label">RELATIONS <tspan className="sv-column-count">{layout.totalRelations}</tspan></text>
         {layout.edges.map(edge => <path key={edge.id} className={`sv-edge${selectedObjectId ? edge.objectId === selectedObjectId ? ' is-active' : ' is-muted' : ''}`} d={edge.path}><title>{edge.role}</title></path>)}
@@ -56,16 +59,16 @@ function SemanticMap(props: SemanticViewProps) {
           <title>{node.object.label}{node.object.type ? ` : ${node.object.type}` : ''}</title><rect width={node.width} height={node.height} rx="12" className="sv-object-box"/><rect x="12" y="14" width="36" height="36" rx="9" className="sv-glyph-box"/><text x="30" y="38" className="sv-map-glyph" textAnchor="middle">{objectGlyph[node.object.kind]}</text><text x="61" y="28" className="sv-map-title">{compactLabel(node.object.label, 27)}</text><text x="61" y="47" className="sv-map-type">{compactLabel(node.object.type || node.object.kind, 35)}</text>
         </g>)}
         {layout.relations.map(node => <g key={node.relation.id} className={`sv-map-relation${connectedRelations.has(node.relation.id) ? ' is-connected' : ''}`} transform={`translate(${node.x} ${node.y})`} role={onNodeSelect ? 'button' : 'group'} tabIndex={onNodeSelect ? 0 : undefined} aria-label={`Inspect ${node.relation.label}`} onClick={() => onNodeSelect?.(node.relation.nodeId)} onKeyDown={event => activate(event, onNodeSelect ? () => onNodeSelect(node.relation.nodeId) : undefined)}>
-          <title>{node.relation.label}</title><rect width={node.width} height={node.height} rx="12" className="sv-relation-box"/><text x="17" y="27" className="sv-map-title">{compactLabel(node.relation.label, 36)}</text><text x="17" y="47" className="sv-map-type">{relationName[node.relation.kind]}{node.omittedPorts ? ` · ${node.omittedPorts} hidden ports` : ''}</text>
+          <title>{node.relation.label}</title><rect width={node.width} height={node.height} rx="12" className="sv-relation-box"/><text x="17" y="27" className="sv-map-title">{compactLabel(node.relation.label, 36)}</text><text x="17" y="47" className="sv-map-type">{relationName[node.relation.kind]}{node.omittedPorts ? ` · ${counted(node.omittedPorts, 'hidden port')}` : ''}</text>
           {node.relation.ports.map((port, index) => <circle key={`${port.objectId}:${index}`} cx="0" cy={12 + (index + 0.5) * 40 / Math.max(node.relation.ports.length, 1)} r="3" className="sv-port-dot"><title>{port.role}</title></circle>)}
         </g>)}
         {layout.objects.length === 0 && <text x="28" y="102" className="sv-map-empty">No explicit objects in this fragment.</text>}
         {layout.relations.length === 0 && layout.objects.length > 0 && <text x="483" y="105" className="sv-map-empty">No interpreted relations in this fragment.</text>}
       </svg>
-    </div>
-    {(missingObjects > 0 || missingRelations > 0) && <p className="sv-limit-note">Overview shows {layout.objects.length} of {layout.totalObjects} objects and {layout.relations.length} of {layout.totalRelations} relations. Select a smaller statement fragment to inspect the remaining structure.</p>}
-    {scopes.length > 0 && <div className="sv-map-contexts"><span className="sv-small-label">Context carried by these fragments</span>{scopes.slice(0, 3).map(scope => <ScopeContext key={scope.id} scope={scope} onNodeSelect={onNodeSelect}/>)}{scopes.length > 3 && <span className="sv-small-label">{scopes.length - 3} further contexts; inspect an individual relation.</span>}</div>}
-    <p className="sv-view-note">Connections show expression structure. A relation may occur inside an assumption, negation, or alternative; its presence is not a claim that it holds.</p>
+    </FigureScroll>
+    {(missingObjects > 0 || missingRelations > 0) && <p className="sv-limit-note">Overview shows {layout.objects.length} of {counted(layout.totalObjects, 'object')} and {layout.relations.length} of {counted(layout.totalRelations, 'relation')}. Select a smaller {componentMode(document) ? 'expression' : 'statement'} fragment to inspect the remaining structure.</p>}
+    {scopes.length > 0 && <div className="sv-map-contexts"><span className="sv-small-label">Context carried by these fragments</span>{scopes.slice(0, 3).map(scope => <ScopeContext key={scope.id} scope={scope} onNodeSelect={onNodeSelect}/>)}{scopes.length > 3 && <span className="sv-small-label">{counted(scopes.length - 3, 'further context')}; inspect an individual relation.</span>}</div>}
+    <p className="sv-view-note">{componentMode(document) ? 'Connections show expression structure and shared object identities.' : 'Connections show expression structure. A relation may occur inside an assumption, negation, or alternative; its presence is not a claim that it holds.'}</p>
   </div>;
 }
 
@@ -94,11 +97,11 @@ function RelationDiagram({ relation, objects, selectedObjectId, onObjectSelect }
   if (['application', 'image', 'preimage'].includes(relation.kind)) {
     const inputPorts = relation.ports.filter(port => port.role.startsWith('input') || port.role === 'set');
     const outputRole = relation.kind === 'application' ? 'output' : 'result';
-    return <div className="sv-mapping-diagram"><div className="sv-mapping-inputs">{inputPorts.slice(0, 4).map(port => token(port.role))}{inputPorts.length > 4 && <span className="sv-small-label">{inputPorts.length - 4} further inputs</span>}</div><div className="sv-mapping-transform">{token('function', true)}<span className="sv-mapping-arrow" aria-hidden="true">{relation.kind === 'preimage' ? '←' : '→'}</span>{relation.kind === 'preimage' && <span className="sv-small-label">inverse image</span>}</div><div className="sv-mapping-output">{token(outputRole)}</div></div>;
+    return <div className="sv-mapping-diagram"><div className="sv-mapping-inputs">{inputPorts.slice(0, 4).map(port => token(port.role))}{inputPorts.length > 4 && <span className="sv-small-label">{counted(inputPorts.length - 4, 'further input')}</span>}</div><div className="sv-mapping-transform">{token('function', true)}<span className="sv-mapping-arrow" aria-hidden="true">{relation.kind === 'preimage' ? '←' : '→'}</span>{relation.kind === 'preimage' && <span className="sv-small-label">inverse image</span>}</div><div className="sv-mapping-output">{token(outputRole)}</div></div>;
   }
   if (relation.kind === 'metric-region') return <div className="sv-region-diagram"><div className="sv-region-parameters">{token('center')}{token('radius')}</div><span className="sv-construction-link" aria-hidden="true">→</span><div className="sv-region-result">{token('region')}<span className="sv-small-label">Symbolic region · no coordinates assumed</span></div></div>;
   if (relation.kind === 'distance') return <div className="sv-distance-diagram"><div className="sv-distance-pair">{token('from')}<span className="sv-distance-line" aria-hidden="true"/>{token('to')}</div><div className="sv-distance-value">{token('distance', true)}</div></div>;
-  return <div className="sv-generic-ports">{relation.ports.slice(0, 6).map((port, index) => { const object = objects.get(port.objectId); return object ? <ObjectButton key={`${port.role}:${index}`} object={object} selectedObjectId={selectedObjectId} onObjectSelect={onObjectSelect} role={port.role}/> : <span key={`${port.role}:${index}`} className="sv-small-label">{port.role}: unavailable</span>; })}{relation.ports.length > 6 && <span className="sv-small-label">{relation.ports.length - 6} further ports</span>}</div>;
+  return <div className="sv-generic-ports">{relation.ports.slice(0, 6).map((port, index) => { const object = objects.get(port.objectId); return object ? <ObjectButton key={`${port.role}:${index}`} object={object} selectedObjectId={selectedObjectId} onObjectSelect={onObjectSelect} role={port.role}/> : <span key={`${port.role}:${index}`} className="sv-small-label">{port.role}: unavailable</span>; })}{relation.ports.length > 6 && <span className="sv-small-label">{counted(relation.ports.length - 6, 'further port')}</span>}</div>;
 }
 
 function RelationMap(props: SemanticViewProps) {
@@ -116,7 +119,7 @@ function RelationMap(props: SemanticViewProps) {
       {relation.conditions.length > 0 && <div className="sv-conditions">{relation.conditions.map((condition, index) => <p key={`${condition}:${index}`}>{condition}</p>)}</div>}
     </article>)}</div>
     {relations.length === 0 && <p className="sv-empty">No interpreted relations in this fragment. Its typed objects remain available in the semantic map.</p>}
-    {relations.length > shown.length && <p className="sv-limit-note">Showing {shown.length} of {relations.length} relations. Select a smaller statement fragment to inspect the remaining relations.</p>}
+    {relations.length > shown.length && <p className="sv-limit-note">Showing {shown.length} of {counted(relations.length, 'relation')}. Select a smaller {componentMode(document) ? 'expression' : 'statement'} fragment to inspect the remaining relations.</p>}
     <p className="sv-view-note">These are diagrams of mathematical roles. Relative position and distance carry no geometric meaning.</p>
   </div>;
 }
@@ -129,21 +132,21 @@ function QuantifierFlow(props: SemanticViewProps) {
   const nodeIds = new Set(view.nodeIds);
   const choices = document.choices.filter(choice => objectIds.has(choice.objectId) || nodeIds.has(choice.nodeId));
   const shown = choices.slice(0, 12);
-  return <div className="sv-quantifier-flow"><div className="sv-view-intro"><p>A witness can use earlier choices in its scope. It cannot depend on a variable chosen later.</p><span className="sv-fidelity">Scope and dependency</span></div>
-    <div className="sv-choice-legend"><span><b>∀</b> a value from the full domain</span><span><b>∃</b> a candidate chosen at this stage</span></div>
+  return <div className="sv-quantifier-flow"><div className="sv-view-intro"><p>{componentMode(document) ? 'Parameters and definitions follow source order. Each type and defining value uses only its preceding scope.' : 'A witness can use earlier choices in its scope. It cannot depend on a variable chosen later.'}</p><span className="sv-fidelity">Scope and dependency</span></div>
+    <div className="sv-choice-legend">{componentMode(document) ? <><span><b>↦</b> parameter or function input</span><span><b>:=</b> defining value</span></> : <><span><b>∀</b> a value from the full domain</span><span><b>∃</b> a candidate chosen at this stage</span></>}</div>
     <ol className="sv-choices">{shown.map((choice, index) => {
       const object = objects.get(choice.objectId);
       const dependencies = choice.dependsOn.flatMap(id => objects.has(id) ? [objects.get(id)!] : []);
       const missingDependencies = choice.dependsOn.length - dependencies.length;
-      return <li key={choice.id} className={`sv-choice sv-choice-${choice.role}${selectedObjectId === choice.objectId ? ' is-selected' : ''}`}><span className="sv-choice-step" aria-label={`Step ${index + 1}`}>{index + 1}</span><div className="sv-choice-card"><div className="sv-choice-heading"><span className="sv-choice-symbol" aria-hidden="true">{choiceSymbol[choice.role]}</span><div><span className="sv-small-label">{choiceName[choice.role]}</span>{object ? <button type="button" className="sv-choice-name" onClick={() => onObjectSelect?.(object.id)} aria-pressed={selectedObjectId === object.id}>{object.label} <span>: {object.type || object.kind}</span></button> : <span className="sv-choice-name">Symbolic choice</span>}</div>{onNodeSelect && <button type="button" className="sv-source-link" onClick={() => onNodeSelect(choice.nodeId)} aria-label={`Inspect binder ${object?.label ?? index + 1}`}>Binder <span aria-hidden="true">↗</span></button>}</div>
+      return <li key={choice.id} className={`sv-choice sv-choice-${choice.role}${selectedObjectId === choice.objectId ? ' is-selected' : ''}`}><span className="sv-choice-step" aria-label={`Step ${index + 1}`}>{index + 1}</span><div className="sv-choice-card"><div className="sv-choice-heading"><span className="sv-choice-symbol" aria-hidden="true">{choiceSymbol[choice.role]}</span><div><span className="sv-small-label">{componentMode(document) && choice.role === 'parameter' ? document.presentation?.contextNodeIds?.includes(choice.nodeId) ? 'Context parameter' : 'Function input' : componentMode(document) && choice.role === 'definition' && document.presentation?.contextNodeIds?.includes(choice.nodeId) ? 'Context definition' : choiceName[choice.role]}</span>{object ? <button type="button" className="sv-choice-name" onClick={() => onObjectSelect?.(object.id)} aria-pressed={selectedObjectId === object.id}>{object.label} <span>: {object.type || object.kind}</span></button> : <span className="sv-choice-name">Symbolic choice</span>}</div>{onNodeSelect && <button type="button" className="sv-source-link" onClick={() => onNodeSelect(choice.nodeId)} aria-label={`Inspect binder ${object?.label ?? index + 1}`}>Binder <span aria-hidden="true">↗</span></button>}</div>
       <ScopeContext scope={scopes.get(choice.scopeId)} onNodeSelect={onNodeSelect}/>
       <p className="sv-choice-explanation">{choice.explanation}</p>
-      {(dependencies.length > 0 || missingDependencies > 0) ? <div className="sv-choice-dependencies"><span className="sv-small-label">{choice.role === 'existential' ? 'May depend on' : 'Earlier choices in this scope'}</span><div className="sv-dependency-tokens">{dependencies.slice(0, 8).map(dependency => <ObjectButton key={dependency.id} object={dependency} selectedObjectId={selectedObjectId} onObjectSelect={onObjectSelect} compact/>)}{dependencies.length > 8 && <span className="sv-small-label">{dependencies.length - 8} further choices</span>}{missingDependencies > 0 && <span className="sv-small-label">{missingDependencies} additional scoped dependencies</span>}</div></div> : choice.role === 'existential' ? <p className="sv-fixed-choice">Chosen without earlier values. Later choices cannot change this witness.</p> : null}
+      {(dependencies.length > 0 || missingDependencies > 0) ? <div className="sv-choice-dependencies"><span className="sv-small-label">{choice.role === 'existential' ? 'May depend on' : componentMode(document) ? 'Earlier entries in this scope' : 'Earlier choices in this scope'}</span><div className="sv-dependency-tokens">{dependencies.slice(0, 8).map(dependency => <ObjectButton key={dependency.id} object={dependency} selectedObjectId={selectedObjectId} onObjectSelect={onObjectSelect} compact/>)}{dependencies.length > 8 && <span className="sv-small-label">{componentMode(document) ? counted(dependencies.length - 8, 'further entry', 'further entries') : counted(dependencies.length - 8, 'further choice')}</span>}{missingDependencies > 0 && <span className="sv-small-label">{counted(missingDependencies, 'additional scoped dependency', 'additional scoped dependencies')}</span>}</div></div> : choice.role === 'existential' ? <p className="sv-fixed-choice">Chosen without earlier values. Later choices cannot change this witness.</p> : null}
       </div></li>;
     })}</ol>
-    {choices.length === 0 && <p className="sv-empty">This fragment introduces no quantified choices.</p>}
-    {choices.length > shown.length && <p className="sv-limit-note">Showing {shown.length} of {choices.length} choices. Select a smaller statement fragment to inspect the remaining binders.</p>}
-    <p className="sv-view-note">Steps follow the statement’s reading order. Only the listed dependencies belong to the same scope; choices in separate logical branches are not combined.</p>
+    {choices.length === 0 && <p className="sv-empty">{componentMode(document) ? 'This fragment introduces no parameters or definitions.' : 'This fragment introduces no quantified choices.'}</p>}
+    {choices.length > shown.length && <p className="sv-limit-note">Showing {shown.length} of {componentMode(document) ? counted(choices.length, 'entry', 'entries') : counted(choices.length, 'choice')}. Select a smaller {componentMode(document) ? 'expression' : 'statement'} fragment to inspect the remaining binders.</p>}
+    <p className="sv-view-note">{componentMode(document) ? 'Steps follow source order. Listed dependencies remain within their declared scopes.' : 'Steps follow the statement’s reading order. Only the listed dependencies belong to the same scope; choices in separate logical branches are not combined.'}</p>
   </div>;
 }
 

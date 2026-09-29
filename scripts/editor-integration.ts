@@ -9,6 +9,7 @@ import { runBoundedProcess } from '../server/worker.js';
 import { compileSemanticDocument } from '../src/semantic/index.js';
 import { compileReading } from '../src/reading/index.js';
 import type { Analysis, StatementNode } from '../src/core/types.js';
+import { GUIDED_CONTEXT_CONTRACT } from '../src/editor/guided-context-contract.js';
 const engine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(await readFile(path.join(engine, '.local/config.json'), 'utf8'));
 const fixture = await mkdtemp(path.join(os.tmpdir(), 'statementlens-editor-test-'));
@@ -23,6 +24,7 @@ async function analyze(source: string, term: string, options: { expansion?: { co
   if (options.expectError) { assert.equal(response.ok, false, `Expected rejection: ${term}`); checks++; return response as unknown as Analysis; }
   assert.equal(response.ok, true, JSON.stringify(response)); checks++;
   const result = response as unknown as Analysis;
+  assert.equal(result.guidedContextContract, GUIDED_CONTEXT_CONTRACT);
   const semantic = compileSemanticDocument(result), reading = compileReading(semantic);
   assert.equal(reading.nodes.length, nodes(result.tree).length);
   assert.equal(result.provenance?.inputMode, 'editor');
@@ -60,6 +62,64 @@ try {
   const proof = await analyze('example (P : Prop) (h : P) : P := by exact h\n', 'h');
   assert.equal(proof.provenance?.selectionKind, 'proof-type');
   assert.ok(nodes(proof.tree).some(node => node.binder?.name === 'h' && node.binder.role === 'assumption'));
+  const auxiliaryCases = [
+    { name: 'proposition-valued example', ordinaryCount: 0, source: 'example : 2 + 2 = 4 := rfl\n', term: 'rfl' },
+    { name: 'named theorem', ordinaryCount: 1, source: 'theorem helper (n : Nat) : n = n := rfl\n', term: 'rfl' },
+    { name: 'genuine hypothesis', ordinaryCount: 2, source: 'example (P : Prop) (h : P) : P := h\n', term: 'h' },
+    { name: 'tactic hypothesis', ordinaryCount: 2, source: 'example (P : Prop) (h : P) : P := by exact h\n', term: 'h' },
+    { name: 'explicit __h parameter', ordinaryCount: 2, source: 'example (P : Prop) (__h : P) : P := __h\n', term: '__h' },
+    { name: 'lambda implementation detail', ordinaryCount: 2, source: 'example (P : Prop) (h : P) : P := (fun (__h : P) => __h) h\n', term: '__h' },
+    { name: 'tactic have implementation detail', ordinaryCount: 2, source: 'example (P : Prop) (h : P) : P := by\n  have __h : P := h\n  exact __h\n', term: '__h' },
+    { name: 'term let implementation detail', ordinaryCount: 2, source: 'example (P : Prop) (h : P) : P := let __h : P := h; __h\n', term: '__h' },
+    { name: 'recursive reference', ordinaryCount: 2, source: 'def recur (n : Nat) : Nat :=\n  match n with\n  | 0 => 0\n  | k + 1 => if recur k = 0 then 0 else recur k\n', term: 'recur k = 0' },
+    { name: 'duplicate names', ordinaryCount: 1, source: 'example (_example : Nat) : _example = _example := rfl\n', term: 'rfl' },
+  ];
+  const auxiliaryCaptures: { name: string; analysis: Analysis }[] = [];
+  for (const control of auxiliaryCases) {
+    const analysis = await analyze(control.source, control.term);
+    const all = nodes(analysis.tree), entries = all.filter(node => node.binder?.role === 'auxiliary');
+    assert.equal(analysis.tree.kind, 'auxiliary', control.name);
+    assert.equal(analysis.tree.binder?.declarationKind, 'auxDecl');
+    assert.equal(entries.length, ['lambda implementation detail', 'tactic have implementation detail'].includes(control.name) ? 2 : 1);
+    for (const entry of entries) {
+      assert.equal(entry.kind, 'auxiliary');
+      assert.equal(entry.children.length, 1, 'recorded entries have no premise child');
+      assert.equal(entry.expression.kind, 'lambda');
+      assert.equal(entry.binder?.structure, undefined);
+      assert.equal(entry.binder?.typeExpansion, undefined);
+      assert.ok(!all.some(node => node.binder?.dependsOn.includes(entry.binder!.id)));
+    }
+    assert.equal(analysis.provenance?.auxiliaryContextEntries, entries.length);
+    assert.equal(analysis.provenance?.contextParameters, control.ordinaryCount);
+    if (control.name === 'genuine hypothesis' || control.name === 'tactic hypothesis')
+      assert.ok(all.some(node => node.binder?.name === 'h' && node.binder.role === 'assumption' && node.children.length === 2));
+    if (control.name === 'explicit __h parameter') assert.ok(all.some(node => node.binder?.name === '__h' && node.binder.role === 'assumption'));
+    if (['lambda implementation detail', 'tactic have implementation detail'].includes(control.name)) assert.ok(entries.some(node => node.binder?.name === '__h' && node.binder.declarationKind === 'implDetail'));
+    if (control.name === 'term let implementation detail') assert.ok(!all.some(node => node.binder?.name === '__h'), 'the legacy guided view substitutes this local let');
+    if (control.name === 'recursive reference') {
+      const selected = all.at(-1)!;
+      assert.ok(JSON.stringify(selected.expression).includes(`"id":"${analysis.tree.binder!.id}"`), 'recursive reference retains the recorded binder identity');
+    }
+    const semantic = compileSemanticDocument(analysis), reading = compileReading(semantic);
+    const entryIds = new Set(entries.map(node => node.binder!.id));
+    assert.ok(semantic.choices.every(choice => !entryIds.has(choice.binderId)));
+    assert.ok(reading.nodes.filter(node => entries.some(entry => entry.id === node.id)).every(node => !/\b(assume|assumption|hypothesis|given|premise)\b/i.test(node.phrase)));
+    auxiliaryCaptures.push({ name: control.name, analysis });
+  }
+  if (process.env.DEFINOGRAPH_AUXILIARY_CAPTURES) await writeFile(process.env.DEFINOGRAPH_AUXILIARY_CAPTURES, JSON.stringify(auxiliaryCaptures, null, 2) + '\n', { flag: 'wx' });
+  for (const guidedContextContract of [undefined, 'unsupported']) {
+    const resultFile = path.join(fixture, 'incompatible-result.json');
+    await runBoundedProcess(config.contextExecutable, { cwd: fixture,
+      input: JSON.stringify({ source: '#check True\n', fileName, mainModule: 'Main', captureId: '550e8400-e29b-41d4-a716-446655440000', startByte: 7, endByte: 11, guidedContextContract }) + '\n',
+      env: { ...process.env, LEAN_PATH: config.leanPath.join(path.delimiter), STATEMENTLENS_LEAN_SYSROOT: config.leanSysroot, STATEMENTLENS_CONTEXT_RESULT: resultFile }, timeoutMs: 10_000 });
+    const refused = JSON.parse(await readFile(resultFile, 'utf8'));
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /Incompatible guided context format/);
+    assert.equal(refused.guidedContextContract, GUIDED_CONTEXT_CONTRACT);
+    assert.ok(refused.sourceSnapshot, 'contract refusal retains the separate raw capture');
+    assert.equal(refused.tree, undefined);
+    checks++;
+  }
   const dependent = await analyze('example (A : Type) (B : A → Type) (x : A) (y : B x) : y = y := rfl\n', 'y = y');
   assert.deepEqual(nodes(dependent.tree).flatMap(node => node.binder ? [node.binder.name] : []), ['A', 'B', 'x', 'y']);
   assert.ok(JSON.stringify(dependent.tree).includes('context.body.body.binder'));

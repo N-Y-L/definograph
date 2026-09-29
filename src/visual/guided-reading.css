@@ -8,7 +8,7 @@
 .rg-count { font-size:11px; color:var(--sr-muted); margin-right:6px; font-variant-numeric:tabular-nums; }
 .rg-buttons button { padding:9px 13px; border:1px solid #d5d9dc; background:transparent; border-radius:4px; color:var(--sr-accent); font-size:12px; cursor:pointer; }
 .rg-buttons button:last-child { border-color:var(--sr-accent); background:var(--sr-accent); color:#fff; }
-.rg-buttons button:disabled { opacity:.35; cursor:default; }
+.rg-buttons button:disabled { opacity:.65; cursor:default; }
 .rg-progress { height:2px; background:#e4e6e7; margin-top:14px; }
 .rg-progress > span { display:block; height:100%; background:#507885; transition:width 160ms ease; }
 .rg-envelope { margin:18px 0 26px; display:grid; gap:10px; }

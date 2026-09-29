@@ -1,0 +1,50 @@
+<header class="page-head">
+<h1 id="definograph">Definograph</h1>
+<p class="lead">Definograph draws the structure of mathematical statements written in Lean. See the order of choices, which variables may depend on which, the assumptions and requirements, and the definitions behind them. It reads the statement as Lean has understood it, with its notation resolved and every type filled in, not as printed text.</p>
+<p>Definograph is a research prototype that runs on your own computer. It does not prove statements or say whether they are true. The figures on this site are recorded output from it, and the site itself runs no Lean, so you can read everything here without installing anything. To run Definograph yourself, see <a href="/install/#try-it-yourself">Try it yourself</a>.</p>
+<p><a href="/learn/">Start the seven-lesson tutorial</a> · <a href="/examples/">Browse recorded examples</a></p>
+</header>
+
+<div class="hero-views">
+{{view:depends-choices}}
+{{view:sets-connections}}
+</div>
+
+<p>Two views of two statements. The <strong>Choices</strong> view reads <code>∀ x : ℝ, ∃ y : ℝ, x &lt; y</code> from the top: <code>x</code> is chosen first, and <code>y</code> may depend on it. The <strong>Relationships</strong> view reads <code>A ⊆ B → x ∈ A → x ∈ B</code> relation by relation, with each object in its role and a note of where the relation sits.</p>
+
+<h2 id="the-app-window">The app window</h2>
+<p>You type a statement into the <strong>Lean expression</strong> field of Definograph’s <strong>Lean source</strong> panel, or choose one from its <strong>Statement</strong> menu, and Lean reads it. Definograph first shows the statement’s <strong>Visual sequence</strong>: a step-by-step reading, one choice, assumption or condition at a time, with an outline of the whole statement beside it. The <strong>Explore a sample</strong> tab holds the other views as tabs of their own: <strong>Choices</strong>, <strong>Relationships</strong> and <strong>Structure</strong>, and for some statements numerical views such as <strong>Condition</strong>, which varies one variable while the other choices stay fixed. The <strong>Mathematical notation</strong> button shows the statement typeset. In Visual Studio Code, Definograph reads a selection in your own Lean project in the same way.</p>
+
+<h2 id="what-the-views-show">What the views show</h2>
+<p>Each view answers one reading question. Lean checks that the statement is well formed; the views draw its structure.</p>
+
+<h3 id="tour-choices">The order of choices</h3>
+<p>Which choice may depend on which? The Choices view above lists what the statement introduces in reading order and, under each candidate witness, the earlier choices it may use. More in {{lesson:01-order-of-choices.md}}.</p>
+
+<h3 id="tour-objects">Objects and relations</h3>
+<p>Which relations does an object take part in? The <strong>Structure</strong> view shows the displayed objects and relations in one overview. Here <code>x</code> is selected in <code>g (f x) = h x</code>, so its connections are drawn heavier than the rest.</p>
+{{view:paths-trace-x}}
+<p>Where does the same object appear? In the Visual sequence, selecting <code>x</code> draws a faint dashed thread down the page, joining each place where that <code>x</code> occurs, in the current step and in the full visual statement below it. Its route means nothing; it only links the places. More in {{lesson:02-objects-and-relations.md}}.</p>
+{{capture:paths-identity-trace}}
+
+<h3 id="tour-figures">Specialized figures</h3>
+<p>What does a condition require? For notions that Definograph supports, such as sets, graph colorings, balls in a metric space and maps that are inverse on a region, the Visual sequence adds a figure. For a proper coloring, the figure shows the rule on every edge: adjacent endpoints get different labels.</p>
+{{view:coloring-follow}}
+<p>For a map that is inverse only on part of its domain, the figure shows the two carriers, the regions where the inverse laws hold, and the maps between them. More in {{lesson:03-specialized-figures.md}}.</p>
+{{view:restricted-inverse-source}}
+
+<h3 id="tour-editor">In the Lean editor</h3>
+<p>In Visual Studio Code, Definograph also records what Lean checked for a selection in your project, including which axioms a proof relies on; {{lesson:06-checking-evidence.md}} shows how to read that record.</p>
+
+<h2 id="status">Status</h2>
+<p>Definograph is not a general mathematical visualizer. It runs beside Lean 4.28.0 on your own computer. Its source is available in the <a href="https://github.com/N-Y-L/definograph">Definograph GitHub repository</a>; <a href="/install/#try-it-yourself">Try it yourself</a> explains the build and setup requirements.</p>
+<p>The formal foundations already prove general results about specified encodings of Lean expressions and local source records: decoding an encoding recovers the expression’s structure, and the encoded forms can be printed as text and read back exactly. These results say what can be recovered from an encoding under its stated conditions; the <a href="/reference/#generality-and-formal-foundations">Reference</a> explains what they cover.</p>
+<p>The goal is a formally proved general visualization method for <strong>any valid Lean mathematical statement</strong>. The current application provides bounded structural inspection and selected guided readings; a universal guarantee connecting valid inputs to the rendered interactive view remains unproved. Mathematics that Definograph does not interpret stays visible as typed or logical structure.</p>
+
+<h2 id="where-to-go-next">Where to go next</h2>
+<ul>
+<li><a href="/learn/">Tutorial</a>: step-by-step lessons with exercises.</li>
+<li><a href="/examples/">Examples</a>: recorded views of real statements, with their sources.</li>
+<li><a href="/reference/">Reference</a>: how to read each view, and what checking evidence means.</li>
+<li><a href="/install/">Setup</a>: how to try Definograph yourself, and what it needs.</li>
+</ul>

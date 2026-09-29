@@ -88,6 +88,7 @@ const isProp = (expression: Expr) => expression.kind === 'sort' && (expression.n
  * Labels are for display only: all carrier sharing uses exported expression identities. */
 export function compileTypedConstruction(document: SemanticDocument, binders: readonly ReadingBinder[]): TypedConstruction {
   if (!binders.length) return empty('empty');
+  if (binders.some(binder => binder.role === 'auxiliary')) return empty('empty');
   const nodes = sourceNodes(document.tree);
   const objects = new Map(document.objects.map(object => [object.id, object]));
   const byBinder = new Map(document.objects.filter(object => object.binder).map(object => [object.binder!.id, object]));
@@ -124,6 +125,12 @@ export function compileTypedConstruction(document: SemanticDocument, binders: re
     const type = declaredType && byExpression.has(expressionKey(declaredType)) ? declaredType : checkedBinderTypeExpansion(binder) ?? declaredType;
     const descriptor = binder.typeDescriptor;
     if (!type) { unknowns.push({ ...base, reason: 'The typed expression was not exported; its declared type is retained.' }); continue; }
+    if (type.exactIdentity !== undefined && !completeIdentity(type)) {
+      // Exact source identity does not make opaque subterms transparent to the
+      // dependency visitor. In particular a projection can hide a bound input.
+      unknowns.push({ ...base, reason: 'The exact type is retained, but an unsupported subexpression prevents a complete dependency signature. No endpoint or independence is inferred.' });
+      continue;
+    }
     if (type.kind === 'sort' && !isProp(type)) {
       addType(object.expression, { kind: 'unknown', lean: binder.name }); continue;
     }

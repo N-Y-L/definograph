@@ -1,0 +1,11 @@
+/* A frame adds nothing while its diagram fits the column: no scrolling box, no clipping, no Tab stop. Once the diagram's
+   minimum width applies (viewBox width x 10 px / smallest label size in viewBox units, set by each family's stylesheet),
+   FigureScroll marks the frame data-overflow and it scrolls. Shading on an edge then shows that more of the diagram lies
+   that way: the shadows stay at the frame's edges, and covers in the colour behind the frame scroll with the diagram
+   and hide each shadow at that end (background-attachment: local). A container that paints its own background sets
+   --figure-scroll-cover to it; the page colour is the default. Zero specificity, so a frame's own class can set its
+   overflow. */
+:where(.figure-scroll){min-width:0}
+:where(.figure-scroll[data-overflow]){overflow-x:auto;overflow-y:hidden}
+.figure-scroll:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.figure-scroll[data-overflow~="x"]{background-image:linear-gradient(to right,var(--figure-scroll-cover,#fbfaf7) 16px,transparent 40px),linear-gradient(to left,var(--figure-scroll-cover,#fbfaf7) 16px,transparent 40px),linear-gradient(to right,#2633402e,transparent),linear-gradient(to left,#2633402e,transparent);background-position:left,right,left,right;background-size:40px 100%,40px 100%,14px 100%,14px 100%;background-repeat:no-repeat;background-attachment:local,local,scroll,scroll}

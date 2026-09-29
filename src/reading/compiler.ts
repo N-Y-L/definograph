@@ -1,4 +1,6 @@
 import type { StatementNode } from '../core/types';
+import { contextEntryTitle } from '../core/context-entry';
+import { formatExpression } from '../semantic/expression';
 import type { SemanticDocument, SemanticObject, SemanticRelation, SemanticScope } from '../semantic/types';
 import { READING_DOCUMENT_VERSION } from './types';
 import type { ReadingBinder, ReadingConnection, ReadingDocument, ReadingEdge, ReadingNode, ReadingOptions, ReadingPanel, ReadingQuantifierGroup, ReadingRelationGroup, ReadingStep } from './types';
@@ -6,7 +8,9 @@ import type { ReadingBinder, ReadingConnection, ReadingDocument, ReadingEdge, Re
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
 const producedRoles = new Set(['output', 'result', 'region', 'distance', 'color', 'target vertex']);
 
-function edgeFor(parent: StatementNode, index: number): ReadingEdge {
+function edgeFor(parent: StatementNode, index: number, component = false): ReadingEdge {
+  if (parent.kind === 'auxiliary') return { role: 'body', label: 'In the recorded context', index };
+  if (component) return { role: 'body', label: parent.kind === 'definition' ? 'With this definition' : parent.kind === 'parameter' ? 'In this scope' : 'Expression part', index };
   switch (parent.kind) {
     case 'implies': return index === 0 ? { role: 'assumption', label: 'If', index } : { role: 'conclusion', label: 'Then', index };
     case 'and': return { role: 'conjunct', label: index === 0 ? 'Both' : 'And', index };
@@ -14,6 +18,7 @@ function edgeFor(parent: StatementNode, index: number): ReadingEdge {
     case 'iff': return { role: index === 0 ? 'equivalence-left' : 'equivalence-right', label: index === 0 ? 'First condition' : 'Second condition', index };
     case 'not': return { role: 'negated', label: 'Not', index };
     case 'parameter': return { role: 'result', label: 'Result', index };
+    case 'definition': return { role: 'body', label: 'With this definition', index };
     default: return { role: 'body', label: parent.kind === 'exists' ? 'Such that' : 'The following holds', index };
   }
 }
@@ -47,12 +52,16 @@ function relationPhrase(relation: SemanticRelation, objects: ReadonlyMap<string,
   }
 }
 
-function phraseFor(node: StatementNode, rootRelation: SemanticRelation | undefined, objects: ReadonlyMap<string, SemanticObject>): string {
+function phraseFor(node: StatementNode, rootRelation: SemanticRelation | undefined, objects: ReadonlyMap<string, SemanticObject>, component = false): string {
   const binder = node.binder;
+  if (node.kind === 'auxiliary') return binder ? contextEntryTitle(binder) : 'Recorded context entry';
+  if (component && node.kind !== 'definition') return binder
+    ? `With ${binder.role === 'lambda' ? 'input' : 'parameter'} ${binder.name} : ${binder.type}` : node.lean;
   switch (node.kind) {
     case 'forall': return binder ? `For every ${binder.name} : ${binder.type}` : 'For every choice';
     case 'exists': return binder ? `There exists ${binder.name} : ${binder.type}` : 'There exists a choice';
     case 'parameter': return binder ? `With parameter ${binder.name} : ${binder.type}` : 'With these parameters';
+    case 'definition': return binder?.definition ? `Define ${binder.name} : ${binder.type} := ${formatExpression(binder.definition.value)}` : 'With this local definition';
     case 'implies': return 'If the assumption holds, then the conclusion holds';
     case 'and': return 'Both conditions hold';
     case 'or': return 'At least one of these alternatives holds';
@@ -101,6 +110,8 @@ function relationGroup(relations: readonly SemanticRelation[], scopeId: string, 
  * Selection marks a focus and its context; it never deletes clauses from this document.
  */
 export function compileReading(document: SemanticDocument, options: ReadingOptions = {}): ReadingDocument {
+  const component = document.presentation?.kind === 'component';
+  const targetNodeId = component ? document.presentation?.targetNodeId : undefined;
   const objects = new Map(document.objects.map(object => [object.id, object]));
   const scopes = new Map(document.scopes.map(scope => [scope.id, scope]));
   const relationsByNode = new Map<string, SemanticRelation[]>();
@@ -129,15 +140,17 @@ export function compileReading(document: SemanticDocument, options: ReadingOptio
     const relations = relationsByNode.get(source.id) ?? [];
     const coverage = coverageByNode.get(source.id);
     const rootRelation = relations.find(relation => relation.provenance.expressionPath === 'expression' && relation.scopeId === scopeId);
-    const phrase = phraseFor(source, rootRelation, objects);
+    const logicalRoot = component && document.presentation?.logicalRootNodeId === source.id;
+    const phrase = logicalRoot && source.kind !== 'predicate' ? source.label
+      : logicalRoot && !rootRelation ? source.label : phraseFor(source, rootRelation, objects, component && !logicalRoot);
     let binder: ReadingBinder | undefined;
     if (source.binder) {
       const sourceBinder = source.binder;
       const choice = choicesByBinder.get(sourceBinder.id);
-      binder = { binderId: sourceBinder.id, objectId: choice?.objectId ?? objectsByBinder.get(sourceBinder.id)?.id, choiceId: choice?.id, name: sourceBinder.name, type: sourceBinder.type, role: sourceBinder.role, dependsOn: choice?.dependsOn ?? [], scopeId: choice?.scopeId ?? scopeId };
+      binder = { binderId: sourceBinder.id, objectId: choice?.objectId ?? objectsByBinder.get(sourceBinder.id)?.id, choiceId: choice?.id, name: sourceBinder.name, type: sourceBinder.type, role: sourceBinder.role, declarationKind: sourceBinder.declarationKind, definition: sourceBinder.definition, dependsOn: choice?.dependsOn ?? [], scopeId: choice?.scopeId ?? scopeId };
     }
     const children = source.children.map((child, index) => {
-      const childEdge = edgeFor(source, index);
+      const childEdge = edgeFor(source, index, component && !logicalRoot);
       return visit(child, source, childEdge, [...branchPath, { nodeId: source.id, edge: childEdge }]);
     });
     let panel: ReadingPanel | undefined;
@@ -152,7 +165,7 @@ export function compileReading(document: SemanticDocument, options: ReadingOptio
       panel = { id: `reading-panel:${source.id}`, nodeId: source.id, phrase, relationIds: relations.map(relation => relation.id), rootRelationIds: groups.filter(group => group.role === 'clause').flatMap(group => group.rootRelationIds), objectIds: unique([...(coverage?.objectIds ?? []), ...relations.flatMap(relation => relation.ports.map(port => port.objectId))]), sceneIds: coverage?.sceneIds ?? document.scenes.filter(scene => scene.nodeId === source.id).map(scene => scene.id), opaqueRegionIds: coverage?.opaqueRegionIds ?? document.opaqueRegions.filter(region => region.nodeId === source.id).map(region => region.id), coverage: coverage?.status ?? 'structural', groups };
       panels.push(panel);
     }
-    const directions = source.kind === 'iff' && children.length === 2 ? [
+    const directions = !component && source.kind === 'iff' && children.length === 2 ? [
       { id: `direction:${source.id}:forward`, label: 'First implies second', assumptionNodeId: children[0]!.id, conclusionNodeId: children[1]!.id },
       { id: `direction:${source.id}:backward`, label: 'Second implies first', assumptionNodeId: children[1]!.id, conclusionNodeId: children[0]!.id },
     ] : undefined;
@@ -166,13 +179,14 @@ export function compileReading(document: SemanticDocument, options: ReadingOptio
   const quantifierGroups: ReadingQuantifierGroup[] = [];
   const groupedNodes = new Set<string>();
   for (const node of nodes) {
-    if (groupedNodes.has(node.id) || !['forall', 'exists', 'parameter'].includes(node.kind) || !node.binder) continue;
+    if (groupedNodes.has(node.id) || !['forall', 'exists', 'parameter', 'definition', 'auxiliary'].includes(node.kind) || !node.binder) continue;
     const members: ReadingNode[] = [];
     let current = node;
     while (current.kind === node.kind && current.binder && !groupedNodes.has(current.id)) {
       members.push(current);
       groupedNodes.add(current.id);
       if (current.children.length !== 1 || current.children[0]!.kind !== node.kind || !current.children[0]!.binder) break;
+      if (current.children[0]!.id === targetNodeId) break;
       current = current.children[0]!;
     }
     const last = members.at(-1)!;
@@ -189,6 +203,6 @@ export function compileReading(document: SemanticDocument, options: ReadingOptio
   let ancestorId = selected.parentId;
   while (ancestorId) { ancestorNodeIds.unshift(ancestorId); ancestorId = nodeIndex.get(ancestorId)?.parentId; }
   const selectedScope = scopes.get(selected.scopeId);
-  const sequence: ReadingStep[] = nodes.map((node, index) => ({ id: `reading-step:${node.id}`, nodeId: node.id, kind: ['forall', 'exists', 'parameter'].includes(node.kind) ? 'binder' : node.children.length ? 'connective' : 'clause', ordinal: index + 1, ancestorNodeIds: (branchPaths.get(node.id) ?? []).map(position => position.nodeId), branchPath: branchPaths.get(node.id) ?? [], panelId: node.panelId }));
+  const sequence: ReadingStep[] = nodes.map((node, index) => ({ id: `reading-step:${node.id}`, nodeId: node.id, kind: ['forall', 'exists', 'parameter', 'definition', 'auxiliary'].includes(node.kind) ? 'binder' : node.children.length ? 'connective' : 'clause', ordinal: index + 1, ancestorNodeIds: (branchPaths.get(node.id) ?? []).map(position => position.nodeId), branchPath: branchPaths.get(node.id) ?? [], panelId: node.panelId }));
   return { schemaVersion: READING_DOCUMENT_VERSION, root, nodes, panels, quantifierGroups, sequence, selection: { nodeId: selectedId, descendantNodeIds, ancestorNodeIds, assumptionNodeIds: selected.assumptionNodeIds, scopeObjectIds: selectedScope?.objectIds ?? [], panelIds: panels.filter(panel => descendants.has(panel.nodeId)).map(panel => panel.id) }, diagnostics };
 }

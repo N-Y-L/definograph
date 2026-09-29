@@ -12,6 +12,8 @@ export interface StructuralField {
   readonly typeDescriptor?: TypeDescriptor;
   readonly kind: 'data' | 'law';
   readonly dependsOn: readonly string[];
+  /** Present when the field is a parent subobject (`extends`); its own fields are not listed here. */
+  readonly parent?: string;
   readonly lawDocument?: SemanticDocument;
   readonly lawReading?: ReadingDocument;
 }

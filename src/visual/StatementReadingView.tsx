@@ -11,25 +11,46 @@ import type { StructuralField } from '../decomposition/types';
 import { compileReading } from '../reading/compiler';
 import { compileSetConstruction, SetConstructionFigure } from '../set-constructions';
 import { compactLabel } from './layout';
+import { FigureScroll, useFrameOverflow } from '../components/FigureScroll';
 import { applicationFlow } from '../semantic/application-flow';
+import { formatExpression } from '../semantic/expression';
 import './statement-reading.css';
 import { compileReadingCues, type ReadingCue } from '../reading/cues';
 import { GuidedReading } from './GuidedReading';
+import { contextEntryTitle } from '../core/context-entry';
+import { counted } from '../core/counted';
 
 export interface StatementReadingViewProps {
   reading: ReadingDocument;
   document: SemanticDocument;
+  /** Display-only title for an actual component target, for example Exposed type. */
+  componentTitle?: string;
   selectedObjectId?: string;
+  /** Focus a particular relation when multiple applications share a clause.
+   * Clear this controlled selection in onNodeSelect to resume step navigation. */
+  selectedRelationId?: string;
   onObjectSelect?: (id: string) => void;
   onNodeSelect?: (id: string) => void;
+  /** A guided stage may focus an application inside its enclosing node. Called
+   * after onNodeSelect with that source-bearing relation ID, or the node ID. */
+  onSourceSelect?: (id: string) => void;
   /** Return null when this clause has no faithful symbolic geometric rendering. */
   renderGeometry?: (panel: ReadingPanel) => ReactNode;
 }
 
 import { readingObjectColor } from './object-identity';
 export { readingObjectColor } from './object-identity';
-const roleText: Record<ReadingBinder['role'], string> = { universal: 'For every', existential: 'There is', parameter: 'Given parameter', lambda: 'For input', assumption: 'Assuming' };
-const roleSymbol: Record<ReadingBinder['role'], string> = { universal: '∀', existential: '∃', parameter: '↦', lambda: '↦', assumption: '⇒' };
+const roleText: Record<ReadingBinder['role'], string> = { universal: 'For every', existential: 'There is', parameter: 'Given parameter', lambda: 'For input', assumption: 'Assuming', definition: 'Define', auxiliary: 'Recorded context entry' };
+const roleSymbol: Record<ReadingBinder['role'], string> = { universal: '∀', existential: '∃', parameter: '↦', lambda: '↦', assumption: '⇒', definition: ':=', auxiliary: '·' };
+const componentMode = (document: SemanticDocument): boolean => document.presentation?.kind === 'component';
+const ambientNodes = (nodes: readonly ReadingNode[], document: SemanticDocument): boolean => nodes.every(node => document.presentation?.contextNodeIds?.includes(node.id));
+function componentBinderTitle(nodes: readonly ReadingNode[], document: SemanticDocument): string {
+  if (nodes[0]?.binder?.role === 'auxiliary') return 'Recorded context entries';
+  if (nodes.some(node => node.id === document.presentation?.logicalRootNodeId))
+    return nodes[0]?.binder?.role === 'existential' ? 'Candidate within the existential statement' : 'For every';
+  return nodes[0]?.binder?.role === 'definition' ? ambientNodes(nodes, document) ? 'Context definitions' : 'Local definitions'
+    : ambientNodes(nodes, document) ? 'Names in scope' : 'Function inputs';
+}
 type Maps = { objects: Map<string, SemanticObject>; relations: Map<string, SemanticRelation>; panels: Map<string, ReadingPanel> };
 type RenderContext = StatementReadingViewProps & Maps & { visibleNodes: Set<string>; presentation: ReadingPresentation; focusObjectIds?: ReadonlySet<string> };
 
@@ -122,8 +143,8 @@ function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelati
     caption = relation.kind === 'image' ? 'The image collects outputs of the map on the given set' : 'The preimage collects inputs whose outputs lie in the given set';
   } else if (relation.kind === 'application') {
     const inputs = relation.ports.filter(p => p.role.startsWith('input'));
-    body = <>{inputs.slice(0, 3).map((input, index) => <g key={input.role}><NamedPoint id={input.objectId} x={78} y={inputs.length > 1 ? 53 + index * 62 : 110} ctx={ctx} labelY={22}/><FigureArrow from={[94, inputs.length > 1 ? 53 + index * 62 : 108]} to={[236, 108]} ctx={ctx}/></g>)}<FigureObject id={port(relation, 'function')} ctx={ctx}><rect x="230" y="76" width="106" height="67" rx="13" className="sr-function-box"/><ObjectName id={port(relation, 'function')} x={283} y={115} ctx={ctx} max={16}/></FigureObject><FigureArrow from={[338, 108]} to={[420, 108]} ctx={ctx}/><NamedPoint id={port(relation, 'output')} x={439} y={110} ctx={ctx}/>{inputs.length > 3 && <text x="80" y="214" className="sr-role-label" textAnchor="middle">+ {inputs.length - 3} inputs</text>}</>;
-    caption = 'Application · the map sends its inputs to this output';
+    body = <>{inputs.slice(0, 3).map((input, index) => <g key={input.role}><NamedPoint id={input.objectId} x={78} y={inputs.length > 1 ? 53 + index * 62 : 110} ctx={ctx} labelY={22}/><FigureArrow from={[94, inputs.length > 1 ? 53 + index * 62 : 108]} to={[236, 108]} ctx={ctx}/></g>)}<FigureObject id={port(relation, 'function')} ctx={ctx}><rect x="230" y="76" width="106" height="67" rx="13" className="sr-function-box"/><ObjectName id={port(relation, 'function')} x={283} y={115} ctx={ctx} max={16}/></FigureObject><FigureArrow from={[338, 108]} to={[420, 108]} ctx={ctx}/><NamedPoint id={port(relation, 'output')} x={439} y={110} ctx={ctx}/>{inputs.length > 3 && <text x="80" y="214" className="sr-role-label" textAnchor="middle">+ {counted(inputs.length - 3, 'input')}</text>}</>;
+    caption = componentMode(ctx.document) ? 'Application · ordered inputs and output expression' : 'Application · the map sends its inputs to this output';
   } else if (relation.kind === 'equality' || relation.kind === 'inequality') {
     const left = port(relation, 'left'), right = port(relation, 'right');
     mapPaths = relation.kind === 'equality' && Boolean(left && right && (expressionMapPath(left, relations).maps.length || expressionMapPath(right, relations).maps.length));
@@ -146,17 +167,19 @@ function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelati
     const centerId = port(relation, 'function') ?? port(relation, 'relation') ?? port(relation, 'symbol');
     const others = slots.filter(p => p.objectId !== centerId);
     body = <><FigureObject id={centerId} ctx={ctx} title={relation.label}><rect x="160" y="65" width="180" height="79" rx="17" className="sr-expression-box"/>{centerId ? <ObjectName id={centerId} x={250} y={110} ctx={ctx} max={24}/> : <text x="250" y="110" textAnchor="middle" className="sr-object-label">{compactLabel(relation.label, 24)}</text>}</FigureObject>{others.map((p, index) => { const x = (index + 1) * 500 / (others.length + 1); return <g key={`${p.role}:${index}`}><path d={`M250 145 L${x} 178`} className="sr-role-connection"/><NamedPoint id={p.objectId} x={x} y={184} ctx={ctx} labelY={23}/></g>; })}{relation.kind === 'function-property' && <text x="250" y="171" className="sr-property-name" textAnchor="middle">{relation.label}</text>}</>;
-    caption = relation.fidelity === 'structural' ? 'Argument structure only · this predicate has no interpreted geometric meaning' : `${relation.label} · a property required of the displayed object`;
+    caption = componentMode(ctx.document) ? 'Argument structure of this expression' : relation.fidelity === 'structural' ? 'Argument structure only · this predicate has no interpreted geometric meaning' : `${relation.label} · a property required of the displayed object`;
   }
   const comparison = !mapPaths && (relation.kind === 'equality' || relation.kind === 'inequality');
-  return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><svg viewBox={comparison ? '0 45 500 130' : '0 0 500 230'} role="group" aria-label={`${relation.label}: schematic relation`}><title>{relation.label}</title>{body}</svg><figcaption>{caption}</figcaption></figure>;
+  return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg viewBox={comparison ? '0 45 500 130' : '0 0 500 230'} role="group" aria-label={`${relation.label}: schematic relation`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
 
 function BinderStrip({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: RenderContext }) {
-  return <div className="sr-binder-strip" aria-label="Quantifiers and parameters in statement order">{nodes.map(node => {
+  return <div className="sr-binder-strip" aria-label={componentMode(ctx.document) ? "Parameters and definitions in source order" : "Binders and definitions in statement order"}>{nodes.map(node => {
     const binder = node.binder!;
     return <div key={node.id} className={`sr-binder sr-binder-${binder.role}`}>
+      {binder.role === 'auxiliary' && <span className="sr-binder-dependency">{contextEntryTitle(binder)}</span>}
       <button type="button" className={`sr-binder-name${binder.objectId === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} style={{ '--object-color': readingObjectColor(binder.objectId ?? binder.binderId) } as CSSProperties} data-reading-object={binder.objectId} onClick={() => binder.objectId ? ctx.onObjectSelect?.(binder.objectId) : ctx.onNodeSelect?.(node.id)} aria-pressed={binder.objectId === ctx.selectedObjectId} title={`${binder.name} : ${binder.type}`}><strong>{binder.name}</strong><span className="sr-binder-colon">:</span><span>{binder.type}</span></button>
+      {binder.definition && <span className="sr-definition-value">:= <code>{formatExpression(binder.definition.value)}</code></span>}
       {binder.role === 'existential' && <span className="sr-binder-dependency">{binder.dependsOn.length ? `may use ${binder.dependsOn.map(id => ctx.objects.get(id)?.label ?? id).join(', ')}` : 'independent of later choices'}</span>}
     </div>;
   })}</div>;
@@ -178,13 +201,13 @@ function ContainedExpressions({ panel, ctx }: { panel: ReadingPanel; ctx: Render
   const count = groups.reduce((sum, group) => sum + group.relations.length, 0);
   if (!count) return null;
   let preceding = 0;
-  return <details className="sr-contained-expressions"><summary>Inside this expression <span>{count} {count === 1 ? 'relation' : 'relations'}</span></summary><p className="sr-contained-note">These are parts of the expression, not separate assertions.</p>{groups.map(group => {
+  return <details className="sr-contained-expressions"><summary>Inside this expression <span>{count} {count === 1 ? 'relation' : 'relations'}</span></summary><p className="sr-contained-note">{componentMode(ctx.document) ? 'These parts retain their positions within the enclosing expression.' : 'These are parts of the expression, not separate assertions.'}</p>{groups.map(group => {
     const visible = group.relations.slice(0, Math.max(0, limit - preceding));
     preceding += group.relations.length;
     if (!visible.length) return null;
     const scopeRelations = group.relationIds.flatMap(id => ctx.relations.has(id) ? [ctx.relations.get(id)!] : []);
-    return <section className="sr-contained-group" key={group.id} data-expression-scope={group.scopeId} aria-label={group.role === 'local-expression' ? 'Inside a local expression scope' : 'Inside this clause expression'}>{group.role === 'local-expression' && <p className="sr-local-note">Local binders apply only within this expression.</p>}{visible.map(relation => <RelationFigure key={relation.id} relation={relation} relations={scopeRelations} ctx={ctx}/>)}</section>;
-  })}{count > limit && <button type="button" className="sr-show-more" onClick={() => setLimit(current => current + 3)}>Show {Math.min(3, count - limit)} more contained relations</button>}</details>;
+    return <section className="sr-contained-group" key={group.id} data-expression-scope={group.scopeId} aria-label={group.role === 'local-expression' ? 'Inside a local expression scope' : componentMode(ctx.document) ? 'Inside this expression' : 'Inside this clause expression'}>{group.role === 'local-expression' && <p className="sr-local-note">Local binders apply only within this expression.</p>}{visible.map(relation => <RelationFigure key={relation.id} relation={relation} relations={scopeRelations} ctx={ctx}/>)}</section>;
+  })}{count > limit && <button type="button" className="sr-show-more" onClick={() => setLimit(current => current + 3)}>Show {counted(Math.min(3, count - limit), 'more contained relation')}</button>}</details>;
 }
 
 function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
@@ -201,9 +224,9 @@ function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
   const simpleConstraint = !geometry && !(root && compileSetConstruction(ctx.document, root, relations)) && roots.length === 1 && ['equality', 'inequality'].includes(root.kind) && left && right && !(root.kind === 'equality' && (expressionMapPath(left, relations).maps.length || expressionMapPath(right, relations).maps.length));
   const contained = panel && (panel.coverage === 'partial' || roots.some(relation => relation.fidelity === 'structural' || ['predicate', 'equality', 'inequality'].includes(relation.kind)) || panel.groups.some(group => group.role === 'local-expression')) ? <ContainedExpressions panel={panel} ctx={ctx}/> : null;
   if (simpleConstraint && left && right) return <><div className="sr-inline-constraint" data-reading-node={node.id} aria-label={node.phrase}><span className="sr-constraint-math"><InlineObject id={left} ctx={ctx}/><span className="sr-inline-relation">{root.label}</span><InlineObject id={right} ctx={ctx}/></span><SourceButton node={node} ctx={ctx}><span className="sr-source-glyph" aria-hidden="true">↗</span></SourceButton></div>{contained}</>;
-  return <section className="sr-clause" data-reading-node={node.id} aria-label={node.phrase || 'Statement condition'}>
-    <div className="sr-clause-heading"><SourceButton node={node} ctx={ctx}>{node.phrase || 'Condition'} <span aria-hidden="true">↗</span></SourceButton>{panel?.coverage === 'partial' && <span className="sr-coverage-note">partly interpreted</span>}</div>
-    {geometry || (roots.length > 0 ? <div className={`sr-clause-figures${roots.length > 1 ? ' sr-multiple-roots' : ''}`}>{(showAllRelations ? roots : roots.slice(0, 3)).map(relation => <RelationFigure key={relation.id} relation={relation} relations={relations} ctx={ctx}/>)}{roots.length > 3 && !showAllRelations && <button type="button" className="sr-show-more" onClick={() => setShowAllRelations(true)}>Show {roots.length - 3} further relations in this clause</button>}</div> : <div className="sr-symbolic-clause"><code>{node.lean}</code><p>This clause is retained symbolically; no geometric interpretation is assigned.</p></div>)}
+  return <section className="sr-clause" data-reading-node={node.id} aria-label={node.phrase || (componentMode(ctx.document) ? 'Selected expression' : 'Statement condition')}>
+    <div className="sr-clause-heading"><SourceButton node={node} ctx={ctx}>{node.phrase || (componentMode(ctx.document) ? 'Expression' : 'Condition')} <span aria-hidden="true">↗</span></SourceButton>{panel?.coverage === 'partial' && <span className="sr-coverage-note">partly interpreted</span>}</div>
+    {geometry || (roots.length > 0 ? <div className={`sr-clause-figures${roots.length > 1 ? ' sr-multiple-roots' : ''}`}>{(showAllRelations ? roots : roots.slice(0, 3)).map(relation => <RelationFigure key={relation.id} relation={relation} relations={relations} ctx={ctx}/>)}{roots.length > 3 && !showAllRelations && <button type="button" className="sr-show-more" onClick={() => setShowAllRelations(true)}>Show {counted(roots.length - 3, 'further relation')} in this {componentMode(ctx.document) ? 'expression' : 'clause'}</button>}</div> : <div className="sr-symbolic-clause"><code>{node.lean}</code><p>{componentMode(ctx.document) ? 'This expression is retained symbolically; no further interpretation is assigned.' : 'This clause is retained symbolically; no geometric interpretation is assigned.'}</p></div>)}
     {contained}
     {panel?.groups.some(group => group.role === 'local-expression') && <p className="sr-local-note">This expression contains local binders. Inspect the fragment to follow their scopes.</p>}
   </section>;
@@ -219,9 +242,9 @@ function FieldLawReading({ field, ctx }: { field: StructuralField; ctx: RenderCo
     onNodeSelect={setNodeId} onObjectSelect={id => { setObjectId(id); if (ctx.objects.has(id)) ctx.onObjectSelect?.(id); }}/>;
 }
 
-function StructuralBinderFigure({ object, ctx }: { object: SemanticObject; ctx: RenderContext }) {
+function StructuralBinderFigure({ object, ctx, enclosed }: { object: SemanticObject; ctx: RenderContext; enclosed?: boolean }) {
   const model = useMemo(() => compileStructuralObject(ctx.document, object), [ctx.document, object]);
-  return model ? <StructuralObjectFigure model={model} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}
+  return model ? <StructuralObjectFigure model={model} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect} enclosed={enclosed}
     renderLaw={field => <FieldLawReading key={field.projection} field={field} ctx={ctx}/>}/> : object.binder?.structureOmission ? <p className="sd-remaining">{object.binder.structureOmission}</p> : null;
 }
 
@@ -241,6 +264,7 @@ function BinderFigures({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: Ren
   let run: ReadingNode[] = [];
   const flush = () => { if (run.length) { figures.push(<TypedConstructionFigure key={`types:${run[0]!.id}`} document={ctx.document} binders={run.map(node => node.binder!)} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>); run = []; } };
   for (const node of nodes) {
+    if (node.binder?.role === 'auxiliary') { flush(); continue; }
     const bundled = recognized.filter(relation => relation.nodeId === node.id);
     const object = node.binder?.objectId ? ctx.objects.get(node.binder.objectId) : undefined;
     const structure = object?.binder?.structure || object?.binder?.structureOmission;
@@ -248,7 +272,7 @@ function BinderFigures({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: Ren
     flush();
     bundled.forEach(relation => figures.push(<RelationFigure key={relation.id} relation={relation} relations={relations} ctx={ctx}/>));
     if (structure && object) {
-      const figure = <StructuralBinderFigure object={object} ctx={ctx}/>;
+      const figure = <StructuralBinderFigure object={object} ctx={ctx} enclosed={bundled.length > 0}/>;
       figures.push(bundled.length ? <details className="sd-generic-detail" key={`structure:${node.id}`}><summary>Read the underlying fields and laws</summary>{figure}</details> : <div key={`structure:${node.id}`}>{figure}</div>);
     }
   }
@@ -267,7 +291,7 @@ function AtlasRegion({ region, ctx, depth = 0, lead }: { region: ReadingRegion; 
   if (region.kind === 'binders') {
     const binders = region.binders.filter(node => ctx.visibleNodes.has(node.id));
     const role = region.node.binder!.role;
-    body = <><div className="sr-object-introduction"><RegionHeader region={region} ctx={ctx} lead={lead} symbol={roleSymbol[role]} title={role === 'universal' ? 'For every' : role === 'existential' ? 'A witness is required' : 'Parameters'}/><BinderStrip nodes={binders} ctx={ctx}/><BinderFigures nodes={binders} ctx={ctx}/>{binders.length < region.binders.length && <button type="button" className="sr-show-more" onClick={() => ctx.onNodeSelect?.(region.binders[binders.length].id)}>Read the next {region.binders.length - binders.length} binders</button>}</div>{region.body && <AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/>}</>;
+    body = <><div className="sr-object-introduction"><RegionHeader region={region} ctx={ctx} lead={lead} symbol={roleSymbol[role]} title={role === 'auxiliary' ? 'Recorded context entries' : componentMode(ctx.document) ? componentBinderTitle(binders, ctx.document) : role === 'universal' ? 'For every' : role === 'existential' ? 'A witness is required' : role === 'definition' ? 'Local definitions' : 'Parameters'}/><BinderStrip nodes={binders} ctx={ctx}/><BinderFigures nodes={binders} ctx={ctx}/>{binders.length < region.binders.length && <button type="button" className="sr-show-more" onClick={() => ctx.onNodeSelect?.(region.binders[binders.length].id)}>Read the next {counted(region.binders.length - binders.length, 'binder')}</button>}</div>{region.body && <AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/>}</>;
   } else if (region.kind === 'implication') {
     body = <div className="sr-implication-regions"><section className="sr-given-region" aria-label="Given assumptions"><h3 className="sr-role-heading">Given</h3><div className="sr-region-stack">{region.assumptions.map(assumption => <AtlasRegion key={assumption.id} region={assumption} ctx={ctx} depth={depth + 1}/>)}</div><HypothesisStructures nodeIds={region.sourceNodeIds} ctx={ctx}/></section><section className="sr-then-region" aria-label="Then the conclusion is required">{region.conclusion.kind !== 'binders' && <h3 className="sr-role-heading"><span aria-hidden="true">→</span> Then</h3>}<AtlasRegion region={region.conclusion} ctx={ctx} depth={depth + 1} lead={region.conclusion.kind === 'binders' ? 'Then' : undefined}/></section></div>;
   } else if (region.kind === 'all') {
@@ -281,10 +305,12 @@ function AtlasRegion({ region, ctx, depth = 0, lead }: { region: ReadingRegion; 
   } else if (region.kind === 'structure') {
     body = <><RegionHeader region={region} ctx={ctx} title={region.node.phrase}/>{region.children.map(child => <AtlasRegion key={child.id} region={child} ctx={ctx} depth={depth + 1}/>)}</>;
   } else body = <Clause node={region.node} ctx={ctx}/>;
-  return <section className={`sr-atlas-region sr-region-${region.kind}${focused ? ' sr-region-focused' : ''}${depth > 3 ? ' sr-deep-region' : ''}`} data-reading-step={region.id} data-reading-region={region.kind} data-source-nodes={region.sourceNodeIds.join(' ')}>{body}</section>;
+  return <section className={`sr-atlas-region sr-region-${region.kind}${focused ? ' sr-region-focused' : ''}${depth > 3 ? ' sr-deep-region' : ''}`} data-reading-step={region.id} data-reading-region={region.kind} data-source-nodes={region.sourceNodeIds.join(' ')} data-component-region={componentMode(ctx.document) ? ambientNodes([region.node], ctx.document) ? 'context' : 'expression' : undefined}>{componentMode(ctx.document) && region.sourceNodeIds.includes(ctx.document.presentation!.targetNodeId!) && <p className="sr-heading-lead" data-component-target={ctx.document.presentation!.target}>{ctx.componentTitle ?? (ctx.document.presentation!.target === 'type' ? 'Inferred type' : 'Selected term')} begins here.</p>}{body}</section>;
 }
 
-function overviewTitle(region: ReadingRegion): string {
+function overviewTitle(region: ReadingRegion, document: SemanticDocument): string {
+  if (region.kind === 'binders' && region.node.binder?.role === 'auxiliary') return region.binders.map(node => contextEntryTitle(node.binder!)).join('; ');
+  if (componentMode(document) && region.kind === 'binders') return `${componentBinderTitle(region.binders, document)}: ${region.binders.map(node => node.binder!.name).join(', ')}`;
   if (region.kind === 'binders') return `${roleText[region.node.binder!.role]} ${region.binders.map(node => node.binder!.name).join(', ')}`;
   if (region.kind === 'implication') return 'Given → conclusion';
   if (region.kind === 'all') return 'All conditions';
@@ -295,9 +321,9 @@ function overviewTitle(region: ReadingRegion): string {
 }
 
 function LogicOverview({ region, ctx, depth = 0 }: { region: ReadingRegion; ctx: RenderContext; depth?: number }): ReactNode {
-  if (!region.sourceNodeIds.some(id => ctx.visibleNodes.has(id))) return <button type="button" className="sr-overview-more" onClick={() => ctx.onNodeSelect?.(region.id)}>{compactLabel(overviewTitle(region), 44)}…</button>;
+  if (!region.sourceNodeIds.some(id => ctx.visibleNodes.has(id))) return <button type="button" className="sr-overview-more" onClick={() => ctx.onNodeSelect?.(region.id)}>{compactLabel(overviewTitle(region, ctx.document), 44)}…</button>;
   const children: { region: ReadingRegion; role?: string }[] = region.kind === 'binders' ? region.body ? [{ region: region.body }] : [] : region.kind === 'implication' ? [...region.assumptions.map(assumption => ({ region: assumption, role: 'Given' })), { region: region.conclusion, role: 'Then' }] : region.kind === 'negation' ? [{ region: region.body, role: 'Negated' }] : region.kind === 'clause' ? [] : region.children.map((child, index) => ({ region: child, role: region.kind === 'alternatives' ? `Alternative ${index + 1}` : region.kind === 'equivalence' ? `${index === 0 ? 'First' : 'Second'} condition` : undefined }));
-  return <div className={`sr-overview-node${depth > 3 ? ' sr-overview-deep' : ''}`}><button type="button" className={region.sourceNodeIds.includes(ctx.reading.selection.nodeId) ? 'sr-overview-selected' : ''} onClick={() => ctx.onNodeSelect?.(region.id)} title={region.node.lean}>{overviewTitle(region)}</button>{children.length > 0 && <div className="sr-overview-children">{children.map(child => <div key={child.region.id}>{child.role && <span className="sr-overview-edge-label">{child.role}</span>}<LogicOverview region={child.region} ctx={ctx} depth={depth + 1}/></div>)}</div>}</div>;
+  return <div className={`sr-overview-node${depth > 3 ? ' sr-overview-deep' : ''}`}><button type="button" className={region.sourceNodeIds.includes(ctx.reading.selection.nodeId) ? 'sr-overview-selected' : ''} onClick={() => ctx.onNodeSelect?.(region.id)} title={region.node.lean}>{overviewTitle(region, ctx.document)}</button>{children.length > 0 && <div className="sr-overview-children">{children.map(child => <div key={child.region.id}>{child.role && <span className="sr-overview-edge-label">{child.role}</span>}<LogicOverview region={child.region} ctx={ctx} depth={depth + 1}/></div>)}</div>}</div>;
 }
 
 function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
@@ -315,7 +341,7 @@ function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
     const group = panel?.groups.find(candidate => candidate.scopeId === cue.scopeId);
     const relations = group?.relationIds.flatMap(id => ctx.relations.has(id) ? [ctx.relations.get(id)!] : []) ?? [];
     const localContext = ctx.document.scopes.find(scope => scope.id === cue.scopeId)?.context ?? [];
-    body = <>{cue.stage.kind === 'construction' && <p className="rg-construction-context">Constructing part of <span title={node.lean}>{compactLabel(node.phrase || node.lean, 180)}</span></p>}{cue.stage.kind === 'contained' && <p className="rg-local-binders">Part of <code>{node.lean}</code>. This inner relation is not asserted separately.{group?.role === 'local-expression' && <> Local context: {localContext.join(' · ') || 'binders apply only inside this expression'}.</>}</p>}{relation && <RelationFigure relation={relation} relations={relations} ctx={focused}/>}</>;
+    body = <>{cue.stage.kind === 'construction' && <p className="rg-construction-context">Constructing part of <span title={node.lean}>{compactLabel(node.phrase || node.lean, 180)}</span></p>}{cue.stage.kind === 'contained' && <p className="rg-local-binders">Part of <code>{node.lean}</code>.{componentMode(ctx.document) ? ' This part retains its expression scope.' : ' This inner relation is not asserted separately.'}{group?.role === 'local-expression' && <> Local context: {localContext.join(' · ') || 'binders apply only inside this expression'}.</>}</p>}{relation && <RelationFigure relation={relation} relations={relations} ctx={focused}/>}</>;
   } else if (cue.intent === 'logic') {
     const grouped = cue.sourceNodeIds.flatMap(id => { const source = ctx.reading.nodes.find(candidate => candidate.id === id); return source?.kind === 'implies' ? [source] : []; });
     const children = node.kind === 'implies' && grouped.length ? [...grouped.map(source => source.children[0]), grouped.at(-1)!.children[1]] : node.children;
@@ -324,8 +350,15 @@ function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
   return <>{body}<details className="rg-source-context"><summary>Lean fragment and source context</summary><code>{node.lean}</code></details></>;
 }
 
+/** The whole-statement overview scrolls within its own height: always named (a complementary landmark), and a Tab stop
+ * only while it overflows (FigureScroll rule). Its own component, so an overflow change re-renders only the aside. */
+function Overview({ name, children }: { name: string; children: ReactNode }) {
+  const [overview, overflow] = useFrameOverflow<HTMLElement>(true);
+  return <aside ref={overview} className="sr-overview" aria-label={name} tabIndex={overflow ? 0 : undefined}>{children}</aside>;
+}
+
 export function StatementReadingView(props: StatementReadingViewProps) {
-  const { reading, document: semantic, selectedObjectId } = props;
+  const { reading, document: semantic, selectedObjectId, selectedRelationId } = props;
   const surface = useRef<HTMLDivElement>(null);
   const complete = useRef<HTMLDetailsElement>(null);
   const [guideChoice, setGuideChoice] = useState<{ document: SemanticDocument; cueId: string; nodeId: string } | null>(null);
@@ -333,10 +366,14 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   const previousSelection = useRef(reading.selection.nodeId);
   const [traces, setTraces] = useState<{ id: string; path: string }[]>([]);
   const maps = useMemo<Maps>(() => ({ objects: new Map(semantic.objects.map(object => [object.id, object])), relations: new Map(semantic.relations.map(relation => [relation.id, relation])), panels: new Map(reading.panels.map(panel => [panel.id, panel])) }), [semantic, reading]);
-  const presentation = useMemo(() => planReadingPresentation(reading), [reading]);
+  const presentation = useMemo(() => planReadingPresentation(reading, { boundaryNodeIds: componentMode(semantic) && semantic.presentation?.targetNodeId ? [semantic.presentation.targetNodeId] : [] }), [reading, semantic]);
   const cuePlan = useMemo(() => compileReadingCues(reading, semantic), [reading, semantic]);
-  const activeCue = (guideChoice?.document === semantic && guideChoice.nodeId === reading.selection.nodeId ? cuePlan.cues.find(cue => cue.id === guideChoice.cueId) : undefined) ?? cuePlan.cues.find(cue => cue.sourceNodeIds.includes(reading.selection.nodeId)) ?? (reading.selection.nodeId === reading.root.id ? cuePlan.cues[0] : undefined);
-  function chooseCue(cue: ReadingCue) { setGuideChoice({ document: semantic, cueId: cue.id, nodeId: cue.nodeId }); props.onNodeSelect?.(cue.nodeId); }
+  const activeCue = (selectedRelationId ? cuePlan.cues.find(cue => cue.stage.relationId === selectedRelationId) : undefined) ?? (guideChoice?.document === semantic && guideChoice.nodeId === reading.selection.nodeId ? cuePlan.cues.find(cue => cue.id === guideChoice.cueId) : undefined) ?? cuePlan.cues.find(cue => cue.sourceNodeIds.includes(reading.selection.nodeId)) ?? (reading.selection.nodeId === reading.root.id ? cuePlan.cues[0] : undefined);
+  function chooseCue(cue: ReadingCue) {
+    setGuideChoice({ document: semantic, cueId: cue.id, nodeId: cue.nodeId });
+    props.onNodeSelect?.(cue.nodeId);
+    props.onSourceSelect?.(cue.stage.relationId ?? cue.nodeId);
+  }
   function chooseNode(id: string) {
     const cue = cuePlan.cues.find(candidate => candidate.sourceNodeIds.includes(id));
     if (cue) setGuideChoice({ document: semantic, cueId: cue.id, nodeId: id });
@@ -348,7 +385,8 @@ export function StatementReadingView(props: StatementReadingViewProps) {
     if (!root || !selectedObjectId) { setTraces([]); return; }
     const update = () => {
       const box = root.getBoundingClientRect();
-      const nodes = [...root.querySelectorAll<HTMLElement>('[data-reading-object]')].filter(element => element.getAttribute('data-reading-object') === selectedObjectId);
+      // Chrome still reports layout boxes for the content of a closed <details>; exclude it explicitly.
+      const nodes = [...root.querySelectorAll<HTMLElement>('[data-reading-object]')].filter(element => element.getAttribute('data-reading-object') === selectedObjectId && !element.closest('details:not([open]) > :not(summary)'));
       const points = nodes.map(element => element.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0).slice(0, 16).map(r => ({ x: r.x - box.x + r.width / 2, y: r.y - box.y + r.height / 2 }));
       setTraces(points.slice(1).map((point, index) => { const prior = points[index]; const midY = (prior.y + point.y) / 2; return { id: `${selectedObjectId}:${index}`, path: `M${prior.x} ${prior.y} C${prior.x} ${midY},${point.x} ${midY},${point.x} ${point.y}` }; }));
     };
@@ -370,5 +408,5 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   }, [reading.selection.nodeId, presentation, activeCue]);
   const visibleNodes = visibleReadingNodes(reading, nodeLimit);
   const ctx: RenderContext = { ...props, ...maps, onNodeSelect: chooseNode, visibleNodes, presentation };
-  return <div className="statement-reading-view"><div className="sr-atlas-layout"><div className="sr-atlas-main"><div className="sr-reading-intro"><span className="sr-reading-label">Visual reading</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div ref={surface} className="sr-reading-surface">{activeCue && <GuidedReading plan={cuePlan} cue={activeCue} reading={reading} document={semantic} onChoose={chooseCue} onObjectSelect={props.onObjectSelect}><CueFigure cue={activeCue} ctx={ctx}/></GuidedReading>}<details ref={complete} className="sr-complete-reading"><summary>Full visual statement</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ stroke: readingObjectColor(selectedObjectId) }}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label="Ordered visual reading of the statement"><AtlasRegion region={presentation.root} ctx={ctx}/></div></details></div>{reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {reading.nodes.length} logical nodes, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {Math.min(100, reading.nodes.length - visibleNodes.size)} nodes</button></div>}<p className="sr-reading-note">Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.</p></div><aside className="sr-overview"><div className="sr-overview-heading">Whole statement</div><LogicOverview region={presentation.root} ctx={ctx}/></aside></div></div>;
+  return <div className="statement-reading-view"><div className="sr-atlas-layout"><div className="sr-atlas-main"><div className="sr-reading-intro"><span className="sr-reading-label">Visual reading</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div ref={surface} className="sr-reading-surface">{activeCue && <GuidedReading plan={cuePlan} cue={activeCue} reading={reading} document={semantic} onChoose={chooseCue} onObjectSelect={props.onObjectSelect}><CueFigure cue={activeCue} ctx={ctx}/></GuidedReading>}<details ref={complete} className="sr-complete-reading"><summary>{componentMode(semantic) ? 'Full visual reading' : 'Full visual statement'}</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ stroke: readingObjectColor(selectedObjectId) }}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label={componentMode(semantic) ? 'Ordered visual reading of the expression' : 'Ordered visual reading of the statement'}><AtlasRegion region={presentation.root} ctx={ctx}/></div></details></div>{reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {counted(reading.nodes.length, componentMode(semantic) ? 'expression node' : 'logical node')}, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {counted(Math.min(100, reading.nodes.length - visibleNodes.size), 'node')}</button></div>}<p className="sr-reading-note">{componentMode(semantic) ? 'Schematics follow expression structure and its context. Shapes and spacing carry no additional meaning.' : 'Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.'}</p></div><Overview name={componentMode(semantic) ? 'Expression and context' : 'Whole statement'}><div className="sr-overview-heading">{componentMode(semantic) ? 'Expression and context' : 'Whole statement'}</div><LogicOverview region={presentation.root} ctx={ctx}/></Overview></div></div>;
 }

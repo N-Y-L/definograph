@@ -1,89 +1,106 @@
 # Definograph
 
-**Read a Lean statement as a picture of its structure**: what is chosen before what, what is assumed, which maps connect which objects, and where interpretation stops. The reading is built from Lean's own types and definitions. Abstract objects get no invented coordinates, and numerical sample views are optional and kept apart from what the statement asserts.
+**Read a Lean statement through its objects, relationships and scope.** Definograph is a local mathematical statement reader with linked diagrams, a guided sequence and a VS Code companion. It uses Lean's actual types and definitions, keeps unsupported expressions visible, and separates symbolic structure from optional numerical examples.
 
-A research prototype, built for CS 124 at UIUC. It is not a general mathematical visualizer yet; [status](docs/status.md) says exactly what works.
+[Website and examples](https://definograph.com/) · [Tutorial](https://definograph.com/learn/) · [Current capabilities](docs/status.md) · [Setup guide](docs/editor-integration.md)
 
-## What it does
+Definograph is an experimental research implementation. It does not yet explain arbitrary mathematics. Lean's typing checks do not prove the submitted proposition or certify its visualization.
 
-Order matters, so the reader shows it. These two statements differ only in quantifier order:
+## See the reader
 
-```lean
-∀ x : ℝ, ∃ y : ℝ, x < y      -- y is chosen after x, and may depend on it
-∃ y : ℝ, ∀ x : ℝ, x < y      -- y is fixed before any x is chosen
-```
+- **Follow the logic.** Read quantifiers, assumptions and conclusions in sequence, with the whole statement alongside.
+- **Trace an object.** Highlight its visible occurrences and inspect maps, inputs and relationships.
+- **Inspect structure.** Read direct record fields and laws, expose a definition explicitly, and revisit bounded inspection histories with their recorded checks.
+- **Explore supported examples.** View selected set, graph, restricted-map and metric relations. Numerical samples remain separate from the statement's assertions.
 
-The reader lays each one out as a sequence of choices, assumptions and conditions with its logical overview alongside, and the dependency of `y` on `x` appears in the first and not in the second.
-
-Names you choose are labels, not meaning. A structure written today, never seen by Definograph:
+For example, enter this statement term:
 
 ```lean
-structure Passage (A B : Type) where
-  advance : A → B
-  retreat : B → A
-  roundTrip : ∀ x, retreat (advance x) = x
-
-#check ∀ (A B : Type) (p : Passage A B), True
+∀ x : ℝ, ∃ y : ℝ, x < y
 ```
 
-In the editor extension it is read through Lean's checked projections: two maps between `A` and `B`, and a law saying the round trip returns its input. Nothing is registered under the name `Passage`, and renaming a record and all its fields leaves the extracted fields, maps and law kinds unchanged (`npm run test:decomposition`).
+Here the choice of `y` may depend on the earlier `x`. Reversing the quantifiers asks for one `y` that works for every `x`. The reader makes this dependency visible; it does not supply a witness or a proof. See the [recorded examples](https://definograph.com/examples/) for broader views and their exact source statements.
 
-Mathematics the reader cannot yet interpret is shown as typed structure marked as uninterpreted. Known gaps are listed in [status](docs/status.md).
+<img src="website/source-assets/views/views-6/depends-app-context/context@2x.png" width="720" alt="Definograph's Choices view lists an arbitrary x followed by a candidate y that may depend on x.">
 
-## Two surfaces
+*Recorded Choices view: `y` may depend on the earlier `x`; its existence remains an obligation. [Exact Lean source](website/source-assets/views/views-6/depends-app-context/source.lean).*
 
-- **Web reader.** A local app: pick or type a statement and step through it with **Next**. **Inspect** shows what was and was not interpreted.
-- **Lean editor extension.** A VS Code command, **Definograph: Visualize Selection**, reads a selected proposition in its real project context, including unsaved text.
+<details>
+<summary>Trace an object through a statement about two map paths</summary>
 
-Both surfaces share one reader. Rocq is not implemented.
+<img src="website/source-assets/views/views-6/paths-identity-trace/context@2x.png" width="640" alt="The selected object x is linked across a reading step, typed maps and the equation g(f(x)) = h(x).">
 
-## Where it is going
+*The dotted thread links visible occurrences of the selected `x` across the guided step and full statement. The thread's route carries no mathematical meaning. [Exact Lean source](website/source-assets/views/views-6/paths-identity-trace/source.lean).*
 
-The 0.7 code partly works by recognition: some relation kinds and figures are written per domain (sets, graphs, metric balls, restricted maps). The [architecture decision](docs/design/architecture-decision.md) proposes replacing this with a compositional design:
+</details>
 
-- **Fundamental objects** are eight logical building blocks (binders, and/or, equality, function application, records, atomic terms, types, and folded parts). On top of them sits a short, counted list of *readings*: name-free patterns such as containment, an order, or a symmetric relation, which Lean certifies each time one is used.
-- **Decomposition** rewrites the Lean term into those blocks by checked steps. When several decompositions are valid, a fixed and inspectable order picks one.
-- **Composition** is a small algebra. Pieces placed side by side mean "and", an output wired into an input means application, and nested frames carry quantifiers, implication and negation. The decision states which algebraic laws hold and which fail.
-- **Meaning and presentation** meet only through facts Lean has certified. Names, coordinates and prose never reach the drawing code.
+Both images were recorded from the reader on 28 September 2026 with Lean 4.28.0.
 
-The claim to test is that pictures grow per theory, never per object or theorem. It rests on a hand-executed stress test over seven statements from seven areas; nothing in the new design is implemented yet. The first vertical slice, its acceptance criteria and human reading gates are in the decision, which amends the [TNF specification](docs/design/tnf-specification.md).
+## Run locally
 
-## Run it
-
-Requirements: Node.js 22.12+, a Lean 4.28.0 toolchain, macOS or Linux (WSL on Windows). Mathlib is pinned to `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
+Requirements: **Node.js 22.12+** and an existing **Lean 4.28.0** executable. Retained setup evidence covers macOS arm64 with Node.js 24.18.1. Linux, WSL and minimum-version compatibility remain unqualified; native Windows linking is not implemented.
 
 ```sh
 git clone https://github.com/N-Y-L/definograph.git
 cd definograph
-npm ci
-npm run setup:lean -- --lean /absolute/path/to/lean-4.28.0/bin/lean --download
-npm run dev          # then open http://127.0.0.1:5173
+npm ci --ignore-scripts
+npm run setup:lean -- \
+  --lean /absolute/path/to/lean-4.28.0/bin/lean \
+  --download
+npm run dev
 ```
 
-Setup does not install Lean or change Elan defaults. `--download` puts the pinned mathlib dependencies (several GB) in this checkout's ignored `.local/`; `--packages /path/to/.lake/packages` reuses an existing matching build instead. The web reader accepts a statement term, not a file of declarations. For a production build: `npm run build`, `npm start`, then open http://127.0.0.1:4317. Details: [Lean contract](docs/lean-contract.md).
+Open [localhost:5173](http://127.0.0.1:5173), choose a statement, and follow **Next**. **Lean source** accepts a statement term, not a file of declarations. For a production build, run `npm run build` followed by `npm start`, then open [localhost:4317](http://127.0.0.1:4317).
 
-**Editor extension:** run `npm run build`, then `npm ci --prefix extension` and `npm run check:extension`. Install `.local/statement-lens-editor-0.7.1.vsix` with **Extensions: Install from VSIX…**, and set `statementLens.engineDirectory` to this checkout. The package is local, not on the Marketplace, and a full manual VS Code session is not yet verified. See the [editor guide](docs/editor-integration.md). The `statementLens` names are compatibility identifiers from an earlier project name.
+Setup pins mathlib to `8f9d9cff6bd728b17a24e163c9402775d9e6a365`. `--download` fetches its dependencies into the ignored `.local/` directory and can use several GB. Alternatively, pass `--packages /absolute/path/to/a/built/.lake/packages` for an existing matching cache. Setup does not install Lean or change Elan defaults. See the [setup contract](docs/lean-contract.md) and [installation qualification](docs/editor-integration.md#installation-qualification).
 
-## Checks
+### Use VS Code
+
+Install the official Lean extension (`leanprover.lean4`) in VS Code **1.95+**. After building and configuring the reader above, run:
 
 ```sh
-npm run build && npm test && npm run test:server   # portable
-npm run check:extension                            # extension type checks and packaging
-npm run check                                      # build, unit, server and all native Lean suites
+npm ci --prefix extension --ignore-scripts
+node --import tsx scripts/verify-local-setup.ts
+npm run package --prefix extension -- --out /absolute/path/to/new/definograph-0.7.1.vsix
 ```
 
-CI runs the first two lines; the native suites need the Lean setup above. Tests check stated contracts and catch regressions. They do not measure whether a reader understands the mathematics; that needs people, and the decision's reading gates provide for it.
+Choose a new output path; packaging refuses to overwrite an existing VSIX. Use **Extensions: Install from VSIX…**, then set `statementLens.engineDirectory` in VS Code **User settings** to this matching built checkout's absolute path. In a trusted Lean 4.28.0 project with built imports, run **Definograph: Visualize Selection**.
 
-## Trust boundaries
+The VSIX contains the extension controller only. The reader assets, native engine, toolchain and compiled imports remain separate prerequisites. Source is available here; there is no qualified one-click installer or Marketplace release. The [editor guide](docs/editor-integration.md) covers assembly, supported journeys and failure states. Retained `StatementLens` module names and `statementLens.*` settings are compatibility identifiers.
 
-Lean checks that a statement is well typed. It does not prove the statement, verify the diagrams, or certify that the picture explains anything. The editor path re-elaborates the whole trusted buffer in a separate process, and Lean commands can run code, so it is not a sandbox. Statements and project code are processed locally; nothing is sent to a cloud service or a model API. See [execution limits](docs/editor-integration.md#execution-and-isolation-limits).
+## Architecture and boundaries
 
-## Documentation
+```text
+Lean term or trusted editor buffer
+  → elaborated expressions, context and recorded checks
+  → scoped structure and supported mathematical interpretations
+  → guided reading, diagrams and explicit interpretation gaps
+```
 
-Start with [status](docs/status.md), the [code map](docs/architecture.md), and the [architecture decision](docs/design/architecture-decision.md). The [documentation index](docs/README.md) separates current contracts from historical iteration reports. Contributors should read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+The standalone reader, editor inspections, saved packets and raw source-data view have different contracts. The [reader relation table](docs/reader-relations.md) and [documentation index](docs/README.md) explain their scope. Imported snapshots remain unverified records; a stored outcome does not certify the current source.
 
-## Credits and license
+Editor mode re-elaborates the **whole trusted active buffer**. Lean commands and elaborators can execute code; this is not a security sandbox. Analysis runs locally without a model API or cloud service. See the [execution boundaries](docs/editor-integration.md#execution-and-isolation-limits).
+
+The [architecture decision](docs/design/architecture-decision.md) and [roadmap](docs/roadmap.md) describe the compositional engine still to be completed. Their acceptance gates are research goals, not established universal coverage. The [code map](docs/architecture.md) describes the implementation.
+
+## Develop
+
+Portable checks need no Lean setup or download:
+
+```sh
+npm run build
+npm run check:reader-drivers
+npm test
+npm run test:server
+npm run test:source-dependency
+```
+
+With the pinned native worker configured, `npm run check` adds the native integration suites. With extension dependencies installed, `npm run check:extension` checks and packages the controller. See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidance. The public website has a separate, reproducible build in [website/README.md](website/README.md).
+
+## License and credits
+
+The application is available under [Apache License 2.0](LICENSE); reused dependencies retain their own terms in [NOTICE](NOTICE). The separately maintained [source-capture snapshot](vendor/DefinographCapture/README.md) records its exact upstream provenance. No upstream license file was present at that pin, and this repository does not add a license to that snapshot.
 
 The 0.7 prototype was developed by Codex. The architecture decision and further development are by Claude. Both worked under the supervision of Neil Yuanting Li.
 
-[Apache License 2.0](LICENSE). [Lean](https://github.com/leanprover/lean4) and [mathlib](https://github.com/leanprover-community/mathlib4) provide the formal environment. [LeanTeX](https://github.com/kmill/LeanTeX) is vendored for optional notation, and KaTeX, CodeMirror and React support the interface. [3Blue1Brown/Manim](https://github.com/3b1b/manim) and [Penrose](https://penrose.cs.cmu.edu/) informed the visual approach, but none of their code is bundled. Reuse and attribution are recorded in [NOTICE](NOTICE) and [vendor/LeanTeX](vendor/LeanTeX); citation metadata is in [CITATION.cff](CITATION.cff).
+[Lean](https://github.com/leanprover/lean4) and [mathlib](https://github.com/leanprover-community/mathlib4) provide the formal environment. [LeanTeX](https://github.com/kmill/LeanTeX), KaTeX, CodeMirror and React support the interface. Exact reuse and attribution are recorded in [NOTICE](NOTICE); citation metadata is in [CITATION.cff](CITATION.cff).

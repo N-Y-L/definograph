@@ -7,7 +7,7 @@ export type SemanticFidelity = 'structural' | 'symbolic' | 'numerical';
 export interface Provenance {
   readonly nodeId: string;
   readonly expressionPath: string;
-  readonly origin: 'elaborated-expression';
+  readonly origin: 'elaborated-expression' | 'imported-packet' | 'selected-occurrence' | 'definition-head-exposure' | 'decomposition-result';
 }
 export interface SemanticObject {
   readonly id: string;
@@ -87,6 +87,14 @@ export interface FragmentCoverage {
 export interface SemanticDocument {
   readonly schemaVersion: typeof SEMANTIC_DOCUMENT_VERSION;
   readonly prover: 'lean' | 'rocq';
+  /** Positional component presentation; optional interpretation is limited to
+   * one explicitly associated root. This document carries no native authority. */
+  readonly presentation?: {
+    readonly kind: 'component'; readonly target: 'term' | 'type';
+    readonly contextNodeIds?: readonly string[]; readonly targetNodeId?: string;
+    /** Only this node has an explicitly associated one-layer logical reading. */
+    readonly logicalRootNodeId?: string;
+  };
   readonly source: string;
   readonly tree: StatementNode;
   readonly objects: readonly SemanticObject[];

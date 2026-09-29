@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="530" height="690" viewBox="0 0 530 690" role="img" aria-labelledby="title description">
+  <title id="title">Quantifier order changes the scope of a choice</title>
+  <desc id="description">Top: for every x contains a choice of y and then the condition y equals x. Bottom: one choice of y contains every x and then the condition y equals x. In the first statement y may depend on x; in the second one y must work for every x.</desc>
+  <rect width="530" height="690" fill="#ffffff" />
+  <g font-family="system-ui, sans-serif" fill="#172337">
+    <text x="32" y="35" font-size="21" font-weight="600">A suitable y for each x</text>
+    <text x="32" y="365" font-size="21" font-weight="600">One y for every x</text>
+    <rect x="32" y="58" width="462" height="230" rx="12" fill="#eef5fc" stroke="#355d87" stroke-width="2" />
+    <text x="54" y="94" font-size="20">For every x : Nat</text>
+    <rect x="60" y="113" width="405" height="148" rx="10" fill="#f4f8fc" stroke="#52779d" stroke-width="2" />
+    <text x="82" y="149" font-size="20">There exists y : Nat</text>
+    <rect x="90" y="175" width="344" height="60" rx="8" fill="#ffffff" stroke="#52779d" />
+    <text x="112" y="213" font-size="22">y = x</text>
+    <rect x="32" y="388" width="462" height="230" rx="12" fill="#f4f1fb" stroke="#66568e" stroke-width="2" />
+    <text x="54" y="424" font-size="20">There exists y : Nat</text>
+    <rect x="60" y="443" width="405" height="148" rx="10" fill="#f8f6fc" stroke="#79669d" stroke-width="2" />
+    <text x="82" y="479" font-size="20">For every x : Nat</text>
+    <rect x="90" y="505" width="344" height="60" rx="8" fill="#ffffff" stroke="#79669d" />
+    <text x="112" y="543" font-size="22">y = x</text>
+    <text x="32" y="325" font-size="18">The choice of y may depend on x.</text>
+    <text x="32" y="655" font-size="18">The same y must satisfy every case.</text>
+  </g>
+</svg>

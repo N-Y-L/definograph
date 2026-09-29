@@ -1,0 +1,12 @@
+/* Passive section navigation inside one continuation attempt. Nothing here is sticky or fixed;
+   the drawer heading and its offsets are unchanged. Focus rings come from the global focus style. */
+.reader-outline { margin: 18px 0; padding: 12px; border: 1px solid #d9e0db; border-radius: 8px; min-width: 0; }
+.reader-outline-title { margin: 0 0 10px; overflow-wrap: anywhere; }
+.reader-outline ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.reader-outline li { min-width: 0; max-width: 100%; }
+.reader-outline a { display: inline-block; max-width: 100%; padding: 8px 12px; border: 1px solid #cdd7d1; border-radius: 7px; color: inherit; overflow-wrap: anywhere; }
+.reader-outline-landing { margin: 18px 0 0; min-width: 0; }
+.reader-outline-landing > a { display: inline-block; max-width: 100%; padding: 4px 0; color: var(--muted, #56615d); font-size: .85rem; overflow-wrap: anywhere; }
+.reader-outline-landing > p { margin: 4px 0 0; }
+/* Keep each return link next to the section it precedes. */
+.reader-outline-landing + :is(section, details) { margin-top: 6px; }

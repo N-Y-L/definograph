@@ -1,7 +1,5 @@
-src/**
-node_modules/**
-tsconfig.json
-build.mjs
-package.mjs
-package-lock.json
-*.vsix
+**
+!package.json
+!README.md
+!LICENSE
+!dist/extension.cjs

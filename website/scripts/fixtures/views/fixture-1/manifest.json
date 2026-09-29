@@ -1,0 +1,30 @@
+{
+  "batch": "fixture-1",
+  "createdAt": "2026-09-27T12:00:00.000Z",
+  "product": {
+    "commit": "0000000000000000000000000000000000000000",
+    "tree": "0000000000000000000000000000000000000000"
+  },
+  "lean": "4.28.0",
+  "css": {
+    "file": "views.css",
+    "sha256": "672d4ff373057a0265b0bc30aff340bf629e39f75432b78c159b87dea4b8d528"
+  },
+  "views": [
+    {
+      "id": "fixture-card",
+      "kind": "fixture",
+      "title": "Test fixture",
+      "files": {
+        "fragment": "fixture-card/fragment.html",
+        "source": "fixture-card/source.lean",
+        "meta": "fixture-card/meta.json"
+      },
+      "sha256": {
+        "fragment": "08896fff0fe1d88bf19350fe4ab861c6f555bce31951d3abe0198acb8ce2816e",
+        "source": "0207d49181f9f441eb11ad41fd6ae832301f8aba5b83dc7f793d6db31195bacb",
+        "meta": "54cdd7e92c03cfacbc795bfd7c473246d97c524c592eeaf5da86d54228c9b003"
+      }
+    }
+  ]
+}

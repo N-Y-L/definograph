@@ -32,11 +32,34 @@ jobs:
         run: npm ci --prefix extension --ignore-scripts
       - name: Build production application
         run: npm run build
+      - name: Type-check reader browser drivers
+        run: npm run check:reader-drivers
       - name: Run unit and renderer checks
         run: npm test
       - name: Run server checks
         run: npm run test:server
+      - name: Verify source capture dependency packaging
+        run: npm run test:source-dependency
       - name: Check and package extension
         run: npm run check:extension
       # Native suites are intentionally separate: see CONTRIBUTING.md.
       # This workflow does not install Lean, run Lake, or fetch mathlib.
+
+  website:
+    name: Website source and static build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Install website build dependencies
+        run: npm ci --ignore-scripts
+      - name: Check the website and its recorded assets
+        run: npm run check

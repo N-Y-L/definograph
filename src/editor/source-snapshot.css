@@ -1,0 +1,50 @@
+.source-snapshot { min-width: 0; overflow-wrap: anywhere; }
+.source-snapshot > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.source-snapshot h2 { margin: 0; font-size: 1.2rem; }
+.source-snapshot p { line-height: 1.6; }
+.snapshot-context { color: var(--muted, #56615d); font-size: .85rem; }
+.snapshot-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+.snapshot-tabs button { border: 1px solid #cdd7d1; background: transparent; padding: 9px 12px; border-radius: 8px; color: inherit; font: inherit; cursor: pointer; }
+.snapshot-tabs button[aria-selected=true] { background: var(--state-selected-bg); border-color: var(--state-selected-border); }
+.snapshot-unavailable { padding: 12px; border-left: 3px solid #8c7552; background: #f7f3eb; color: #58482e; }
+.snapshot-checks { padding-left: 24px; }
+.snapshot-checks > li { margin: 14px 0; }
+.snapshot-checks > li > span { margin-left: 8px; }
+.source-provenance [data-provenance-occurrence] { scroll-margin-top: 110px; }
+.snapshot-exact { margin: 12px 0; padding: 12px; border: 1px solid #d9e0db; border-radius: 8px; min-width: 0; }
+.snapshot-exact > summary { cursor: pointer; font-size: .85rem; }
+.snapshot-exact .struct-exact-value { max-width: 100%; }
+.source-snapshot code { overflow-wrap: anywhere; }
+.occurrence-choice, .source-occurrence, .source-head-exposure { margin: 20px 0; padding: 14px; border: 1px solid #bccbc0; border-radius: 10px; min-width: 0; }
+.source-occurrence h3, .source-head-exposure h3 { margin-top: 0; }
+.head-exposure-action { margin: 16px 0; padding: 12px; border: 1px solid #d9e0db; border-radius: 8px; }
+.source-head-exposure button, .head-exposure-action button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.occurrence-path { font-weight: 600; overflow-wrap: anywhere; }
+.raw-source-reading .struct-node[data-raw-selected=true] { border-color: #426653; box-shadow: inset 3px 0 #426653; }
+.raw-node-action { margin-bottom: 10px; max-width: 100%; white-space: normal; }
+.raw-node-action[aria-pressed=true] { background: var(--state-selected-bg); border-color: var(--state-selected-border); }
+.occurrence-guided, .occurrence-guided-target, .occurrence-inspector { min-width: 0; max-width: 100%; }
+.occurrence-inspector { margin-top: 22px; padding-top: 16px; border-top: 1px solid #cdd7d1; }
+.occurrence-object-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 8px; margin-top: 12px; }
+.occurrence-object-list button { min-width: 0; padding: 9px; border: 1px solid #cdd7d1; border-radius: 6px; background: transparent; color: inherit; text-align: left; overflow-wrap: anywhere; font: inherit; cursor: pointer; }
+.occurrence-object-list button[aria-pressed=true] { background: var(--state-selected-bg); border-color: var(--state-selected-border); }
+.occurrence-object-list small { display: block; color: var(--muted); margin-top: 4px; }
+.occurrence-guided .snapshot-exact li { margin: 8px 0; }
+.occurrence-guided button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.source-decomposition { margin: 24px 0; padding: 14px; border: 1px solid #bccbc0; border-radius: 10px; min-width: 0; }
+.source-decomposition h3 { margin-top: 0; }
+.continuation-choice, .continuation-step, .source-provenance, .source-supplier { margin: 18px 0; padding: 12px; border: 1px solid #d9e0db; border-radius: 8px; min-width: 0; }
+.source-supplier li p { margin: 6px 0; }
+.source-supplier [data-supplier-link] { padding: 12px; border: 1px solid #d9e0db; border-radius: 6px; }
+.source-supplier ol ol { padding-left: 18px; }
+.source-provenance li p { margin: 4px 0; }
+.source-provenance ol ol { padding-left: 18px; }
+.continuation-steps { padding-left: 24px; }
+.continuation-steps li { margin: 8px 0; }
+.continuation-steps button, .continuation-attempts button { width: 100%; text-align: left; padding: 10px 12px; border: 1px solid #cdd7d1; border-radius: 7px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.continuation-steps button[aria-pressed=true], .continuation-attempts button[aria-pressed=true] { background: var(--state-selected-bg); border-color: var(--state-selected-border); }
+/* At least 4.5:1 on the pressed background (--state-selected-bg) as well as on the drawer surface. */
+.continuation-steps small, .continuation-attempts small { display: block; margin-top: 4px; color: var(--muted); }
+.continuation-attempts { display: grid; gap: 8px; margin-top: 12px; }
+.continuation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.source-decomposition button, .continuation-choice button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

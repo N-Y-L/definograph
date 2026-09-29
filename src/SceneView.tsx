@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FigureScroll } from './components/FigureScroll';
 import type { PointerEvent, ReactNode } from 'react';
 import { ballGeometry, evaluateExpression, evaluatePredicate, sliceGeometry } from './core';
 import type { BallScene, Expr, Scenario, ScenarioValue, Scene } from './core';
@@ -10,10 +11,10 @@ function scalar(e: Expr, state: Scenario): number | undefined { const r = evalua
 const metricLabel = (metric: string) => metric === 'real' ? 'Absolute distance on ℝ' : metric.startsWith('sup') ? 'Maximum metric · L∞' : 'Euclidean metric · L2';
 
 function Frame({children, onPointerDown, onPointerMove, title = 'Geometric illustration'}: {children: ReactNode; onPointerDown?: (e: PointerEvent<SVGSVGElement>) => void; onPointerMove?: (e: PointerEvent<SVGSVGElement>) => void; title?: string}) {
-  return <svg className="math-plot" viewBox="0 0 760 470" role="img" aria-label={title} onPointerDown={onPointerDown} onPointerMove={onPointerMove}>
+  return <FigureScroll className="plot-scroll" label="Plot; scroll to see all of it"><svg className={onPointerDown ? 'math-plot is-draggable' : 'math-plot'} viewBox="0 0 760 470" role="img" aria-label={title} onPointerDown={onPointerDown} onPointerMove={onPointerMove}>
     <title>{title}</title><defs><pattern id="small-grid" width="38" height="38" patternUnits="userSpaceOnUse"><path d="M 38 0 L 0 0 0 38" fill="none" stroke="#e8edf3" strokeWidth="1"/></pattern><clipPath id="plot-clip"><rect x="30" y="25" width="700" height="415"/></clipPath><marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#2a66b9"/></marker></defs>
     <rect width="760" height="470" fill="#fbfcfe"/><rect width="760" height="470" fill="url(#small-grid)"/>{children}
-  </svg>;
+  </svg></FigureScroll>;
 }
 
 function LinePlot({left, right, point, center, radius, boundary, empty}: {left?: number;right?:number;point?:number;center?:number;radius?:number;boundary?:string;empty?:boolean}) {
@@ -27,7 +28,7 @@ function LinePlot({left, right, point, center, radius, boundary, empty}: {left?:
   </Frame>;
 }
 
-function BallView({scene,scenario,onVariableChange}: {scene:BallScene;scenario:Scenario;onVariableChange:(id:string,value:ScenarioValue)=>void}) {
+function BallView({scene,scenario,onVariableChange}: {scene:BallScene;scenario:Scenario;onVariableChange?:(id:string,value:ScenarioValue)=>void}) {
   const [axes,setAxes] = useState<[number,number]>([0,1]);
   const [fixed,setFixed] = useState<number[]>(Array(scene.dimension).fill(0));
   const [mode,setMode] = useState<'slice'|'profile'>(scene.dimension > 8 && scene.point ? 'profile' : 'slice');
@@ -49,7 +50,7 @@ function BallView({scene,scenario,onVariableChange}: {scene:BallScene;scenario:S
     const pt = new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
     if (pt.x < 30 || pt.x > 730 || pt.y < 25 || pt.y > 440) return;
     const value = [...fixed]; value[axes[0]] = Math.round(((pt.x-380)/scale+c[0])*100)/100; value[axes[1]] = Math.round(((235-pt.y)/scale+c[1])*100)/100;
-    onVariableChange(scene.point.id,value);
+    onVariableChange?.(scene.point.id,value);
   }
   const unknown = raw.status === 'unknown' ? raw.reason : slice?.status === 'unknown' ? slice.reason : null;
   return <div className="scene-view">
@@ -57,7 +58,7 @@ function BallView({scene,scenario,onVariableChange}: {scene:BallScene;scenario:S
     {scene.dimension > 2 && <div className="sv-geometry-modes" role="group" aria-label="High-dimensional interpretation"><button type="button" aria-pressed={mode==='slice'} onClick={()=>setMode('slice')}>Coordinate slice</button><button type="button" aria-pressed={mode==='profile'} onClick={()=>setMode('profile')}>Distance profile</button></div>}
     {scene.dimension > 2 && mode === 'slice' && <div className="slice-settings"><div className="slice-heading"><strong>Slice through coordinates</strong>{axes.map((axis,i) => <select key={i} aria-label={`Slice axis ${i+1}`} value={axis} onChange={e => {const value=Number(e.target.value); setAxes(old => i === 0 ? [value,value === old[1] ? old[0] : old[1]] : [value === old[0] ? old[1] : old[0],value]);}}>{Array.from({length:scene.dimension},(_,j)=><option key={j} value={j}>x{j+1}</option>)}</select>)}</div>{scene.dimension > 8 ? <div className="sv-fixed-coordinate"><label><span>{omittedCoordinates.length} omitted coordinates · edit one</span><select aria-label="Fixed slice coordinate to edit" value={effectiveFixedCoordinate} onChange={event=>setFixedCoordinate(Number(event.target.value))}>{omittedCoordinates.map(index=><option key={index} value={index}>x{index+1}</option>)}</select></label><label><span>Fixed value</span><input aria-label={`Slice fixed coordinate ${effectiveFixedCoordinate+1} value`} type="number" step="0.05" value={fixed[effectiveFixedCoordinate]} onChange={event=>{if(event.target.value==='')return;const value=Number(event.target.value);if(Number.isFinite(value)&&Math.abs(value)<=1000000)setFixed(old=>old.map((coordinate,index)=>index===effectiveFixedCoordinate?value:coordinate));}}/></label><p>Every omitted coordinate remains fixed at its stored value. Changing the edited coordinate does not reset the others.</p></div> : <div className="slice-coordinates">{fixed.map((v,i)=> axes.includes(i) ? null : <label key={i}><span>x{i+1} = {num(v)}</span><input aria-label={`Slice fixed coordinate ${i+1}`} type="range" min="-3" max="3" step="0.05" value={v} onChange={e=>setFixed(old=>old.map((x,j)=>j===i?Number(e.target.value):x))}/></label>)}</div>}</div>}
     {scene.dimension > 2 && mode === 'profile' ? <DistanceProfileView scene={scene} scenario={scenario}/> : unknown ? <div className="no-view"><h2>Choose the missing parameters</h2><p>{unknown}</p></div> : scene.dimension === 1 && raw.status === 'geometry' && typeof raw.center === 'number' ? <LinePlot left={raw.center-raw.radius} right={raw.center+raw.radius} center={raw.center} radius={raw.radius} point={typeof raw.point === 'number' ? raw.point : undefined} boundary={raw.boundary} empty={raw.empty}/> : slice?.status === 'geometry' ? <>
-      <Frame title={`${scene.boundary === 'sphere' ? 'Sphere' : 'Ball'} in ${scene.dimension} dimensions, ${scene.dimension > 2 ? 'coordinate slice' : metricLabel(scene.metric)}`} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);place(e);}} onPointerMove={e=>{if(e.buttons===1)place(e);}}>
+      <Frame title={`${scene.boundary === 'sphere' ? 'Sphere' : 'Ball'} in ${scene.dimension} dimensions, ${scene.dimension > 2 ? 'coordinate slice' : metricLabel(scene.metric)}`} onPointerDown={onVariableChange ? e=>{e.currentTarget.setPointerCapture(e.pointerId);place(e);} : undefined} onPointerMove={onVariableChange ? e=>{if(e.buttons===1)place(e);} : undefined}>
         <g clipPath="url(#plot-clip)"><path d="M35 235 H725 M380 30 V440" stroke="#aebdcd" strokeWidth="1"/>{[-2,-1,1,2].map(t => <g key={t}><path d={`M${380+t*scale} 230 v10 M375 ${235-t*scale} h10`} stroke="#aebdcd"/><text x={380+t*scale} y="256" textAnchor="middle" className="axis-text">{num(c[0]+t)}</text><text x="366" y={239-t*scale} textAnchor="end" className="axis-text">{num(c[1]+t)}</text></g>)}
         {!slice.empty && !slice.singleton && (shape === 'square' ? <rect x={sx(c[0]-r)} y={sy(c[1]+r)} width={Math.max(0,2*r*scale)} height={Math.max(0,2*r*scale)} className={`ball-region ${slice.boundary}`}/> : <circle cx="380" cy="235" r={Math.max(0,r*scale)} className={`ball-region ${slice.boundary}`}/>)}
         {!slice.empty && <><circle cx="380" cy="235" r={slice.singleton ? 5 : 3} fill="#2a66b9"/><text x="391" y="256" className="point-label">{scene.dimension > 2 ? "c_slice" : "c"}</text>{!slice.singleton && <><path d={`M380 235 L${sx(c[0]+r)} ${sy(c[1])}`} stroke="#4978ad" strokeDasharray="4 4"/><text x={sx(c[0]+r*.5)} y={sy(c[1])-12} className="radius-label">{scene.dimension > 2 ? 'slice r' : 'r'} = {num(r)}</text></>}</>}
@@ -65,14 +66,15 @@ function BallView({scene,scenario,onVariableChange}: {scene:BallScene;scenario:S
         </g><text x="701" y="223" className="axis-name">x{axes[0]+1}</text><text x="391" y="45" className="axis-name">x{axes[1]+1}</text>
         {slice.empty && <><text x="380" y="145" textAnchor="middle" className="empty-geometry">∅</text><text x="380" y="178" textAnchor="middle" className="axis-text">{scene.dimension > 2 ? 'This slice does not intersect the object.' : 'The set is empty at this radius.'}</text></>}
       </Frame>
-      {slice.pointInSlice === false && <div className="slice-warning">The representative point is outside this slice and is not drawn. Click the plot to place it in the slice.</div>}
-      <div className="plot-legend"><span><i className="legend-region"/>{scene.boundary === 'sphere' ? scene.dimension > 2 ? 'Sphere ∩ coordinate plane' : 'Sphere boundary' : scene.boundary === 'open' ? 'Open ball · boundary excluded' : 'Closed ball · boundary included'}</span>{scene.point && <span><i className="legend-point"/>Representative point · click or drag</span>}</div>
+      {slice.pointInSlice === false && <div className="slice-warning">{onVariableChange ? 'The representative point is outside this slice and is not drawn. Click the plot to place it in the slice.' : 'The representative point is outside this slice and is not drawn.'}</div>}
+      <div className="plot-legend"><span><i className="legend-region"/>{scene.boundary === 'sphere' ? scene.dimension > 2 ? 'Sphere ∩ coordinate plane' : 'Sphere boundary' : scene.boundary === 'open' ? 'Open ball · boundary excluded' : 'Closed ball · boundary included'}</span>{scene.point && <span><i className="legend-point"/>{onVariableChange ? 'Representative point · click or drag' : 'Representative point'}</span>}</div>
       {scene.dimension > 2 && <p className="slice-note">{slice.note} {scene.boundary === 'sphere' && raw.status === 'geometry' && raw.radius > 0 ? `The original sphere has intrinsic dimension ${scene.dimension-1}.` : ''}</p>}
     </> : null}
   </div>;
 }
 
-export function SceneView({scene,scenario,onVariableChange}: {scene:Scene;scenario:Scenario;onVariableChange:(id:string,value:ScenarioValue)=>void}) {
+/** Without onVariableChange the scene is passive: nothing can be dragged, and no legend offers it. */
+export function SceneView({scene,scenario,onVariableChange}: {scene:Scene;scenario:Scenario;onVariableChange?:(id:string,value:ScenarioValue)=>void}) {
   if (scene.kind === 'ball') return <BallView key={`${scene.id}:${scene.dimension}:${scene.metric}`} scene={scene} scenario={scenario} onVariableChange={onVariableChange}/>;
   if (scene.kind === 'mapping') return <div className="scene-view"><div className="plot-meta"><span className="metric-tag">Symbolic function diagram</span><span>{scene.property ?? 'mapping'} · no numerical model</span></div><Frame title="Symbolic domain and codomain mapping"><ellipse cx="195" cy="235" rx="104" ry="150" fill="#e7f0fc" stroke="#a9c6ed"/><ellipse cx="565" cy="235" rx="104" ry="150" fill="#f1edf8" stroke="#c4b6dc"/><text x="195" y="62" textAnchor="middle" className="axis-name">Domain</text><text x="565" y="62" textAnchor="middle" className="axis-name">Codomain</text><circle cx="220" cy="235" r="6" fill="#2a66b9"/><circle cx="540" cy="205" r="6" fill="#7053a0"/><path d="M234 231 Q380 145 528 202" fill="none" stroke="#2a66b9" strokeWidth="2" markerEnd="url(#arrowhead)"/><text x="201" y="265" className="point-label">x</text><text x="549" y="230" className="point-label">f(x)</text><text x="380" y="174" textAnchor="middle" className="radius-label">{expressionName(scene.fn)}</text></Frame><p className="slice-note">A schematic arrow shows how inputs and outputs are related. It does not establish {scene.property ?? 'any property of the function'}.</p></div>;
   if (scene.kind === 'graph') {

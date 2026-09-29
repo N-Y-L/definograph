@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+{{meta}}
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{stylesheet}}">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="/"{{home}}><img src="/favicon.svg" alt="" width="24" height="24"><span>Definograph</span></a>
+    <nav class="primary-nav" aria-label="Primary">
+      <ul>
+{{nav}}
+      </ul>
+    </nav>
+  </div>
+</header>
+{{body}}
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <p>Figures marked <strong>Recorded</strong> were saved from Definograph running on a local computer; their buttons and menus do nothing here. This site does not run Lean or check any input.</p>
+    <p>Definograph lessons and reference material are free to read and require no account.</p>
+    <ul class="footer-links">
+      <li><a href="https://github.com/N-Y-L/definograph">Source repository</a></li>
+      <li><a href="https://github.com/N-Y-L/definograph/issues">Issue tracker</a></li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>

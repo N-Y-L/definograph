@@ -58,6 +58,7 @@ function boundedLawTree(value: unknown): boolean {
 /** Metadata is an optional typed view. Reject malformed or unbounded envelopes
  * rather than interpreting field names or parsing pretty-printed types. */
 export function checkedStructure(binder: Binder): ReflectedStructure | undefined {
+  if (binder.role === 'auxiliary') return;
   const value = binder.structure;
   if (!value || value.kernelChecked !== true || value.limits?.maxFields !== 16 || value.limits.maxFieldNodes !== 120 || value.limits.maxDepth !== 24
     || !nonemptyString(value.name) || !Array.isArray(value.fields) || value.fields.length > 16 || !Number.isSafeInteger(value.omittedFields) || value.omittedFields < 0

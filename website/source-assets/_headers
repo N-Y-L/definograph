@@ -1,0 +1,52 @@
+# Response headers for Cloudflare Workers Static Assets. The build writes this file to
+# dist/_headers, replacing the stylesheet placeholder with the content-hashed stylesheet path.
+#
+# Caching: only that exact stylesheet is immutable. No splat rule sets Cache-Control, so
+# missing /assets/ paths, pages and downloads keep the host default
+# (public, max-age=0, must-revalidate). Rules that match the same path join their values,
+# so set each header in at most one matching rule.
+
+/*
+  Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
+{{stylesheet}}
+  Cache-Control: public, max-age=31536000, immutable
+
+# Downloads are served as UTF-8 plain text.
+/learn/examples/Scope.lean
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/QuantifierForallExists.lean
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/QuantifierExistsForall.lean
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/QuantifierProofs.lean
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/RotorLaw.lean
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/RotorExamples.lean
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/Evidence.lean
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/ReturnMap.lean
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/RecordedAxiom.lean
+  Content-Type: text/plain; charset=utf-8
+
+/reference/contracts/local-setup.md
+  Content-Type: text/plain; charset=utf-8
+
+/reference/contracts/reader-relations.md
+  Content-Type: text/plain; charset=utf-8

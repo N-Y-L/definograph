@@ -175,7 +175,7 @@ def basicBinderJson (b : Bound) (t : Expr) (bs : Bounds) : MetaM Json := do
     ("id", str b.id), ("name", str b.name), ("type", str b.type),
     ("role", str b.role), ("domain", str d), ("dimension", toJson n),
     ("typeDescriptor", ← describeType t),
-    ("dependsOn", toJson ((bs.filter (·.role != "assumption")).map (·.id))) ]
+    ("dependsOn", toJson ((bs.filter (fun entry => entry.role != "assumption" && entry.role != "auxiliary")).map (·.id))) ]
 
 /-- Audit class arguments against canonical imported instances. Parametric set
     instance constructors are recognized structurally; numerical instances are

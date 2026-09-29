@@ -15,6 +15,8 @@ export interface ReadingBinder {
   readonly name: string;
   readonly type: string;
   readonly role: Binder['role'];
+  readonly declarationKind?: Binder['declarationKind'];
+  readonly definition?: Binder['definition'];
   readonly dependsOn: readonly string[];
   readonly scopeId: string;
 }
@@ -75,7 +77,7 @@ export interface ReadingPanel {
 }
 export interface ReadingQuantifierGroup {
   readonly id: string;
-  readonly kind: 'forall' | 'exists' | 'parameter';
+  readonly kind: 'forall' | 'exists' | 'parameter' | 'definition' | 'auxiliary';
   readonly nodeIds: readonly string[];
   readonly binders: readonly ReadingBinder[];
   readonly bodyNodeId?: string;

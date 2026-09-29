@@ -1,4 +1,5 @@
 import type { Binder, Expr, ReflectedField, StatementNode } from '../core/types';
+import { contextEntryTitle } from '../core/context-entry';
 import { compileTypedConstruction, type TypedConstruction } from '../constructions/model';
 import { compileReading } from '../reading/compiler';
 import type { ReadingBinder } from '../reading/types';
@@ -46,9 +47,9 @@ function lawContext(document: SemanticDocument, owner: SemanticObject, law: Stat
     const original = object.binder!;
     const { structure: _structure, structureOmission: _omission, ...rest } = original;
     const source = sourceBinders.get(original.id);
-    const binder: Binder = { ...rest, typeExpression: source ? binderTypeExpression(source, original) : original.typeExpression, role: original.role === 'assumption' ? 'assumption' : 'parameter' };
-    const expression: Expr = { kind: 'forall', binder, binderType: binder.typeExpression, body: tree.expression };
-    tree = { id: `law-context:${law.id}:${binder.id}`, kind: 'parameter', label: `Given ${binder.name}`, lean: binder.type, binder, expression, children: [tree] };
+    const binder: Binder = { ...rest, typeExpression: source ? binderTypeExpression(source, original) : original.typeExpression, role: original.role === 'auxiliary' ? 'auxiliary' : original.role === 'assumption' ? 'assumption' : 'parameter' };
+    const expression: Expr = { kind: binder.role === 'auxiliary' ? 'lambda' : 'forall', binder, binderType: binder.typeExpression, body: tree.expression };
+    tree = { id: `law-context:${law.id}:${binder.id}`, kind: binder.role === 'auxiliary' ? 'auxiliary' : 'parameter', label: binder.role === 'auxiliary' ? contextEntryTitle(binder) : `Given ${binder.name}`, lean: binder.type, binder, expression, children: [tree] };
   }
   return tree;
 }
@@ -69,7 +70,7 @@ export function compileStructuralObject(document: SemanticDocument, object: Sema
     const tree = field.kind === 'law' && field.law ? lawContext(document, object, field.law) : undefined;
     const lawDocument = tree ? compileSemanticDocument({ source: `${object.label}.${field.name} : ${field.type}`, tree, expression: tree.expression }, plugins, { identities, fields: bindings }) : undefined;
     return { name: field.name, projection: field.projection, object: fieldObject, type: field.type, typeExpression: field.typeExpression,
-      typeDescriptor: field.typeDescriptor, kind: field.kind, dependsOn: field.dependsOn,
+      typeDescriptor: field.typeDescriptor, kind: field.kind, dependsOn: field.dependsOn, ...(field.parent ? { parent: field.parent } : {}),
       ...(lawDocument ? { lawDocument, lawReading: compileReading(lawDocument, { selectedNodeId: field.law!.id }) } : {}) };
   });
   return { object, declarationName: structure.name, fields, construction: fieldConstruction(document, object, entries),

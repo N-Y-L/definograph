@@ -27,12 +27,72 @@ Fixed-environment input       Trusted Lean editor selection
 
 The optional numerical path passes through `src/core/scenes.ts`, `src/semantic/planner.ts`, and `src/SceneView.tsx`. It is separate from the default statement reading but still shares types and compilation with it. There is no independent general-purpose decomposition service or graph yet.
 
+Saved composition packets use a separate exact input boundary:
+`packets/packet.ts` validates bytes and attachment consistency,
+`packets/syntax.ts` resolves contextual syntax, and `packets/semantic.ts` builds a
+scoped presentation directly. The result feeds the same reading and rendering
+modules. It does not pass through the legacy semantic compiler or acquire its
+native-check markers. The explicit expression identity hook also governs shared
+typed constructions; unsupported dependency structure stays unavailable. This
+client and the reusable Lean checking module have separate responsibilities;
+see [their integration boundary](packet-reader.md).
+
+`packets/structure.ts` additionally builds a constructor drawing directly from
+the uniquely associated captured expression. Its independent reader reconstructs
+the input from node fields, ordered child roles and declaration homes.
+`StructuralReading.tsx` displays those roles and homes, with marked folds and
+attached exact-field inspectors. It remains usable where the specialized guided
+view has a nested-constructor boundary; neither view adds typing or evidence.
+The separate positional schema accepts a selected occurrence's exact telescope,
+term and inferred type. It shares constructor rendering while resolving ambient
+bound positions in their actual prefix scopes. Its independent reader recovers the
+whole selected triple; `editor/source-occurrence-structure.ts` compares that result
+with the occurrence before display. Named registries keep their original semantics.
+
+The same exact presentation compiler also accepts a positional component directly
+through `compilePositionalComponent`. It introduces actual context telescope entries
+in prefix order and then the explicitly chosen term or type; it does not manufacture
+packet receipts, free-variable identities or closing lambdas. Its neutral component
+mode produces generic applications and parameter/definition introductions for the
+shared guided reader. Presentation metadata separates surrounding context from the
+selected root and prevents grouping them into a single introduction. Source links
+resolve to actual context entries or expression fields. This semantic document is
+partial; the independent full readback remains in the structural view.
+
+Definition-head exposure extends this path with one explicit native operation.
+The host retains the original occurrence and supplies its expected selected triple;
+the worker obtains the definition from its initial environment after a fresh exact
+selection match. A bounded structural substitution retains the body and complete
+step trace. The client independently replays that step and reconstructs all nine
+available check declarations. The result enters the positional reader as a genuine
+term/carrier pair with its own source identity. Original receipts are never attached
+to that derived expression. See [the exposure contract](editor-definition-exposure.md).
+
+Explicit continuations extend that same exact-source path with exposure, focus,
+direct field catalogues/projections, type inspection and one-layer logical
+inspection. The host binds the retained capture and chosen prefix; the browser
+reconstructs the steps and their receipt associations. `source-provenance.ts` and
+`source-supplier.ts` derive pure readings of that prefix, preserving complete
+scope, formation evidence and typing-declaration axioms. Whole-attempt outcomes
+also retain later checks excluded from the prefix. Displaying these readings and
+following section links starts no Lean process. Saved records do not acquire a
+current editor session or native authority. This path remains distinct from the
+legacy interpreted-expression compiler; general automatic decomposition and
+explanatory usefulness are not established. See [reader relations](reader-relations.md)
+and the [continuation contract](editor-definition-exposure.md#continue-inside-a-result).
+
 ## Code map
 
 | Responsibility | Implementation | Important boundary |
 |---|---|---|
 | Standalone elaboration | `lean/StatementLens/Worker.lean` | Fixed imports and restricted declarative input; not arbitrary project syntax |
 | Project-context extraction | `lean/StatementLens/Context.lean`, `server/editor-context.ts` | Trusted source is elaborated in a separate process; selected terms retain their local context |
+| Exact editor source capture | `lean/StatementLens/SourceSnapshot.lean`, `src/editor/source-snapshot.ts` | Original and prepared frames, exact binding/receipt validation, independent raw readback and explicit failure states; no portable authority |
+| Chosen source occurrences | `src/editor/source-occurrence.ts`, `SourceSnapshot.captureOccurrence` | Fresh exact parent matching, positional dependent homes and six separate typing outcomes; original paths and earlier process receipts are not reused |
+| Occurrence guided reading | `src/editor/source-occurrence-reading.ts`, `SourceOccurrenceGuidedReading.tsx`, `packets/semantic.ts` | Neutral context and ordered applications; selected term/type targets stay separate and source-linked, with structural fallback |
+| Definition-head exposure | `SourceSnapshot.captureHeadExposure`, `src/editor/source-head-exposure.ts`, `head-exposure-replay.ts`, `SourceHeadExposureReading.tsx` | One initial-environment safe body, exact syntactic replay, unchanged positional home and separate result/conversion outcomes |
+| Exact continuation histories | `src/editor/source-decomposition.ts`, `extension/src/continuation.ts`, `SourceDecompositionReading.tsx` | Exact capture/prefix replay, bounded v1/v2/v3 operations and separately associated outcomes |
+| Prefix provenance and supply | `src/editor/source-provenance.ts`, `source-supplier.ts`, `SourceProvenanceReading.tsx`, `SourceSupplierReading.tsx` | Pure derived readings; full scope and axiom audit, no invented proof or current-source authority |
 | Typed export | `lean/StatementLens/Export.lean`, `src/core/types.ts` | Logical trees and expression ASTs; selected metadata and optional bounded views |
 | Response bounds | `lean/StatementLens/Response.lean`, `server/protocol.ts` | Optional views may be dropped to preserve the mandatory result |
 | Identity and scoped interpretation | `src/semantic/compiler.ts`, `expression.ts`, `types.ts` | Exact expression identity and scopes; domain-specific relation variants remain in the shared schema |
@@ -43,7 +103,7 @@ The optional numerical path passes through `src/core/scenes.ts`, `src/semantic/p
 | Optional mathematical lenses | `src/set-constructions/`, `src/graphs/`, `src/restricted/`, `src/statement-geometry/` | Audited contracts for selected operations; no theorem-title dispatch |
 | Numerical models | `src/core/geometry.ts`, `scenario.ts`, `scenes.ts`, `src/SceneView.tsx` | Audited operations and metrics; finite samples do not establish quantified statements |
 | Readable notation | `lean/StatementLens/ReadableMath.lean`, `src/notation/` | LeanTeX and KaTeX output is presentation only |
-| Editor host and browser bridge | `extension/`, `src/editor/`, `src/protocol.ts` | Versioned selections, invalidation, and source reveal; an actual VS Code GUI workflow remains unverified |
+| Editor host and browser bridge | `extension/`, `src/editor/`, `src/protocol.ts` | Versioned selections, invalidation, and source reveal; automated macOS development-host and installed-extension journeys cover inspection, cancellation and refusal recovery |
 | Regression fixtures | `corpus/`, `scripts/*integration.ts`, colocated tests | Extraction, scope, semantics, and renderer checks; not a measure of mathematical understanding |
 
 ## What generic decomposition currently means

@@ -5,6 +5,7 @@ import type { Binder, Expr, StatementNode } from '../core';
 import { compileSemanticDocument } from '../semantic';
 import { compileReading } from '../reading';
 import { expressionMapPath, readingObjectColor, StatementReadingView } from './StatementReadingView';
+import { compileReadingCues } from '../reading/cues';
 
 const constant = (name: string): Expr => ({ kind: 'const', name });
 const binder = (id: string, type = 'ℝ', role: Binder['role'] = 'universal', dependsOn: string[] = []): Binder => ({ id, name: id, type, role, dependsOn });
@@ -20,11 +21,33 @@ function render(tree: StatementNode, selectedNodeId?: string) {
 }
 
 describe('mathematical atlas reading', () => {
+  it('can focus different applications within the same logical clause', () => {
+    const f = binder('F', 'Nat → Nat');
+    const call = (name: string): Expr => ({ kind: 'app', fn: variable(f), args: [constant(name)] });
+    const tree = leaf('same-clause', app('Eq', [call('a'), call('b')]));
+    const document = compileSemanticDocument({ source: 'test', tree, expression: tree.expression });
+    const reading = compileReading(document);
+    const calls = document.relations.filter(relation => relation.kind === 'application' && relation.ports.some(port =>
+      port.role === 'function' && document.objects.find(object => object.id === port.objectId)?.label === 'F'));
+    expect(calls).toHaveLength(2);
+    expect(calls[0].nodeId).toBe(calls[1].nodeId);
+    const cues = compileReadingCues(reading, document);
+    for (const call of calls) {
+      const cue = cues.cues.find(candidate => candidate.stage.relationId === call.id)!;
+      expect(cue).toBeDefined();
+      const html = renderToStaticMarkup(createElement(StatementReadingView, { document, reading, selectedRelationId: call.id }));
+      expect(html).toContain(`data-cue-id="${cue.id}"`);
+      const other = cues.cues.find(candidate => candidate.stage.relationId === calls.find(candidate => candidate.id !== call.id)!.id)!;
+      expect(html).not.toContain(`data-cue-id="${other.id}"`);
+    }
+  });
+
   it('keeps arbitrary objects, assumptions, and conclusions in source order with a whole-statement overview', () => {
     const A = binder('A', 'Set ℝ'), B = binder('B', 'Set ℝ'), x = binder('x');
     const tree = node('bind-A', 'forall', [node('bind-B', 'forall', [node('bind-x', 'forall', [node('implication', 'implies', [leaf('premise', app('Set.Subset', [variable(A), variable(B)])), leaf('conclusion', app('Set.Mem', [variable(B), variable(x)]))])], x)], B)], A);
     const { html } = render(tree);
     expect(html).toContain('Whole statement');
+    expect(html).toContain('<aside class="sr-overview" aria-label="Whole statement">');
     expect(html).toContain('Given → conclusion');
     expect(html.indexOf('data-reading-step="bind-A"')).toBeLessThan(html.indexOf('data-reading-step="premise"'));
     expect(html.indexOf('data-reading-step="premise"')).toBeLessThan(html.indexOf('data-reading-step="conclusion"'));
@@ -167,6 +190,22 @@ describe('mathematical atlas reading', () => {
     expect(path.maps.map(id => names.get(id))).toEqual(['f', 'g']);
     expect(path.inputs.map(id => names.get(id))).toEqual(['x']);
     expect(html.indexOf(`data-map-function="${path.maps[0]}"`)).toBeLessThan(html.indexOf(`data-map-function="${path.maps[1]}"`));
+  });
+
+  it('starts a law-free reflected structure closed and keeps a law-bearing one open', () => {
+    const limits = { maxFields: 16, maxFieldNodes: 120, maxDepth: 24 } as const;
+    const reflect = (owner: Binder, name: string, fields: [string, 'data' | 'law', string][]): Binder => ({ ...owner, structure: { name, typeExpression: constant(name), omittedFields: 0, kernelChecked: true, limits,
+      fields: fields.map(([field, kind, type]) => ({ name: field, projection: `${name}.${field}`, expression: app(`${name}.${field}`, [variable(owner)]), type, typeExpression: constant(type),
+        typeDescriptor: { kind: kind === 'law' ? 'proposition' : 'unknown', lean: type }, kind, dependsOn: [] })) } });
+    const x = reflect(binder('x', 'Wrapped'), 'Wrapped', [['inner', 'data', 'Hidden']]);
+    const r = reflect(binder('r', 'Lawful'), 'Lawful', [['value', 'data', 'Hidden'], ['bounded', 'law', 'Bounded r.value']]);
+    const tree = node('bind-x', 'forall', [node('bind-r', 'forall', [leaf('claim', app('Unknown.claim', [variable(x), variable(r)]))], r)], x);
+    const { html, document } = render(tree);
+    const owner = (id: string) => document.objects.find(object => object.binder?.id === id)!.id;
+    expect(html).toContain(`<details class="sd-closed-structure"><summary>Inside x · 1 data field · 0 laws</summary><section class="structural-object" data-structural-object="${owner('x')}"`);
+    expect(html).toContain(`data-structural-object="${owner('r')}"`);
+    expect(html).not.toContain('Inside r · ');
+    expect(html).toContain('aria-label="Laws carried by r"');
   });
 
   it('preserves ordered inputs and bounds expansion with a named expression fallback', () => {

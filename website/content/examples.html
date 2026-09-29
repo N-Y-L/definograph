@@ -1,0 +1,267 @@
+<header class="page-head">
+  <h1 id="examples">Examples</h1>
+  <p class="lead">Each example is a statement, the view Definograph drew for it, and how to read that view: what it shows and what it leaves out.</p>
+  <p>The views are recorded output. The statements are entries in Definograph’s <strong>Statement</strong> menu; Lean 4.28.0 reads them with Definograph’s pinned copy of Mathlib. To draw them yourself, you need Definograph running on your own computer (see <a href="/install/#try-it-yourself">Try it yourself</a>); then choose the statement from that menu.</p>
+</header>
+
+<nav class="on-page" aria-labelledby="examples-contents">
+  <p class="on-page-title" id="examples-contents">On this page</p>
+  <ul>
+    <li><a href="#which-choice-may-depend-on-which">Which choice may depend on which</a></li>
+    <li><a href="#a-choice-fixed-first">A choice fixed before the others</a></li>
+    <li><a href="#the-outline-of-a-longer-statement">The outline of a longer statement</a></li>
+    <li><a href="#relations-and-their-roles">Relations and the roles of their objects</a></li>
+    <li><a href="#every-object-and-relation-at-once">Every object and relation at once</a></li>
+    <li><a href="#trace-one-object">Trace one object through a statement</a></li>
+    <li><a href="#one-object-throughout-the-reading">One object throughout the reading</a></li>
+    <li><a href="#membership-regions">Membership regions of a compound set</a></li>
+    <li><a href="#what-a-coloring-requires">What a coloring requires on each edge</a></li>
+    <li><a href="#a-ball-as-a-distance-condition">A ball as a distance condition</a></li>
+    <li><a href="#one-numerical-sample">One numerical sample</a></li>
+    <li><a href="#a-map-inverse-on-a-region">A map that is inverse only on a region</a></li>
+    <li><a href="#inside-a-structure">Inside a structure</a></li>
+    <li><a href="#opening-a-definition">Opening a definition</a></li>
+    <li><a href="#what-definograph-could-not-interpret">What Definograph could not interpret</a></li>
+    <li><a href="#lean-files">Lean files</a></li>
+  </ul>
+</nav>
+
+<section class="example" id="which-choice-may-depend-on-which">
+  <h2>Which choice may depend on which</h2>
+  <p class="task">In <code>∀ x : ℝ, ∃ y : ℝ, x &lt; y</code>, may the choice of <code>y</code> use the value of <code>x</code>?</p>
+{{view:depends-choices}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The two binders in reading order: <code>x</code> is an arbitrary choice at step 1, <code>y</code> a candidate witness at step 2. Under <code>y</code>, <strong>May depend on</strong> lists <code>x</code>, so <code>y</code> may be chosen differently for each <code>x</code>.</dd>
+    <dt>What it leaves out</dt>
+    <dd>The condition <code>x &lt; y</code>, and any value for <code>y</code>. The view does not find or check a witness and does not say whether the statement is true. (It is true: take <code>y = x + 1</code>.)</dd>
+  </dl>
+</section>
+
+<section class="example" id="a-choice-fixed-first">
+  <h2>A choice fixed before the others</h2>
+  <p class="task">With the quantifiers swapped, <code>∃ y : ℝ, ∀ x : ℝ, x &lt; y</code>, what may <code>y</code> depend on?</p>
+{{view:fixed-choices}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd><code>y</code> now comes first and is chosen without earlier values, so later choices cannot change it. <code>x</code> lists <code>y</code> under <strong>Earlier choices in this scope</strong>. One <code>y</code> would have to work for every <code>x</code>.</dd>
+    <dt>What it leaves out</dt>
+    <dd>The condition, and the fact that this statement is false: no real number is larger than every real number, itself included. The view has the same kinds of steps for the true statement above and this false one.</dd>
+  </dl>
+</section>
+
+<section class="example" id="the-outline-of-a-longer-statement">
+  <h2>The outline of a longer statement</h2>
+  <p class="task">In an ε–δ statement, which parts are assumed, which are required, and under which assumptions?</p>
+{{view:continuity-overview}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The statement as nested entries: for every <code>ε</code>, given <code>0 &lt; ε</code>, there is a <code>δ</code> with all of its conditions: <code>0 &lt; δ</code>, and for every <code>x</code>, given <code>|x| &lt; δ</code>, then <code>|x · x| &lt; ε</code>. Each assumption is written before what depends on it.</dd>
+    <dt>What it leaves out</dt>
+    <dd>The figures of the individual steps, and any numerical example. The outline comes from the statement as Lean has read it; it is not a proof and does not say whether the statement is true.</dd>
+  </dl>
+</section>
+
+<section class="example" id="relations-and-their-roles">
+  <h2>Relations and the roles of their objects</h2>
+  <p class="task">In <code>∀ (A B : Set ℝ) (x : ℝ), A ⊆ B → x ∈ A → x ∈ B</code>, which relations are assumed, and which one is required?</p>
+{{view:sets-connections}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>Three cards. <code>A ⊆ B</code> is a set inclusion with <code>A</code> as subset and <code>B</code> as superset; <code>x ∈ A</code> and <code>x ∈ B</code> are memberships with <code>x</code> as element. The tags say where each relation sits: the inclusion is the premise of an implication, <code>x ∈ A</code> is under one assumption, and the conclusion <code>x ∈ B</code> is under two.</dd>
+    <dt>What it leaves out</dt>
+    <dd>Whether any relation holds. A relation drawn under an assumption is not a claim that it holds, and the positions of the cards carry no meaning.</dd>
+  </dl>
+</section>
+
+<section class="example" id="every-object-and-relation-at-once">
+  <h2>Every object and relation at once</h2>
+  <p class="task">In the same statement, <code>∀ (A B : Set ℝ) (x : ℝ), A ⊆ B → x ∈ A → x ∈ B</code>, which objects does each relation use, and which objects do the relations share?</p>
+{{view:sets-structure}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>Nine objects and three relations. The inclusion uses <code>A</code> as subset and <code>B</code> as superset; each membership uses <code>x</code> as element and <code>A</code> or <code>B</code> as set. So <code>A</code>, <code>B</code> and <code>x</code> each connect to two relations.</dd>
+    <dt>What it leaves out</dt>
+    <dd>Which relation is assumed. The context tags under the map say that relations occur as premises and under assumptions, but not which tag belongs to which relation; the Relationships view above shows that. Position, distance and the curves of the connectors carry no meaning. Some objects are Definograph’s own rather than the statement’s: the name <code>a</code> given to each hypothesis, and <code>x.cauchy</code>, a field of the structure of ℝ. The propositions appear under Lean’s internal names: <code>HasSubset.Subset(A, B)</code> is <code>A ⊆ B</code>, and <code>Membership.mem(A, x)</code> is <code>x ∈ A</code>.</dd>
+  </dl>
+</section>
+
+<section class="example" id="trace-one-object">
+  <h2>Trace one object through a statement</h2>
+  <p class="task">In <code>∀ (A B C : Type) (f : A → B) (g : B → C) (h : A → C) (x : A), g (f x) = h x</code>, which relations does <code>x</code> take part in?</p>
+{{view:paths-trace-x}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The <strong>Structure</strong> view with <code>x</code> selected, as you would select it in the app. The connectors of <code>x</code> are drawn heavier, the others are muted, and the relations that use <code>x</code> are marked. Both sides of the equation start from <code>x</code>: one through <code>f</code> and then <code>g</code>, the other through <code>h</code>.</dd>
+    <dt>What it leaves out</dt>
+    <dd>Anything about <code>x</code> beyond the relations it appears in. There are no concrete functions or coordinates, and the equation is what the statement claims, not something Definograph checks.</dd>
+  </dl>
+</section>
+
+<section class="example" id="one-object-throughout-the-reading">
+  <h2>One object throughout the reading</h2>
+  <p class="task">Where does the same <code>x</code> appear in the reading of <code>g (f x) = h x</code>?</p>
+{{capture:paths-identity-trace}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>At step 1, with <code>x</code> selected, a faint dashed line, the identity thread, joins the eight places where the same <code>x</code> appears: its entry and its small <code>x : A</code> box at this step, the same two in the full visual statement, the start of both compared routes, and the inputs of <code>f</code> and <code>h</code>.</dd>
+    <dt>What it leaves out</dt>
+    <dd>Any meaning in the line itself. Its route means nothing: it only links the places, and it is not a path or a movement. The thread is drawn from the positions of the page’s elements, so it is recorded as a screenshot at its own size.</dd>
+  </dl>
+</section>
+
+<section class="example" id="membership-regions">
+  <h2>Membership regions of a compound set</h2>
+  <p class="task">In <code>∀ (α : Type) (A B C : Set α) (x : α), x ∈ (A ∪ B) ∩ Cᶜ → x ∈ (A \ C) ∪ (B \ C)</code>, what does the assumption allow for <code>x</code>?</p>
+{{view:set-algebra-given}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The type <code>α</code> as a box with circles for <code>A</code>, <code>B</code> and <code>C</code>. The highlighted regions are the membership combinations the assumption allows: in <code>A</code> only, in <code>B</code> only, or in both, each outside <code>C</code>. The element must lie somewhere in the highlighted part.</dd>
+    <dt>What it leaves out</dt>
+    <dd>Sizes, elements and whether any region is inhabited: the regions encode membership combinations only. This condition is the assumption of an implication, not a claim that it holds.</dd>
+  </dl>
+</section>
+
+<section class="example" id="what-a-coloring-requires">
+  <h2>What a coloring requires on each edge</h2>
+  <p class="task">In <code>∀ (V C : Type) (G : SimpleGraph V) (c : G.Coloring C) (u v : V), G.Adj u v → c u ≠ c v</code>, what does the coloring <code>c</code> promise?</p>
+{{view:coloring-follow}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The step applies <code>c</code> to <code>u</code>, under the assumption that <code>u</code> and <code>v</code> are adjacent. The figure shows the rule a proper coloring carries: if two endpoints are adjacent, their labels differ, for every edge. The color type <code>C</code> stays symbolic.</dd>
+    <dt>What it leaves out</dt>
+    <dd>A graph. The endpoint slots stand for arbitrary inputs to the rule; they do not pick vertices, assert that an edge exists, or fix the size or shape of the graph. No coloring and no number of colors is chosen.</dd>
+  </dl>
+</section>
+
+<section class="example" id="a-ball-as-a-distance-condition">
+  <h2>A ball as a distance condition</h2>
+  <p class="task">In the statement below, what does <code>P ∈ Metric.ball c ε</code> require of <code>P</code>?</p>
+{{view:epsilon-ball}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The membership read as <code>dist(P, c) &lt; ε</code>, drawn as an open disc with center <code>c</code>, radius <code>ε</code> and a named point <code>P</code>. The figure notes that it uses the local assumption <code>0 &lt; ε</code> and that the boundary is excluded.</dd>
+    <dt>What it leaves out</dt>
+    <dd>Coordinates and sizes: the positions are schematic, and named points may coincide. Here the membership is an assumption of the implication, not a claim that <code>P</code> lies in the ball. Numerical samples belong to a different view.</dd>
+  </dl>
+</section>
+
+<section class="example" id="one-numerical-sample">
+  <h2>One numerical sample</h2>
+  <p class="task">What does the same statement look like for particular values?</p>
+{{view:epsilon-sample}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>One sample from <strong>Explore a sample</strong>: <code>ε = 1</code>, the center <code>c</code> at the origin and the point <code>P</code> at the center, so here <code>P</code> lies in the ball. The disc is the open ball in the Euclidean metric, boundary excluded.</dd>
+    <dt>What it leaves out</dt>
+    <dd>The statement itself. A sample is an illustration under chosen values, not a proof, and other values can make the condition fail. In the app the point can be moved; in this recording nothing moves.</dd>
+  </dl>
+</section>
+
+<section class="example" id="a-map-inverse-on-a-region">
+  <h2>A map that is inverse only on a region</h2>
+  <p class="task">In <code>∀ (A B : Type) (e : PartialEquiv A B) (x : A), x ∈ e.source → e.symm (e x) = x</code>, why is the assumption <code>x ∈ e.source</code> needed?</p>
+{{view:restricted-inverse-return}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The two carriers with the regions <code>e.source</code> and <code>e.target</code>, each marked as possibly empty; the maps <code>e</code> and its inverse between them; and the two round trips that return to their start, for every element of each region. The step follows <code>x</code> through <code>e</code> and back.</dd>
+    <dt>What it leaves out</dt>
+    <dd>Geometry: the carriers are abstract containers without shape, size or dimension. The inverse laws hold on the designated regions only. Applying <code>e</code> to <code>x</code> does not by itself put <code>x</code> in the source region; the statement assumes it.</dd>
+  </dl>
+</section>
+
+<section class="example" id="inside-a-structure">
+  <h2>Inside a structure</h2>
+  <p class="task">In the same statement, what does <code>e : PartialEquiv A B</code> contain?</p>
+{{view:restricted-inverse-fields}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The fields of <code>e</code> with their declared types: the maps <code>toFun</code> and <code>invFun</code>, the sets <code>source</code> and <code>target</code>, and the laws that link them, read in declaration order. The fields belong to this <code>e</code>, inside the statement’s quantifiers.</dd>
+    <dt>What it leaves out</dt>
+    <dd>One further law: the view says that a field is not shown, because reading it would exceed Definograph’s size limit for this part. The laws are requirements of the structure, not extra assumptions and not proofs.</dd>
+  </dl>
+</section>
+
+<section class="example" id="opening-a-definition">
+  <h2>Opening a definition</h2>
+  <p class="task">In <code>∀ (α β : Type) (f : α → β), Function.Injective f → ∀ x y : α, f x = f y → x = y</code>, what does the assumption <code>Function.Injective f</code> say?</p>
+{{view:maps-expanded-overview}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>The whole statement after <code>Function.Injective f</code> has been opened one step. The assumption now reads: for every <code>a₁</code>, <code>a₂</code>, given <code>f(a₁)</code> equals <code>f(a₂)</code>, then <code>a₁</code> equals <code>a₂</code>. Definograph opened it with a definition step that Lean checked for definitional equality.</dd>
+    <dt>What it leaves out</dt>
+    <dd>A proof that <code>f</code> is injective: the opened assumption is still an assumption. The figures of the individual steps.</dd>
+  </dl>
+</section>
+
+<section class="example" id="what-definograph-could-not-interpret">
+  <h2>What Definograph could not interpret</h2>
+  <p class="task">In <code>∀ (P : ℝ × ℝ) (ε : ℝ), P ∈ Metric.ball 0 ε → Nat.Prime 17</code>, which parts does Definograph interpret?</p>
+{{view:partial-coverage}}
+  <dl class="example-notes">
+    <dt>What it shows</dt>
+    <dd>Definograph’s <strong>Interpretation coverage</strong>: the ball condition is interpreted (sets and membership, metric regions), <code>Nat.Prime</code> is kept as structure only, and its definition is available to look inside.</dd>
+    <dt>What it leaves out</dt>
+    <dd>Understanding: the report counts the vocabulary a statement uses. It does not measure understanding or establish the statement.</dd>
+  </dl>
+</section>
+
+<section id="lean-files">
+  <h2>Lean files</h2>
+  <p>These downloadable files accompany the tutorial and the reference. They use Lean 4.28.0 with its standard implicit <code>Init</code> import; none needs Mathlib. To check one, run <code>lean FileName.lean</code> in its directory. The <a href="/learn/example-notes/">example notes</a> give the expected result of checking each file used in the tutorial; the table below says what each file contains.</p>
+  <table class="stack-table" role="table">
+    <caption>Downloadable Lean files</caption>
+    <thead role="rowgroup">
+      <tr role="row">
+        <th scope="col" role="columnheader">File</th>
+        <th scope="col" role="columnheader">What it contains</th>
+      </tr>
+    </thead>
+    <tbody role="rowgroup">
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/QuantifierForallExists.lean" download>QuantifierForallExists.lean</a></th>
+        <td role="cell" data-label="What it contains">The proposition <code>∀ x : Nat, ∃ y : Nat, y = x</code>. It supplies no proof.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/QuantifierExistsForall.lean" download>QuantifierExistsForall.lean</a></th>
+        <td role="cell" data-label="What it contains">The same proposition with the quantifiers swapped. It supplies no proof.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/QuantifierProofs.lean" download>QuantifierProofs.lean</a></th>
+        <td role="cell" data-label="What it contains">A proof of the first proposition and a refutation of the second, shown below.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/Scope.lean" download>Scope.lean</a></th>
+        <td role="cell" data-label="What it contains">Both quantifier orders, the same statement with renamed variables, and a statement that allows a constant choice.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/RotorLaw.lean" download>RotorLaw.lean</a></th>
+        <td role="cell" data-label="What it contains">A record with a law field, used in the <a href="/reference/#a-law-belongs-to-its-owner">reference</a>. It has an intentionally unused parameter.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/RotorExamples.lean" download>RotorExamples.lean</a></th>
+        <td role="cell" data-label="What it contains">Two records of that kind, one with natural-number carrier and one with an empty carrier, and the law applied to an input.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/Evidence.lean" download>Evidence.lean</a></th>
+        <td role="cell" data-label="What it contains">A proof from a local hypothesis beside an unfinished proof, with their axiom reports.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/ReturnMap.lean" download>ReturnMap.lean</a></th>
+        <td role="cell" data-label="What it contains">A record of two maps and a return law, a counterexample to its converse, and a proof of injectivity.</td>
+      </tr>
+      <tr role="row">
+        <th scope="row" role="rowheader"><a href="/learn/examples/RecordedAxiom.lean" download>RecordedAxiom.lean</a></th>
+        <td role="cell" data-label="What it contains">A deliberately unfinished proof and its <code>sorryAx</code> dependency, explained under <a href="/reference/#checking-evidence">checking evidence</a>. Checking it produces a warning that the declaration uses <code>sorry</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 id="quantifier-proofs">Proof supplement: prove one order, refute the other</h3>
+  <figure class="source-file">
+    <figcaption><span class="filename">QuantifierProofs.lean</span><a href="/learn/examples/QuantifierProofs.lean" download>Download<span class="visually-hidden"> QuantifierProofs.lean</span></a></figcaption>
+{{source:QuantifierProofs.lean}}
+  </figure>
+  <p>This supplement contains two proofs, separate from the source files that form the propositions. <code>each_has_equal</code> chooses <var>x</var> as the witness for each <var>x</var>. <code>no_one_equals_all</code> derives the impossible equality <code>0 = 1</code> from the claim that one number equals every number.</p>
+  <p>Both theorems have been independently checked with Lean 4.28.0 and have no axiom dependencies. The difference between forming a proposition and proving it is the subject of {{lesson:06-checking-evidence.md}}.</p>
+</section>

@@ -14,7 +14,7 @@ export function collectBinders(tree: StatementNode): Binder[] {
 }
 
 function defaultValue(binder: Binder): ScenarioValue | undefined {
-  if (binder.role === 'assumption' || binder.domain === 'realFunction') return undefined;
+  if (binder.role === 'auxiliary' || binder.role === 'assumption' || binder.domain === 'realFunction') return undefined;
   if (binder.domain === 'real') return /^(ε|ϵ|epsilon|eps|δ|delta|r|radius)$/i.test(binder.name) ? 1 : 0;
   if (binder.domain === 'sup2' || binder.domain === 'euclidean2' || binder.domain === 'supN' || binder.domain === 'euclideanN') {
     const dimension = binder.dimension ?? (binder.domain.endsWith('2') ? 2 : undefined);
@@ -52,6 +52,7 @@ export function updateScenario(tree: StatementNode, state: Scenario, binderId: s
 }
 
 export function quantifierExplanation(binder: Binder, binders: Binder[]): string {
+  if (binder.role === 'auxiliary') return `Context entry with recorded kind ${binder.declarationKind ?? 'unavailable'}.`;
   const names = binder.dependsOn.map(id => binders.find(b => b.id === id)?.name).filter(Boolean);
   if (binder.role === 'assumption') return 'An assumption in this branch, not an independently chosen point.';
   if (binder.role === 'existential') return names.length

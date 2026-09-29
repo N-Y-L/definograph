@@ -4,7 +4,7 @@ Definograph type-checks **statements**, not proofs. In particular, `False` is a 
 
 ## Reproducible setup
 
-The worker is pinned to Lean **4.28.0** and mathlib commit **`8f9d9cff6bd728b17a24e163c9402775d9e6a365`**. `lean/lake-manifest.json` pins every transitive dependency. Native macOS and Linux builds use the compiler distributed with Lean. Native Windows linking is not implemented; use WSL.
+The worker is pinned to Lean **4.28.0** and mathlib commit **`8f9d9cff6bd728b17a24e163c9402775d9e6a365`**. `lean/lake-manifest.json` pins every transitive dependency. The native macOS/Linux build path uses the compiler distributed with Lean; native Windows linking is not implemented. Retained setup evidence is from macOS arm64. Linux and WSL remain unqualified; see [installation qualification](editor-integration.md#installation-qualification).
 
 Use the Lean 4.28.0 release for your platform from the [official release](https://github.com/leanprover/lean4/releases/tag/v4.28.0). Extracting a release into a dedicated directory does not require changing an existing Elan default or formal project. Supply its actual `bin/lean` path below.
 
@@ -57,13 +57,46 @@ The selected toolchain and compiled mathlib caches are trusted dependencies. Imp
 
 A successful response includes `ok`, `schemaVersion: 2`, `source`, `pretty`, `type`, `validation`, `tree`, `expression`, and `diagnostics`. Term input has `type: "Prop"` and `validation: "kernel-type-checked-statement"`. Declaration signature input can have another type and uses `kernel-type-checked-declaration-type`.
 
-Logical nodes have stable path-based `id` values, a `kind`, display text, `children`, and a portable expression. Kinds are `forall`, `exists`, `implies`, `and`, `or`, `iff`, `not`, `predicate`, and `parameter`. A `parameter` belongs to a declaration’s function/type signature; it does not assert a universally quantified proposition. A binder records its distinct identity, display name, type, role, recognized domain, dimension, and previously introduced non-assumption binders in `dependsOn`. These dependencies describe permissible witness dependence from quantifier order; they do not assert that a particular witness actually depends on every earlier choice. Shadowed names retain distinct identities. Display names erase Lean macro scopes; imported internal hygiene suffixes are never used as user-facing binder identities.
+Logical nodes have stable path-based `id` values, a `kind`, display text, `children`, and a portable expression. Kinds are `forall`, `exists`, `implies`, `and`, `or`, `iff`, `not`, `predicate`, and `parameter`, with `auxiliary` for the neutral editor-context presentation described below. A `parameter` belongs to a declaration’s function/type signature; it does not assert a universally quantified proposition. A binder records its distinct identity, display name, type, role, recognized domain, dimension, and earlier ordinary choice binders in `dependsOn` (excluding assumption and auxiliary roles). These dependencies describe permissible witness dependence from quantifier order; they do not assert actual dependence or give a complete expression-dependency analysis. Shadowed names retain distinct identities. Display names erase Lean macro scopes; imported internal hygiene suffixes are never used as user-facing binder identities.
 
 The portable expression represents constants, local variables, literals, applications, lambdas, dependent function types, sorts, and opaque terms. Applications retain fully elaborated arguments, including implicit type arguments. Class arguments are rendered as opaque descriptive text after auditing. The optional `binderType` expression preserves the domain of a lambda or universal binder; for implication, it is the antecedent. Tree children are the authoritative representation of logical structure. The export is intended for conservative interpretation; it is not a proof certificate or a complete lossless serialization of Lean's internal expression type.
 
 Binders can additionally carry optional `typeExpansion` and `structure` views. These preserve original types and names while exposing bounded checked aliases and direct fields/laws. The same field expressions provide shared identities inside supplementary law readings. Missing or omitted views do not invalidate the original statement. [The structure-reflection contract](structure-reflection.md) documents exact bounds, unknown-frontier behavior, and aggregate response trimming.
 
 Encoded Lean constants additionally retain `levels: string[]`, in Lean's universe-argument order, with each level written as a symbolic Lean universe expression. For example, two `ULift` applications can have levels `["1", "0"]` and `["2", "0"]` even when their ordinary printed labels agree. Expression identity includes these levels; constructor recognition and display labels still use the constant name. The frontend field is optional for compatibility with older exports and synthesized logical heads; monomorphic constants export an empty array.
+
+## Editor guided context interpretation
+
+The editor's guided view uses `guidedContextContract: "definograph.guided-context.v1"`.
+This identifies its context-reading policy separately from the standalone worker
+schema and the exact source-capture formats. The browser announces the contract
+when ready; the extension, context request and response enforce agreement.
+Missing or unsupported contracts refuse the guided reading with a rebuild/reopen
+message. Independently validated raw captures remain available when a response
+contains them. An incompatible browser must be rebuilt before a new editor view
+can run.
+Wholly older components do not participate in this handshake; build pins alone
+cannot make an old consumer enforce the new interpretation.
+
+A retained guided context entry with recorded kind `auxDecl` or `implDetail` receives the
+neutral binder role and tree kind `auxiliary`, with its `declarationKind` retained.
+It has one body child and a `lambda` expression wrapper, without a premise child.
+The entry and its free-variable identity remain in scope. The labels distinguish
+“Auxiliary entry, recorded kind auxDecl” from “Context entry, recorded kind
+implDetail”; neither kind establishes authorship, use, or a logical role. In
+particular, a user-written lambda binder can have kind `implDetail`. Default-kind
+locals retain their existing parameter or proposition-typed hypothesis reading.
+
+Neutral entries have no quantifier choice, numerical control, structure
+reflection or definition preview for their type. `contextParameters` counts the
+remaining guided context entries; `auxiliaryContextEntries` counts those listed
+separately. Choice-dependence lists exclude neutral entries and are not a complete
+analysis of expression dependencies. The full recorded context remains available
+in exact source data. The legacy guided export substitutes local let bindings
+for which Lean's `LocalDecl.isLet` holds. An `ldecl` with `nondep: true`, such as a
+tactic `have`, is retained; a term `let` with `nondep: false` is substituted.
+The separate exact capture retains both constructors, values and recorded kinds.
+This policy changes no raw capture or formation rule.
 
 ## Version 2 inputs and provenance
 

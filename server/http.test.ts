@@ -241,3 +241,58 @@ test('versioned capabilities and bounded declaration options reach the worker', 
     ]) assert.equal((await post(url,{source:'True',...invalid})).status,400);
   }, {...healthy, analyze:async (_source,_signal,options) => {received=options;return {ok:true,diagnostics:[]};}});
 });
+
+test('reader trailing slashes redirect locally with queries and retain working relative assets', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'definograph-reader-routes-'));
+  const html = '<script type="module" src="./assets/app.js"></script>';
+  const script = 'window.readerLoaded = true;';
+  try {
+    await mkdir(path.join(root, 'assets'));
+    await writeFile(path.join(root, 'index.html'), html);
+    await writeFile(path.join(root, 'assets', 'app.js'), script);
+    await withServer(async url => {
+      const query = '?file=a%2Fb&return=https%3A%2F%2Fexample.org%2F&repeat=1&repeat=2';
+      for (const route of ['/source-data', '/packet']) {
+        for (const method of ['GET', 'HEAD']) {
+          const redirect = await fetch(`${url}${route}/${query}`, { method, redirect: 'manual' });
+          assert.equal(redirect.status, 308);
+          assert.equal(redirect.headers.get('location'), route + query);
+          assert.equal(redirect.headers.get('x-frame-options'), 'DENY');
+          assert.equal(redirect.headers.get('referrer-policy'), 'no-referrer');
+          assert.equal(await redirect.text(), '');
+          const page = await fetch(`${url}${route}/${query}`, { method });
+          assert.equal(page.url, `${url}${route}${query}`);
+          assert.equal(page.status, 200);
+          assert.equal(page.headers.get('content-length'), String(Buffer.byteLength(html)));
+          assert.equal(await page.text(), method === 'HEAD' ? '' : html);
+          const scriptURL = new URL('./assets/app.js', page.url);
+          assert.equal(scriptURL.href, `${url}/assets/app.js`);
+          const asset = await fetch(scriptURL);
+          assert.equal(asset.status, 200);
+          assert.equal(asset.headers.get('content-type'), 'text/javascript; charset=utf-8');
+          assert.equal(await asset.text(), script);
+        }
+        const canonical = await fetch(`${url}${route}`, { redirect: 'manual' });
+        assert.equal(canonical.status, 200);
+        assert.equal(canonical.headers.get('location'), null);
+        assert.equal(await canonical.text(), html);
+        assert.equal((await fetch(`${url}${route}/assets/app.js`)).status, 404);
+        for (const method of ['POST', 'OPTIONS']) {
+          const otherMethod = await fetch(`${url}${route}/`, { method, redirect: 'manual' });
+          assert.equal(otherMethod.status, 404);
+          assert.equal(otherMethod.headers.get('location'), null);
+        }
+      }
+      for (const route of ['/', '/other/', '/packet/other/', '/source-data%2F']) {
+        const unchanged = await fetch(url + route, { redirect: 'manual' });
+        assert.equal(unchanged.status, 200);
+        assert.equal(unchanged.headers.get('location'), null);
+      }
+      const foreign = await fetch(`${url}/packet/`, { headers: { Origin: 'https://example.org' }, redirect: 'manual' });
+      assert.equal(foreign.status, 403);
+      assert.equal(foreign.headers.get('location'), null);
+    }, healthy, root);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

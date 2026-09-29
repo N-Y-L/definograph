@@ -1,0 +1,8 @@
+{
+  "component": "TestFixture",
+  "view": { "kind": "fixture", "id": "fixture-card" },
+  "producedBy": "hand-written test fixture",
+  "showsFacts": ["two boxes joined by an arrow"],
+  "omits": ["everything a real view would show"],
+  "private": { "runId": "PRIVATE-FIXTURE-RUN-ID-must-never-be-imported" }
+}

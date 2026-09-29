@@ -20,7 +20,11 @@ export interface Binder {
   id: string;
   name: string;
   type: string;
-  role: 'universal' | 'existential' | 'assumption' | 'lambda' | 'parameter';
+  role: 'universal' | 'existential' | 'assumption' | 'lambda' | 'parameter' | 'definition' | 'auxiliary';
+  /** Retained metadata for neutrally presented context entries; not evidence of authorship or use. */
+  declarationKind?: 'auxDecl' | 'implDetail';
+  /** A scoped local definition, not an arbitrary choice or a hypothesis. */
+  definition?: { value: Expr; nondep: boolean };
   dependsOn: string[];
   domain?: Domain;
   dimension?: number;
@@ -57,16 +61,22 @@ export interface ReflectedStructure {
   stopReason?: string;
 }
 
-export type Expr =
+export type Expr = (
   | { kind: 'const'; name: string; levels?: string[]; canonical?: boolean; type?: string; typeDescriptor?: TypeDescriptor }
   | { kind: 'var'; id: string; name: string; type: string; typeDescriptor?: TypeDescriptor }
   | { kind: 'literal'; value: number | string }
   | { kind: 'app'; fn: Expr; args: Expr[]; metric?: Metric; metricInstance?: string; dimension?: number; domain?: Domain; standard?: boolean; type?: string; operator?: NumericOperator; typeDescriptor?: TypeDescriptor; argumentKinds?: ('instance' | 'proof' | 'type' | 'value')[] }
   | { kind: 'forall' | 'lambda'; binder: Binder; body: Expr; binderType?: Expr }
   | { kind: 'sort'; name: string }
-  | { kind: 'opaque'; text: string };
+  | { kind: 'opaque'; text: string }
+) & {
+  /** Exact scoped identity supplied by an adapter; never evidence of truth. */
+  exactIdentity?: string;
+  /** Constructor-faithful display text for an exactly identified expression. */
+  displayText?: string;
+};
 
-export type NodeKind = 'forall' | 'exists' | 'implies' | 'and' | 'or' | 'iff' | 'not' | 'predicate' | 'parameter';
+export type NodeKind = 'forall' | 'exists' | 'implies' | 'and' | 'or' | 'iff' | 'not' | 'predicate' | 'parameter' | 'definition' | 'auxiliary';
 export interface StatementNode {
   id: string;
   kind: NodeKind;
@@ -90,6 +100,7 @@ export interface Analysis {
   metrics: unknown[];
   diagnostics: unknown[];
   schemaVersion?: number;
+  guidedContextContract?: string;
   validation?: 'kernel-type-checked-statement' | 'kernel-type-checked-declaration-type' | 'kernel-type-checked-context-fragment';
   provenance?: { assistant: string; inputMode: 'term' | 'declaration' | 'editor'; declaration?: { name: string; kind: string; module?: string; type: string }; [key: string]: unknown };
   definitions?: { name: string; kind: string; type: string; module?: string; canExpand: boolean }[];

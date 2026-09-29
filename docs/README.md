@@ -17,6 +17,10 @@ different levels of progress.
 | [Roadmap](roadmap.md) | Next general capabilities and acceptance criteria |
 | [Lean contract](lean-contract.md) | Standalone extraction, expression metadata, kernel checks, setup, and limits |
 | [Editor integration](editor-integration.md) | Actual project context, source selection, execution trust, and host limits |
+| [Editor source snapshots](editor-source-snapshots.md) | Exact original/prepared frames, chosen occurrence checks, saved records and revision invalidation |
+| [Editor definition exposure](editor-definition-exposure.md) | One safe definition body, original/result readings, exact trace and separate typing/conversion outcomes |
+| [Reader relations](reader-relations.md) | Prefix-specific provenance, formation, supply, whole-attempt outcomes and passive navigation |
+| [Saved packet reader](packet-reader.md) | Separate packet import, exact syntax/readback and unverified reported outcomes; not an editor-snapshot importer |
 | [Structure reflection](structure-reflection.md) | Direct record fields, projected identities, scoped laws, and export budgets |
 | [Semantic contract](semantic-contract.md) | Objects, relations, scope, recognition, and representation fidelity |
 | [Guided reading](guided-reading.md) | Ordered constructions and retained logical context |

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "note": "Recorded quantifier-flow views from fresh Lean 4.28.0 results on 27 September 2026. Pages place one with {{image:<file name without .png>}}.",
+  "recorded": "2026-09-27",
+  "lean": "4.28.0",
+  "images": [
+    {
+      "source": "source-assets/reader/quantifier-forall-exists.png",
+      "path": "/images/quantifier-forall-exists.png",
+      "width": 1440,
+      "height": 490,
+      "sha256": "caa22dedc7dfbd86a18f8f472bf14c63d8915b59b17a51a00be1122de69519a7",
+      "leanFilename": "QuantifierForallExists.lean",
+      "sourceHref": "/learn/examples/QuantifierForallExists.lean",
+      "title": "For each x, there is a y",
+      "alt": "The universal x comes first; the existential y may depend on x.",
+      "caption": "Recorded Definograph quantifier-flow view from this Lean source. This focused view shows quantifier order and permitted dependence between the displayed binders; it does not provide a witness or proof.",
+      "explanationHtml": "For each <code>x</code>, <code>y</code> is introduced inside <code>x</code>’s scope. The choice of <code>y</code> may depend on <code>x</code>.",
+      "sourceCode": "example : Prop := ∀ x : Nat, ∃ y : Nat, y = x\n"
+    },
+    {
+      "source": "source-assets/reader/quantifier-exists-forall.png",
+      "path": "/images/quantifier-exists-forall.png",
+      "width": 1440,
+      "height": 490,
+      "sha256": "abd4b6e95b1fa0946969f3a3c60f22fa3cef26e9b35bb5c8eac5260826508dde",
+      "leanFilename": "QuantifierExistsForall.lean",
+      "sourceHref": "/learn/examples/QuantifierExistsForall.lean",
+      "title": "One y for every x",
+      "alt": "The existential y comes first; the later universal x cannot change that choice.",
+      "caption": "Recorded Definograph quantifier-flow view from this Lean source. This focused view shows quantifier order and permitted dependence between the displayed binders; it does not provide a witness or proof.",
+      "explanationHtml": "Here <code>y</code> is introduced before <code>x</code>. The same <code>y</code> is required to work for every <code>x</code>.",
+      "sourceCode": "example : Prop := ∃ y : Nat, ∀ x : Nat, y = x\n"
+    }
+  ]
+}

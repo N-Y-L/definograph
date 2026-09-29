@@ -1,4 +1,5 @@
 import { useId, useMemo, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { FigureScroll } from '../components/FigureScroll';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { readingObjectColor } from '../visual/object-identity';
 import { compileGraphConstraint, type GraphConstraintModel, type GraphEndpoint, type GraphPalette } from './model';
@@ -29,32 +30,32 @@ function Endpoint({ endpoint, x, y, ...interaction }: Interaction & { endpoint: 
 
 function Adjacency({ model, ...interaction }: Interaction & { model: GraphConstraintModel }) {
   const [left, right] = model.endpoints;
-  return <svg viewBox="0 0 560 164" role="group" aria-label="Named adjacency condition; this is not a complete graph drawing">
+  return <FigureScroll label="Graph condition diagram; scroll to see all of it"><svg viewBox="0 0 560 164" role="group" aria-label="Named adjacency condition; this is not a complete graph drawing">
     {model.sameEndpoint ? <><path className="gc-edge gc-conditional" d="M267 64 C219 10 341 10 293 64"/><Endpoint endpoint={left} x={280} y={75} {...interaction}/><text x="280" y="145" textAnchor="middle" className="gc-annotation">the same vertex occurs at both endpoints</text></> : <><path className="gc-edge gc-conditional" d="M145 74 H415"/><text x="280" y="50" textAnchor="middle" className="gc-annotation">adjacency required by this condition</text><Endpoint endpoint={left} x={126} y={74} {...interaction}/><Endpoint endpoint={right} x={434} y={74} {...interaction}/></>}
-  </svg>;
+  </svg></FigureScroll>;
 }
 
 function ColorRule({ model, marker, ...interaction }: Interaction & { model: GraphConstraintModel; marker: string }) {
   const name = model.coloring ? short(model.coloring.label, 18) : 'color';
-  return <svg viewBox="0 0 560 245" role="group" aria-label="For any adjacent endpoint pair, a proper coloring assigns unequal labels">
+  return <FigureScroll label="Graph condition diagram; scroll to see all of it"><svg viewBox="0 0 560 245" role="group" aria-label="For any adjacent endpoint pair, a proper coloring assigns unequal labels">
     <defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L7 4 L1 7"/></marker></defs>
     <path className="gc-edge gc-conditional" d="M145 55 H415"/><text x="280" y="30" textAnchor="middle" className="gc-annotation">if these endpoints are adjacent</text>
     <Endpoint endpoint={model.endpoints[0]} x={126} y={55} {...interaction}/><Endpoint endpoint={model.endpoints[1]} x={434} y={55} {...interaction}/>
     <SvgIdentity object={model.coloring} {...interaction}><path className="gc-map-arrow" d="M126 109 V156" markerEnd={`url(#${marker})`}/><path className="gc-map-arrow" d="M434 109 V156" markerEnd={`url(#${marker})`}/><text x="280" y="133" textAnchor="middle" className="gc-annotation">apply {name}</text></SvgIdentity>
     {[126, 434].map((x, index) => <g key={x} className="gc-color-expression"><rect x={x - 74} y="169" width="148" height="43" rx="8"/><text x={x} y="196" textAnchor="middle">{name}({index === 0 ? 'v₁' : 'v₂'})</text></g>)}
     <text x="280" y="198" textAnchor="middle" className="gc-inequality">≠</text><text x="280" y="235" textAnchor="middle" className="gc-annotation">different labels, for every edge</text>
-  </svg>;
+  </svg></FigureScroll>;
 }
 
 function MapRule({ model, marker, ...interaction }: Interaction & { model: GraphConstraintModel; marker: string }) {
   const name = short(model.map!.label, 18);
-  return <svg viewBox="0 0 560 246" role="group" aria-label={model.mapKind === 'embedding' ? 'A graph embedding preserves and reflects adjacency' : 'This graph map sends every edge to an edge'}>
+  return <FigureScroll label="Graph condition diagram; scroll to see all of it"><svg viewBox="0 0 560 246" role="group" aria-label={model.mapKind === 'embedding' ? 'A graph embedding preserves and reflects adjacency' : 'This graph map sends every edge to an edge'}>
     <defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L7 4 L1 7"/></marker></defs>
     <path className="gc-edge gc-conditional" d="M145 50 H415"/><text x="280" y="24" textAnchor="middle" className="gc-annotation">adjacency in the source graph</text>
     <Endpoint endpoint={model.endpoints[0]} x={126} y={50} {...interaction}/><Endpoint endpoint={model.endpoints[1]} x={434} y={50} {...interaction}/>
     <SvgIdentity object={model.map} {...interaction}><path className="gc-map-arrow" d="M126 106 V158" markerEnd={`url(#${marker})`}/><path className="gc-map-arrow" d="M434 106 V158" markerEnd={`url(#${marker})`}/><text x="280" y="129" textAnchor="middle" className="gc-annotation">{model.mapKind === 'embedding' ? 'if and only if' : 'requires'} · apply {name}</text></SvgIdentity>
     <path className="gc-edge gc-conditional" d="M145 188 H415"/>{[126, 434].map((x, index) => <g key={x} data-endpoint-role="arbitrary-image-slot"><circle className="gc-vertex gc-slot" cx={x} cy="188" r="19"/><text x={x} y="228" textAnchor="middle" className="gc-endpoint-label">{name}({index === 0 ? 'v₁' : 'v₂'})</text></g>)}<text x="280" y="212" textAnchor="middle" className="gc-annotation">adjacency in the target graph</text>
-  </svg>;
+  </svg></FigureScroll>;
 }
 
 function Palette({ palette, ...interaction }: Interaction & { palette: GraphPalette }) {

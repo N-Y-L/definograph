@@ -1,5 +1,6 @@
 import type { InterpretationReport } from '../semantic/coverage';
 import './interpretation-coverage.css';
+import { counted } from '../core/counted';
 
 export function InterpretationCoverage({ report, busy = false, onNodeSelect, onExpand }: {
   report: InterpretationReport;
@@ -20,7 +21,7 @@ export function InterpretationCoverage({ report, busy = false, onNodeSelect, onE
       <code>{gap.name}</code><span>{gap.occurrences} {gap.occurrences === 1 ? 'occurrence' : 'occurrences'} · {gap.nodeIds.length} {gap.nodeIds.length === 1 ? 'clause' : 'clauses'}</span>
       <p>{gap.kind === 'opaque' ? 'The exporter retained this expression without inspectable internal structure.' : gap.canExpand ? 'A checked definition body is available for inspection.' : gap.kind === 'symbolic' ? 'This symbol has only its stated type and relationships.' : 'No visual rule currently interprets this operation.'}{gap.retainedRelationIds.length > 0 ? ' Recognized constructions inside it are still shown.' : ''}</p>
       <div className="coverage-actions"><button type="button" onClick={() => onNodeSelect(gap.nodeIds[0]!)}>Locate in statement</button>{gap.canExpand && gap.constant && <button type="button" disabled={busy} onClick={() => onExpand(gap.constant!)}>Look inside definition</button>}</div>
-    </article>)}</div>{report.gaps.length > 24 && <p>{report.gaps.length - 24} further entries are retained in the exported coverage report.</p>}</> : <p>Every exported predicate fragment in this selection uses the installed visual vocabulary. This does not certify the completeness of the mathematical interpretation.</p>}
+    </article>)}</div>{report.gaps.length > 24 && <p>{counted(report.gaps.length - 24, 'further entry', 'further entries')} {report.gaps.length - 24 === 1 ? 'is' : 'are'} retained in the exported coverage report.</p>}</> : <p>Every exported predicate fragment in this selection uses the installed visual vocabulary. This does not certify the completeness of the mathematical interpretation.</p>}
     {report.diagnostics.map((message, index) => <p key={index}>{message}</p>)}
   </section>;
 }

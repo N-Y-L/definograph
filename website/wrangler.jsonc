@@ -1,0 +1,11 @@
+// Cloudflare Workers Static Assets: an assets-only Worker (no script) serving ./dist.
+// Missing paths get dist/404.html with status 404; there is no single-page fallback.
+{
+  "name": "definograph-web",
+  "compatibility_date": "2026-09-27",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}

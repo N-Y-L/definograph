@@ -1,0 +1,265 @@
+{
+  "schema": 1,
+  "sourceCommit": "747631072c57c118a409d4e16280d29a33e05a20",
+  "upstreamManifest": {
+    "path": "deps.json",
+    "sha256": "51c3b76a50c5e6aef83dfbd4ff2ec8146523d504a1c5ffa14db75f5ed9ee5641"
+  },
+  "leanVersion": "4.28.0",
+  "entryModule": "SourceCapture",
+  "modules": [
+    {
+      "module": "DerivedViewSyntax",
+      "source": "src/DerivedViewSyntax.lean",
+      "upstreamSource": "lean/library/DerivedViewSyntax.lean",
+      "sha256": "115b0cf19d6ecf25c79c13d94fe101d08002d9ddba3c0336b38854b1b1aca4a5",
+      "imports": [
+        "Lean"
+      ]
+    },
+    {
+      "module": "ExprReferenceGraph",
+      "source": "src/ExprReferenceGraph.lean",
+      "upstreamSource": "lean/library/ExprReferenceGraph.lean",
+      "sha256": "b6fa200cdeb20793d45ad9ae27b32525f6d73514a5da365a53886d52048b8323",
+      "imports": [
+        "Lean"
+      ]
+    },
+    {
+      "module": "CoreExprBridge",
+      "source": "src/CoreExprBridge.lean",
+      "upstreamSource": "lean/library/CoreExprBridge.lean",
+      "sha256": "68a2a8d245d6c98d126f3e53f207f0b9c1ce4380612caff9734ee07b26bdcc6b",
+      "imports": [
+        "DerivedViewSyntax",
+        "ExprReferenceGraph"
+      ]
+    },
+    {
+      "module": "UniqueOutputMatcher",
+      "source": "src/UniqueOutputMatcher.lean",
+      "upstreamSource": "lean/library/UniqueOutputMatcher.lean",
+      "sha256": "9199ed15299ca4a69da448550b0e464240776dd3f3aa2f9af1ac2c4f349ede9b",
+      "imports": [
+        "DerivedViewSyntax"
+      ]
+    },
+    {
+      "module": "ContextualViewDAG",
+      "source": "src/ContextualViewDAG.lean",
+      "upstreamSource": "lean/library/ContextualViewDAG.lean",
+      "sha256": "625f8063e53300352a84e46ffa0360359a03ad170096530acd8bdaae4728951d",
+      "imports": [
+        "DerivedViewSyntax"
+      ]
+    },
+    {
+      "module": "ContextualDAGCoverage",
+      "source": "src/ContextualDAGCoverage.lean",
+      "upstreamSource": "lean/library/ContextualDAGCoverage.lean",
+      "sha256": "f5ef5d60fdc839c149ad76e80bdae9c0d2da8d476fd0eaa5746a226e92556212",
+      "imports": [
+        "ContextualViewDAG"
+      ]
+    },
+    {
+      "module": "CompositionBase",
+      "source": "src/CompositionBase.lean",
+      "upstreamSource": "lean/library/CompositionBase.lean",
+      "sha256": "99f815e0b4c25a38a2885ad0e2765021e151f104c795d4e03ed3c3f413279ad9",
+      "imports": [
+        "Lean",
+        "DerivedViewSyntax",
+        "ContextualViewDAG",
+        "ContextualDAGCoverage",
+        "UniqueOutputMatcher",
+        "CoreExprBridge"
+      ]
+    },
+    {
+      "module": "CheckSupport",
+      "source": "src/CheckSupport.lean",
+      "upstreamSource": "lean/CheckSupport.lean",
+      "sha256": "609badeb6ec6215594d65a4ba6f7c326549b8a33e6f0ea5b55fd154153c80224",
+      "imports": [
+        "CompositionBase"
+      ]
+    },
+    {
+      "module": "ExactJson",
+      "source": "src/ExactJson.lean",
+      "upstreamSource": "lean/ExactJson.lean",
+      "sha256": "e5ad9e7d9e7293ed72ff2800a7a16518310609faf6db28c7cf16d58481983635",
+      "imports": [
+        "CompositionBase"
+      ]
+    },
+    {
+      "module": "RawJson",
+      "source": "src/RawJson.lean",
+      "upstreamSource": "lean/RawJson.lean",
+      "sha256": "b1fcb3ac3b8ceab217747b660dc6ddd48b5ca5e9c82ccff3a67f0b8298dec49d",
+      "imports": [
+        "ExactJson"
+      ]
+    },
+    {
+      "module": "CheckedComposition",
+      "source": "src/CheckedComposition.lean",
+      "upstreamSource": "lean/CheckedComposition.lean",
+      "sha256": "6a567a45581ca22fbff6d24548d8170cc414f624802465b80d83a9365d546522",
+      "imports": [
+        "CheckSupport"
+      ]
+    },
+    {
+      "module": "PacketCapture",
+      "source": "src/PacketCapture.lean",
+      "upstreamSource": "lean/PacketCapture.lean",
+      "sha256": "4453f1e360619f4e7ef674b9c016c8dab48f907e493688f392d5bca59f2bb240",
+      "imports": [
+        "ExactJson",
+        "CheckedComposition"
+      ]
+    },
+    {
+      "module": "SourceBoundary",
+      "source": "src/SourceBoundary.lean",
+      "upstreamSource": "lean/admission/SourceBoundary.lean",
+      "sha256": "5253e769ea390cc056bfb2312184d88ed81c8746c141d3a3527f2b9a1332698f",
+      "imports": [
+        "CheckedComposition"
+      ]
+    },
+    {
+      "module": "ComponentAdmission",
+      "source": "src/ComponentAdmission.lean",
+      "upstreamSource": "lean/admission/ComponentAdmission.lean",
+      "sha256": "745a014edd5a969787bbf91beaea14a8c844730e9989d5f86b9bfa3a812d5561",
+      "imports": [
+        "SourceBoundary"
+      ]
+    },
+    {
+      "module": "FVarCoreBridge",
+      "source": "src/FVarCoreBridge.lean",
+      "upstreamSource": "lean/admission/FVarCoreBridge.lean",
+      "sha256": "7b592f0fa92e90ff29684ffee1f7a40210104a5d6a21767f6482428a9ba7ba5b",
+      "imports": [
+        "CoreExprBridge"
+      ]
+    },
+    {
+      "module": "NamedContextAdmission",
+      "source": "src/NamedContextAdmission.lean",
+      "upstreamSource": "lean/admission/NamedContextAdmission.lean",
+      "sha256": "a1385983a24a9231fd9997e6248bcef18db8bd11fe3a16ca11ed617b3f1b3d7c",
+      "imports": [
+        "ComponentAdmission",
+        "FVarCoreBridge"
+      ]
+    },
+    {
+      "module": "ExprSubstitutionSpec",
+      "source": "src/ExprSubstitutionSpec.lean",
+      "upstreamSource": "lean/admission/ExprSubstitutionSpec.lean",
+      "sha256": "e7b92a0587a24cd31a4c9247e9284b9da110ea1d4b16ab6f88d15ad4b9e0b209",
+      "imports": [
+        "CoreExprBridge"
+      ]
+    },
+    {
+      "module": "InferComponent",
+      "source": "src/InferComponent.lean",
+      "upstreamSource": "lean/admission/InferComponent.lean",
+      "sha256": "1017b43863ebcece6f91d119a0b48eff2d504f20b78c77ecb43a6e2e89822314",
+      "imports": [
+        "NamedContextAdmission",
+        "ExprSubstitutionSpec"
+      ]
+    },
+    {
+      "module": "FoundationIntegration",
+      "source": "src/FoundationIntegration.lean",
+      "upstreamSource": "lean/admission/FoundationIntegration.lean",
+      "sha256": "62a0bf1d9d2518d1d0dd65a8af3efc1983c4a44beae94fe1a084d5fa3eb0a351",
+      "imports": [
+        "CoreExprBridge",
+        "UniqueOutputMatcher",
+        "FVarCoreBridge"
+      ]
+    },
+    {
+      "module": "OccurrenceDecomposition",
+      "source": "src/OccurrenceDecomposition.lean",
+      "upstreamSource": "lean/admission/OccurrenceDecomposition.lean",
+      "sha256": "fb2b83a982d3672901ac14b98d1dc2158c42fcd74c6ed362bcd0db776bb74bfc",
+      "imports": [
+        "FoundationIntegration"
+      ]
+    },
+    {
+      "module": "SourceHome",
+      "source": "src/SourceHome.lean",
+      "upstreamSource": "lean/admission/SourceHome.lean",
+      "sha256": "98193384148659a8c9048fc30b044edee05ea47ede9a4e71d624f6d0fcc4b57a",
+      "imports": [
+        "OccurrenceDecomposition",
+        "ComponentAdmission"
+      ]
+    },
+    {
+      "module": "CheckedExtraction",
+      "source": "src/CheckedExtraction.lean",
+      "upstreamSource": "lean/admission/CheckedExtraction.lean",
+      "sha256": "bd083f3bfd3358b2807193412ab282b37f5f45d9ad65e240b373ccd3cc4a8817",
+      "imports": [
+        "InferComponent",
+        "SourceHome"
+      ]
+    },
+    {
+      "module": "HeadExposure",
+      "source": "src/HeadExposure.lean",
+      "upstreamSource": "lean/HeadExposure.lean",
+      "sha256": "acf49be9ec604cd40ec1df9b4db6e65c2aa5af910b85c4ac7f3fe3acdcc55de3",
+      "imports": [
+        "InferComponent",
+        "RawJson"
+      ]
+    },
+    {
+      "module": "FieldInspection",
+      "source": "src/FieldInspection.lean",
+      "upstreamSource": "lean/FieldInspection.lean",
+      "sha256": "6c7f019e8f3722b09d56e5921766ce2d65e179673790a8e536a99b672068a0b4",
+      "imports": [
+        "HeadExposure"
+      ]
+    },
+    {
+      "module": "LogicalInspection",
+      "source": "src/LogicalInspection.lean",
+      "upstreamSource": "lean/LogicalInspection.lean",
+      "sha256": "2c3f0b79aa27a30e9af283a36fb2605bb8200aeffd9ba491e55881576645db50",
+      "imports": [
+        "HeadExposure"
+      ]
+    },
+    {
+      "module": "SourceCapture",
+      "source": "src/SourceCapture.lean",
+      "upstreamSource": "lean/SourceCapture.lean",
+      "sha256": "c5c137899cffa9d205b5718429cbcc700b0be208abaa63e5f784a8a39e048529",
+      "imports": [
+        "PacketCapture",
+        "NamedContextAdmission",
+        "CheckedExtraction",
+        "RawJson",
+        "FieldInspection",
+        "LogicalInspection"
+      ]
+    }
+  ]
+}

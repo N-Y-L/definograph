@@ -82,6 +82,7 @@ export function expressionKey(expr: Expr, identities: ReadonlyMap<string, string
   // Build a structural value, then serialize once. Serializing child keys as
   // strings repeatedly escaped their quotes and grew exponentially with depth.
   const encode = (current: Expr, names: ReadonlyMap<string, string>, level: number): KeyData => {
+    if (current.exactIdentity !== undefined) return ['exact', current.exactIdentity];
     if (level > 128) return 'depth-limit';
     const key = (child: Expr) => encode(child, names, level + 1);
     switch (current.kind) {
@@ -114,6 +115,7 @@ export function stableHash(text: string): string {
 }
 
 export function formatExpression(expr: Expr, depth = 0): string {
+  if (expr.exactIdentity !== undefined && expr.displayText !== undefined) return expr.displayText;
   if (depth > 5) return '…';
   const format = (e: Expr) => formatExpression(e, depth + 1);
   switch (expr.kind) {

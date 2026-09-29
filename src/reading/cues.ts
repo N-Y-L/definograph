@@ -1,10 +1,11 @@
 import type { SemanticDocument, SemanticRelation, SemanticScope } from '../semantic/types';
+import { contextEntryTitle } from '../core/context-entry';
 import { planReadingPresentation, type ReadingRegion } from './presentation';
 import type { ReadingBinder, ReadingDocument, ReadingNode, ReadingPanel, ReadingQuantifierGroup } from './types';
 
 export const READING_CUE_VERSION = '1.0.0' as const;
-export type ReadingCueIntent = 'introduce' | 'logic' | 'apply' | 'compare' | 'condition';
-export type ReadingCueRole = 'statement' | 'parameter' | 'arbitrary' | 'witness' | 'assumption' | 'conclusion' | 'conjunct' | 'alternative' | 'equivalence-left' | 'equivalence-right' | 'negated' | 'result' | 'contained';
+export type ReadingCueIntent = 'introduce' | 'logic' | 'apply' | 'compare' | 'condition' | 'inspect';
+export type ReadingCueRole = 'statement' | 'expression' | 'parameter' | 'definition' | 'auxiliary' | 'arbitrary' | 'witness' | 'candidate' | 'assumption' | 'conclusion' | 'conjunct' | 'alternative' | 'equivalence-left' | 'equivalence-right' | 'negated' | 'result' | 'contained';
 export interface ReadingCue {
   readonly id: string;
   readonly ordinal: number;
@@ -58,8 +59,9 @@ const edgeRoles = new Set<ReadingCueRole>(['assumption', 'conclusion', 'conjunct
 type Draft = Omit<ReadingCue, 'ordinal' | 'retainedObjectIds'>;
 
 function roleOfBinder(binder: ReadingBinder): ReadingCueRole {
+  if (binder.role === 'auxiliary') return 'auxiliary';
   return binder.role === 'existential' ? 'witness' : binder.role === 'universal' ? 'arbitrary'
-    : binder.role === 'assumption' ? 'assumption' : 'parameter';
+    : binder.role === 'assumption' ? 'assumption' : binder.role === 'definition' ? 'definition' : 'parameter';
 }
 function surroundingRoles(path: ReadingQuantifierGroup['branchPath']): ReadingCueRole[] {
   return path.flatMap(position => edgeRoles.has(position.edge.role as ReadingCueRole) ? [position.edge.role as ReadingCueRole] : []);
@@ -94,6 +96,9 @@ function logicText(kind: ReadingNode['kind']): [string, string] {
  * The output is a prefix of the complete source-ordered plan, never a reordered selection.
  * Selection is deliberately ignored; the UI can locate a cue by its source identities. */
 export function compileReadingCues(reading: ReadingDocument, document: SemanticDocument, options: ReadingCueOptions = {}): ReadingCuePlan {
+  const component = document.presentation?.kind === 'component';
+  const targetNodeId = document.presentation?.targetNodeId;
+  const contextNodeIds = new Set(document.presentation?.contextNodeIds ?? []);
   const requested = options.maxCues ?? 250;
   if (!Number.isInteger(requested) || requested < 0) throw new Error('maxCues must be a nonnegative integer.');
   const maxCues = Math.min(requested, 1000);
@@ -103,11 +108,11 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
   const panels = new Map(reading.panels.map(panel => [panel.id, panel]));
   const nodes = new Map(reading.nodes.map(node => [node.id, node]));
   const steps = new Map(reading.sequence.map(step => [step.nodeId, step]));
-  const presentation = planReadingPresentation(reading);
+  const presentation = planReadingPresentation(reading, { boundaryNodeIds: component && targetNodeId ? [targetNodeId] : [] });
   const cues: ReadingCue[] = [];
   const omittedNodeIds = new Set<string>();
   const diagnostics = unique([...document.diagnostics, ...reading.diagnostics]);
-  if (requested > maxCues) diagnostics.push('The cue limit was capped at 1000; the complete statement remains in the atlas.');
+  if (requested > maxCues) diagnostics.push(`The cue limit was capped at 1000; the complete ${component ? 'expression' : 'statement'} remains in the atlas.`);
   let totalCueCount = 0;
   let previous: ReadingCue | undefined;
 
@@ -123,7 +128,8 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
     let scope = scopes.get(scopeId);
     if (scope && scope.nodeId !== node.id || !scope && scopeId !== node.scopeId) throw new Error(`Cue scope ${scopeId} does not belong to source node ${node.id}.`);
     if (!scope) {
-      const message = 'Some semantic scopes were not exported; their cues retain source logic without inferred relations.';
+      const message = component ? 'Some scopes were not exported; their cues retain source structure without inferred relations.'
+        : 'Some semantic scopes were not exported; their cues retain source logic without inferred relations.';
       if (!diagnostics.includes(message)) diagnostics.push(message);
       // The reading tree survives the semantic traversal budget. Its source-derived
       // edges still establish the enclosing logic, but add no fabricated objects.
@@ -136,7 +142,7 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
     return { nodeId: node.id, regionId, sourceNodeIds, panelId: panel?.id, scopeId,
       scopePath: scopePath(scope), ancestorNodeIds: step.ancestorNodeIds, assumptionNodeIds: scope.assumptionNodeIds,
       branchPath: step.branchPath, contextLabels: contextLabels(node, scope, step.branchPath),
-      role: roles.at(-1) ?? 'statement', roles, contextObjectIds: scope.objectIds.filter(id => objects.has(id)), binders: [] as readonly ReadingBinder[] };
+      role: roles.at(-1) ?? (component ? 'expression' : 'statement'), roles, contextObjectIds: scope.objectIds.filter(id => objects.has(id)), binders: [] as readonly ReadingBinder[] };
   };
   const emit = (draft: Draft, groupObjects: readonly string[] = []): void => {
     totalCueCount += 1;
@@ -155,6 +161,7 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
   const label = (id: string | undefined): string => id ? objects.get(id)?.label ?? 'expression' : 'expression';
   const port = (relation: SemanticRelation, role: string) => relation.ports.find(port => port.role === role)?.objectId;
   const relationText = (relation: SemanticRelation): [ReadingCueIntent, string, string] => {
+    if (component && relation.kind !== 'application' && !(relation.nodeId === document.presentation?.logicalRootNodeId && relation.provenance.expressionPath === 'expression')) return ['inspect', `Inspect ${short(relation.label, 85)}`, 'Read the displayed arguments and their positions in this expression.'];
     switch (relation.kind) {
       case 'application': return ['apply', `Follow ${short(label(port(relation, 'function')), 60)}`, `Follow the ordered inputs of ${short(label(port(relation, 'function')), 50)} to the expression ${short(label(port(relation, 'output')), 90)}.`];
       case 'image': return ['apply', 'Form the image', `Read the image of ${short(label(port(relation, 'set')), 60)} under ${short(label(port(relation, 'function')), 60)}.`];
@@ -193,7 +200,7 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
     const clauseRoots = [...rootIds].flatMap(id => relations.has(id) ? [relations.get(id)!] : []);
     const wrapped = clauseRoots.some(relation => relation.kind === 'predicate' || relation.fidelity === 'structural');
     const base = common(node, region.id, region.sourceNodeIds, node.scopeId, panel);
-    const queueClause = () => drafts.push({ draft: { ...base, id: `cue:${node.id}:clause`, intent: 'condition', title: 'Read the complete clause', detail: short(node.phrase || node.lean, 220), focusObjectIds: unique(clauseRoots.flatMap(r => r.ports.map(p => p.objectId))), focusRelationIds: clauseRoots.map(r => r.id), stage: { kind: 'clause', index: 1, count: 1 } }, groupObjects: panel?.groups.find(group => group.role === 'clause')?.objectIds ?? [] });
+    const queueClause = () => drafts.push({ draft: { ...base, id: `cue:${node.id}:clause`, intent: component ? 'inspect' : 'condition', title: component ? 'Read the expression' : 'Read the complete clause', detail: short(node.phrase || node.lean, 220), focusObjectIds: unique(clauseRoots.flatMap(r => r.ports.map(p => p.objectId))), focusRelationIds: clauseRoots.map(r => r.id), stage: { kind: 'clause', index: 1, count: 1 } }, groupObjects: panel?.groups.find(group => group.role === 'clause')?.objectIds ?? [] });
     // A wrapper's condition is introduced before inspecting its contents. Children must
     // never stand in for the unknown or higher-order proposition around them.
     if (wrapped || !clauseRoots.length) { queueClause(); clauseRoots.forEach(root => seen.add(root.id)); }
@@ -225,7 +232,7 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
         drafts.push({ draft: { ...relationBase, id: `cue:${node.id}:relation:${relation.id}`, intent,
           role: isContained ? 'contained' : relationBase.role, roles: isContained ? [...relationBase.roles, 'contained'] : relationBase.roles,
           title: isContained ? `Inside the expression: ${title.toLowerCase()}` : title,
-          detail: isContained ? `A contained expression part, not a separate assertion. ${detail}` : detail,
+          detail: isContained ? `${component ? 'A contained expression part.' : 'A contained expression part, not a separate assertion.'} ${detail}` : detail,
           focusObjectIds: unique(relation.ports.map(p => p.objectId)), focusRelationIds: [relation.id],
           stage: { kind: isContained ? 'contained' : rootIds.has(relation.id) ? 'clause' : 'construction', index: 1, count: 1, relationId: relation.id, relationKind: relation.kind } }, groupObjects: group.objectIds });
       };
@@ -244,27 +251,38 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
     if (region.kind === 'binders') {
       const node = region.binders.at(-1)!;
       const binders = region.binders.map(node => node.binder!);
-      const role = roleOfBinder(binders[0]!);
+      const logical = component && region.sourceNodeIds.includes(document.presentation?.logicalRootNodeId ?? '');
+      const role = logical && binders[0]!.role === 'existential' ? 'candidate' : roleOfBinder(binders[0]!);
       const base = common(node, region.id, region.sourceNodeIds);
       const names = short(binders.map(binder => binder.name).join(', '), 90);
-      const title = role === 'arbitrary' ? `For every ${names}` : role === 'witness' ? `${binders.length === 1 ? 'There exists' : 'There exist'} ${names}` : `Parameters: ${names}`;
+      const ambient = region.sourceNodeIds.every(id => contextNodeIds.has(id));
+      const title = role === 'auxiliary' ? binders.map(contextEntryTitle).join('; ') : logical ? region.node.phrase : component ? `${role === 'definition' ? ambient ? 'Context definitions' : 'Local definitions' : ambient ? 'Names in scope' : 'Function inputs'}: ${names}`
+        : role === 'arbitrary' ? `For every ${names}` : role === 'witness' ? `${binders.length === 1 ? 'There exists' : 'There exist'} ${names}` : role === 'definition' ? `Define ${names}` : `Parameters: ${names}`;
       const dependencies = unique(binders.flatMap(binder => binder.dependsOn)).map(id => label(id));
-      const detail = role === 'witness' ? binders.length > 1 ? 'Read these witnesses in binder order; each may use only its listed earlier choices. Their existence is part of the enclosed condition.'
+      const detail = role === 'auxiliary' ? 'These recorded entries remain in the captured scope. Their declaration kinds do not identify authorship or use.' : logical ? role === 'candidate'
+        ? `A candidate bound within the existential statement. ${dependencies.length ? `Earlier context available: ${short(dependencies.join(', '), 120)}.` : 'No earlier declarations are available.'} This is allowed dependence, not a supplied witness or a claim of minimal dependence.`
+        : 'Read this universal binder in the displayed context. Its body remains within the proposition; formation does not prove the proposition.'
+        : component ? role === 'definition' ? 'These names denote the displayed defining values within this scope.'
+        : ambient ? 'Read these names in scope in order. Each entry’s type uses its preceding scope.'
+          : 'These inputs belong to the selected expression. Each input type uses its preceding scope.'
+        : role === 'witness' ? binders.length > 1 ? 'Read these witnesses in binder order; each may use only its listed earlier choices. Their existence is part of the enclosed condition.'
         : dependencies.length ? `This witness may depend on ${short(dependencies.join(', '), 120)}. Its existence is part of the enclosed condition.` : 'This witness is introduced before later choices. Its existence is part of the enclosed condition.'
+        : role === 'definition' ? 'These names denote the displayed defining values within this scope. They are not arbitrary choices.'
         : role === 'arbitrary' ? 'Read these objects as arbitrary choices of their stated types, in the displayed binder order.' : 'These are typed parameters of this context; they do not assert a universally quantified proposition.';
       emit({ ...base, id: `cue:${region.id}:introduce`, intent: 'introduce', role, roles: [...base.roles, role], title, detail, binders,
         focusObjectIds: binders.flatMap(binder => binder.objectId ? [binder.objectId] : []), focusRelationIds: document.relations.filter(relation => region.sourceNodeIds.includes(relation.nodeId) && relation.provenance.expressionPath === 'binder.type').map(relation => relation.id), stage: { kind: 'introduction', index: 1, count: 1 } });
       if (region.body) visit(region.body);
       return;
     }
-    const [title, detail] = logicText(region.node.kind);
-    emit({ ...common(region.node, region.id, region.sourceNodeIds), id: `cue:${region.id}:logic`, intent: 'logic', title, detail, focusObjectIds: [], focusRelationIds: [], stage: { kind: 'logic', index: 1, count: 1 } });
+    const logical = component && region.sourceNodeIds.includes(document.presentation?.logicalRootNodeId ?? '');
+    const [title, detail] = component && !logical ? ['Read the expression structure', 'Keep each part attached to its enclosing scope.'] : logicText(region.node.kind);
+    emit({ ...common(region.node, region.id, region.sourceNodeIds), id: `cue:${region.id}:logic`, intent: component && !logical ? 'inspect' : 'logic', title, detail, focusObjectIds: [], focusRelationIds: [], stage: { kind: 'logic', index: 1, count: 1 } });
     if (region.kind === 'implication') { region.assumptions.forEach(visit); visit(region.conclusion); }
     else if (region.kind === 'negation') visit(region.body);
     else region.children.forEach(visit);
   };
   visit(presentation.root);
   const omittedCueCount = totalCueCount - cues.length;
-  if (omittedCueCount) diagnostics.push(`${omittedCueCount} reading cues exceed the display limit; the complete statement remains in the atlas.`);
+  if (omittedCueCount) diagnostics.push(`${omittedCueCount} reading cues exceed the display limit; the complete ${component ? 'expression' : 'statement'} remains in the atlas.`);
   return { schemaVersion: READING_CUE_VERSION, cues, totalCueCount, truncated: omittedCueCount > 0, omittedCueCount, omittedNodeIds: [...omittedNodeIds], diagnostics };
 }

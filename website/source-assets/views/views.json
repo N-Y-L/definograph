@@ -1,0 +1,835 @@
+{
+  "version": 2,
+  "batches": [
+    {
+      "batch": "views-6",
+      "createdAt": "2026-09-28T08:48:02.914Z",
+      "lean": "4.28.0",
+      "stylesheet": {
+        "path": "views.css",
+        "sha256": "ff0ace98440c4240c20e7c028ac034a315c14bc1bc058c4e3aec480022e283db"
+      },
+      "keyframes": {
+        "renamed": {},
+        "dropped": []
+      },
+      "views": [
+        {
+          "id": "depends-choices",
+          "kind": "quantifier-flow",
+          "title": "Choices and dependencies: ∀ x, ∃ y, x < y",
+          "label": "Recorded Choices view of ∀ x : ℝ, ∃ y : ℝ, x < y",
+          "caption": "Definograph’s <strong>Choices</strong> view, tagged “Scope and dependency”. x is chosen first; y comes second, and its <strong>May depend on</strong> list names x. The small a before x marks its kind, a number. The view leaves out the condition <code>x &lt; y</code>.",
+          "fragment": {
+            "path": "depends-choices/fragment.html",
+            "sha256": "38369e833eaee558ea3b22ab03cc9db73bdeb0f37b7de0feac1aa53669e9f87a"
+          },
+          "source": {
+            "path": "depends-choices/source.lean",
+            "sha256": "61d05a349bad19c2825e1ce1cfa25e010b8ca6f01e1706a6796370a2804bbf33",
+            "form": "term"
+          }
+        },
+        {
+          "id": "fixed-choices",
+          "kind": "quantifier-flow",
+          "title": "Choices and dependencies: ∃ y, ∀ x, x < y",
+          "label": "Recorded Choices view of ∃ y : ℝ, ∀ x : ℝ, x < y",
+          "caption": "The <strong>Choices</strong> view with the quantifiers swapped. y is chosen first, “without earlier values”; x lists y under <strong>Earlier choices in this scope</strong>. The view leaves out the condition <code>x &lt; y</code>.",
+          "fragment": {
+            "path": "fixed-choices/fragment.html",
+            "sha256": "8286bda536f4f800f5b40a7151521100ebafcff0c35ae27e9fd0825366d1422f"
+          },
+          "source": {
+            "path": "fixed-choices/source.lean",
+            "sha256": "9017b7b29cd92b16459c623fcbb9301ef83be7dd61874ff33c7e9a6f493bd4f6",
+            "form": "term"
+          }
+        },
+        {
+          "id": "sets-connections",
+          "kind": "relation-map",
+          "title": "Connected objects: A ⊆ B → x ∈ A → x ∈ B",
+          "label": "Recorded Relationships view of A ⊆ B → x ∈ A → x ∈ B",
+          "caption": "Definograph’s <strong>Relationships</strong> view, tagged “Symbolic view”: one card per relation, with each object in its role and tags that say where the relation sits in the statement. A relation under an assumption is not claimed to hold.",
+          "fragment": {
+            "path": "sets-connections/fragment.html",
+            "sha256": "40d8bb55cb2717cefed459ed2b690b19636e5b189c4e9fa35d8cedaf80786f8f"
+          },
+          "source": {
+            "path": "sets-connections/source.lean",
+            "sha256": "d31c84a16b8d080424138cf77ebab164a262860489b1f538fd7e2392b1a86823",
+            "form": "term"
+          }
+        },
+        {
+          "id": "paths-trace-x",
+          "kind": "semantic-map",
+          "title": "Statement structure with x selected: g (f x) = h x",
+          "label": "Recorded Structure view of g (f x) = h x with x selected",
+          "caption": "The <strong>Structure</strong> view with the object <code>x</code> selected. The connectors of <code>x</code> are drawn heavier, the others are muted, and the relations that use <code>x</code> are marked. Position and the curves of the connectors carry no meaning.",
+          "fragment": {
+            "path": "paths-trace-x/fragment.html",
+            "sha256": "f2d3568e20e6a82749520749dd79271c28e41fbccc559ce882c48c3fb546f76a"
+          },
+          "source": {
+            "path": "paths-trace-x/source.lean",
+            "sha256": "690a346d0c79199d950d9567b7b43fdb6375bc10af8b9e90a617bc130fb94b01",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 820,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "coloring-edge-condition",
+          "kind": "graph-constraint",
+          "title": "Read the edge condition (reading step 3 of 6)",
+          "label": "Recorded reading step 3 of 6 for the proper coloring statement",
+          "caption": "Step 3 of 6 of Definograph’s <strong>Visual sequence</strong>, “Read the edge condition”: the assumption that <code>u</code> and <code>v</code> are adjacent in <code>G</code>, in its logical place.",
+          "fragment": {
+            "path": "coloring-edge-condition/fragment.html",
+            "sha256": "514ccac44c2f6066b0ed5ff573667f4ba8d7de9bb03c9a01eb01a4a1fa5aa8bf"
+          },
+          "source": {
+            "path": "coloring-edge-condition/source.lean",
+            "sha256": "ccee5831d142e25fe529c9eaeb51acdbec25b40437e5be1b6196e2fb31ff562b",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 700,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "coloring-follow",
+          "kind": "graph-constraint",
+          "title": "Follow the coloring (reading step 4 of 6)",
+          "label": "Recorded reading step 4 of 6 for the proper coloring statement",
+          "caption": "Step 4 of 6 of Definograph’s <strong>Visual sequence</strong>, “Follow the coloring”. Its stage label, Construction, means that the step builds part of the conclusion: here <code>c(u)</code>, one side of <code>c(u) ≠ c(v)</code>. The figure shows the rule the coloring <code>c</code> carries for every edge; <code>v₁</code> and <code>v₂</code> stand for the two endpoints of any edge, not for <code>u</code> and <code>v</code>.",
+          "fragment": {
+            "path": "coloring-follow/fragment.html",
+            "sha256": "434c3cd6572b92e14267daba80277e74e51e2733c8976b1754d447dacff60e30"
+          },
+          "source": {
+            "path": "coloring-follow/source.lean",
+            "sha256": "ccee5831d142e25fe529c9eaeb51acdbec25b40437e5be1b6196e2fb31ff562b",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 660,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          },
+          "context": {
+            "path": "coloring-follow/context@2x.png",
+            "sha256": "42dda1c4ca3c1e862c7534874a27ce52934614f0fed60a80582d321efaee673b",
+            "width": 2560,
+            "height": 3456,
+            "alt": "Definograph in a browser, reading the statement What a proper coloring requires at step 4 of 6, Follow the coloring. A Statement menu, Lean source and Inspect buttons, the Visual sequence and Explore a sample tabs, the reading step with Previous and Next, the figure Apply the proper coloring, and the Whole statement outline on the right.",
+            "caption": "The Definograph window reading the menu statement “What a proper coloring requires”, at step 4 of 6 of its <strong>Visual sequence</strong>, captured at twice the display density. The <strong>Whole statement</strong> outline on the right shows where the step sits in the statement."
+          }
+        },
+        {
+          "id": "epsilon-ball",
+          "kind": "metric-statement",
+          "title": "Read the membership condition (reading step 7 of 9)",
+          "label": "Recorded reading step 7 of 9 for the ε-ball statement",
+          "caption": "Step 7 of 9 of the <strong>Visual sequence</strong>, “Read the membership condition”: membership in the open ball read as the distance condition, drawn schematically.",
+          "fragment": {
+            "path": "epsilon-ball/fragment.html",
+            "sha256": "173510d0038de1ed98c9ca8fcfe9616820cdeb7a15d29c2344b993da37ef317b"
+          },
+          "source": {
+            "path": "epsilon-ball/source.lean",
+            "sha256": "8960de338a33e6dc5edeecff10c2130d8590f33cd4dddcac7273225e5bf6d54e",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 540,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "restricted-inverse-source",
+          "kind": "restricted-map",
+          "title": "Locate the source region (reading step 3 of 7)",
+          "label": "Recorded reading step 3 of 7 for the partial equivalence statement",
+          "caption": "Step 3 of 7 of the <strong>Visual sequence</strong>, “Locate the source region”: the two carriers, the designated regions <code>e.source</code> and <code>e.target</code>, and the maps between them. The figure draws both round trips because a <code>PartialEquiv</code> contains a law for each; the statement asserts only the one that starts in the source region.",
+          "fragment": {
+            "path": "restricted-inverse-source/fragment.html",
+            "sha256": "7ddec256b8052b0435187e410a32b6c5f582ce11ea900f7a72d89eeb3c292368"
+          },
+          "source": {
+            "path": "restricted-inverse-source/source.lean",
+            "sha256": "818cfb75e95161103bb93c2c6c53e2f9e1ea25d730b80dd3a732a310e2158937",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 700,
+            "target": "root",
+            "from": "site: the diagram (min-width 648 px) sits in a scroll box that the recording freezes without data-overflow, so the view keeps the width it had in views-5"
+          }
+        },
+        {
+          "id": "restricted-inverse-return",
+          "kind": "restricted-map",
+          "title": "Follow the inverse map (reading step 6 of 7)",
+          "label": "Recorded reading step 6 of 7 for the partial equivalence statement",
+          "caption": "Step 6 of 7 of the <strong>Visual sequence</strong>, “Follow the inverse map”: from x through e and back through e.symm, on the designated source region.",
+          "fragment": {
+            "path": "restricted-inverse-return/fragment.html",
+            "sha256": "fd392c89c1a3544c662bf690a10b5dfd3f5dbff2263eb3c70d92b5debd02e0a9"
+          },
+          "source": {
+            "path": "restricted-inverse-return/source.lean",
+            "sha256": "818cfb75e95161103bb93c2c6c53e2f9e1ea25d730b80dd3a732a310e2158937",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 700,
+            "target": "root",
+            "from": "site: the diagram (min-width 648 px) sits in a scroll box that the recording freezes without data-overflow, so the view keeps the width it had in views-5"
+          }
+        },
+        {
+          "id": "continuity-overview",
+          "kind": "logic-overview",
+          "title": "Whole statement: ε–δ condition at 0 for x ↦ x · x",
+          "label": "Recorded outline of the whole ε–δ statement",
+          "caption": "Definograph’s outline of the whole statement, beside the first step of its <strong>Visual sequence</strong>. Each choice, assumption and requirement sits in its logical place; the highlighted entry is the current step. It is an outline of the statement, not a proof.",
+          "fragment": {
+            "path": "continuity-overview/fragment.html",
+            "sha256": "0f3a35eb577c07d5f10aeb6c4d81f7038233fbc7faab83d87c51c08cf3fe4c81"
+          },
+          "source": {
+            "path": "continuity-overview/source.lean",
+            "sha256": "ecfa05dc720decc0562be4faffee558b84370d57f23af12af66fc247191f7cad",
+            "form": "term"
+          }
+        },
+        {
+          "id": "continuity-choices",
+          "kind": "quantifier-flow",
+          "title": "Choices and dependencies: ε–δ condition",
+          "label": "Recorded Choices view of the ε–δ statement",
+          "caption": "The <strong>Choices</strong> view of the ε–δ statement: the choices <code>ε</code>, <code>δ</code> and <code>x</code> and the two assumptions in reading order, with the earlier choices each one may depend on. The view leaves out the conditions <code>0 &lt; δ</code> and <code>|x * x| &lt; ε</code>.",
+          "fragment": {
+            "path": "continuity-choices/fragment.html",
+            "sha256": "c6793f608fa93fdbd2e4be161e91fa1ca4fd7e8ecbc976e36f6cc20f3ac20fb4"
+          },
+          "source": {
+            "path": "continuity-choices/source.lean",
+            "sha256": "ecfa05dc720decc0562be4faffee558b84370d57f23af12af66fc247191f7cad",
+            "form": "term"
+          }
+        },
+        {
+          "id": "sets-inclusion",
+          "kind": "relation-figure",
+          "title": "Read the inclusion condition (reading step 3 of 5)",
+          "label": "Recorded reading step 3 of 5 for A ⊆ B → x ∈ A → x ∈ B",
+          "caption": "Step 3 of 5 of the <strong>Visual sequence</strong>, “Read the inclusion condition”: the assumption <code>A ⊆ B</code> drawn as one set inside the other.",
+          "fragment": {
+            "path": "sets-inclusion/fragment.html",
+            "sha256": "aed66d14cdc31f42b073c30c37752d7c0a5c2646242107679371ed3f177d427e"
+          },
+          "source": {
+            "path": "sets-inclusion/source.lean",
+            "sha256": "d31c84a16b8d080424138cf77ebab164a262860489b1f538fd7e2392b1a86823",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 660,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "sets-conclusion",
+          "kind": "relation-figure",
+          "title": "Read the membership condition (reading step 5 of 5)",
+          "label": "Recorded reading step 5 of 5 for A ⊆ B → x ∈ A → x ∈ B",
+          "caption": "Step 5 of 5, “Read the membership condition”: the conclusion <code>x ∈ B</code>, with the two assumptions listed as in scope.",
+          "fragment": {
+            "path": "sets-conclusion/fragment.html",
+            "sha256": "1b75632ab58a31115208a63c94487d97a22a61e22a8a7aa40db32ec6d887d3dc"
+          },
+          "source": {
+            "path": "sets-conclusion/source.lean",
+            "sha256": "d31c84a16b8d080424138cf77ebab164a262860489b1f538fd7e2392b1a86823",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 660,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "paths-compare",
+          "kind": "relation-figure",
+          "title": "Compare the expressions with = (reading step 5 of 5)",
+          "label": "Recorded reading step 5 of 5 for g (f x) = h x",
+          "caption": "Step 5 of 5, “Compare the expressions with =”: the two routes from <code>x</code>, through <code>f</code> and then <code>g</code>, and through <code>h</code>, joined by the equation.",
+          "fragment": {
+            "path": "paths-compare/fragment.html",
+            "sha256": "3725e8ef1aec3709b6b747321048ea466534041a534a0efe47e545a7c22d7a79"
+          },
+          "source": {
+            "path": "paths-compare/source.lean",
+            "sha256": "690a346d0c79199d950d9567b7b43fdb6375bc10af8b9e90a617bc130fb94b01",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 660,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "paths-connections",
+          "kind": "relation-map",
+          "title": "Connected objects: g (f x) = h x",
+          "label": "Recorded Relationships view of g (f x) = h x",
+          "caption": "The <strong>Relationships</strong> view of the same statement: the equation and the three function applications, each with its objects in their roles. The equation is required, not checked, and the positions of the cards carry no meaning.",
+          "fragment": {
+            "path": "paths-connections/fragment.html",
+            "sha256": "d5cc724f63723871ea72cee09f372db00a8fb512fb64e43f4f5c4ff10a53979f"
+          },
+          "source": {
+            "path": "paths-connections/source.lean",
+            "sha256": "690a346d0c79199d950d9567b7b43fdb6375bc10af8b9e90a617bc130fb94b01",
+            "form": "term"
+          }
+        },
+        {
+          "id": "set-algebra-given",
+          "kind": "set-construction",
+          "title": "Read the membership condition (reading step 6 of 10)",
+          "label": "Recorded reading step 6 of 10 for the set-algebra statement",
+          "caption": "Step 6 of 10, “Read the membership condition”: the assumption <code>x ∈ (A ∪ B) ∩ Cᶜ</code> as the membership regions it allows inside the type <code>α</code>.",
+          "fragment": {
+            "path": "set-algebra-given/fragment.html",
+            "sha256": "a8c9b1c41ff0e080a3df4b6e5b370345c0a548f852f0f41cb381dc250701e9a9"
+          },
+          "source": {
+            "path": "set-algebra-given/source.lean",
+            "sha256": "9581e1312dba5776bda065b0184d8404c3b7fd0ac52596d91fac6c4b9ae60685",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 420,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "set-algebra-conclusion",
+          "kind": "set-construction",
+          "title": "Read the membership condition (reading step 10 of 10)",
+          "label": "Recorded reading step 10 of 10 for the set-algebra statement",
+          "caption": "Step 10 of 10: the conclusion <code>x ∈ (A \\ C) ∪ (B \\ C)</code> as membership regions. The key of the circles follows the operands of this set.",
+          "fragment": {
+            "path": "set-algebra-conclusion/fragment.html",
+            "sha256": "db07f44cb18b8af04b3bb8872d2461ad320bb71e067f9abc9d8201c876e9856c"
+          },
+          "source": {
+            "path": "set-algebra-conclusion/source.lean",
+            "sha256": "9581e1312dba5776bda065b0184d8404c3b7fd0ac52596d91fac6c4b9ae60685",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 420,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "colorable-requirement",
+          "kind": "graph-constraint",
+          "title": "Read the coloring requirement (reading step 2 of 2)",
+          "label": "Recorded reading step 2 of 2 for G.Colorable 4",
+          "caption": "Step 2 of 2, “Read the coloring requirement”: <code>G.Colorable 4</code> read as the existence of a proper coloring with at most four available labels.",
+          "fragment": {
+            "path": "colorable-requirement/fragment.html",
+            "sha256": "36dadf0c607fadea36585facb640d0a564b4ad07049d0c0c5d6f01e2f45cab08"
+          },
+          "source": {
+            "path": "colorable-requirement/source.lean",
+            "sha256": "8f3a8c820f63bd1ed118af92036ed0a304643c2f7ec8f8f0b9d9e815ddd4a24d",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 660,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "epsilon-sample",
+          "kind": "numerical-sample",
+          "title": "Open ball in 2D: one recorded numerical sample",
+          "label": "Recorded numerical sample for the ε-ball statement",
+          "caption": "A numerical illustration from <strong>Explore a sample</strong>: the open ball with <code>ε = 1</code> around <code>c = (0, 0)</code> and the point <code>P</code> at its center. It is one sample of values, not the statement. In the app you can move the point by clicking or dragging; in this recording nothing moves.",
+          "fragment": {
+            "path": "epsilon-sample/fragment.html",
+            "sha256": "fb3f41731795b643c00deb85a924f98a072851afcdcbffb52cdfd65d83d69dd3"
+          },
+          "source": {
+            "path": "epsilon-sample/source.lean",
+            "sha256": "8960de338a33e6dc5edeecff10c2130d8590f33cd4dddcac7273225e5bf6d54e",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 700,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "left-inverse-step-compare",
+          "kind": "relation-figure",
+          "title": "Compare the expressions with = (reading step 4 of 4, definition opened)",
+          "label": "Recorded reading step 4 of 4 for Function.LeftInverse g f, definition opened",
+          "caption": "With automatic inspection on, Definograph reads <code>Function.LeftInverse</code> through its checked definition. Step 4 of 4 compares <code>g (f x)</code> with <code>x</code>.",
+          "fragment": {
+            "path": "left-inverse-step-compare/fragment.html",
+            "sha256": "e2580db78dee3f01cebe7d51e11941e51a1dee5499527b85ecc724e3be409ae0"
+          },
+          "source": {
+            "path": "left-inverse-step-compare/source.lean",
+            "sha256": "0e8f44afafea0148899f51ed4d84ac83836a040ff5c22dfd01fadc2778f983a7",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 660,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "left-inverse-original",
+          "kind": "relation-figure",
+          "title": "Read the complete clause (reading step 2 of 2, inspection off)",
+          "label": "Recorded reading step 2 of 2 for Function.LeftInverse g f, inspection off",
+          "caption": "With inspection off, the definition stays folded: the clause is shown as <code>Function.LeftInverse</code> applied to <code>g</code> and <code>f</code>, with no interpreted meaning.",
+          "fragment": {
+            "path": "left-inverse-original/fragment.html",
+            "sha256": "ec68bbd476f3070aaae570d303f725670d1e7223f3d6547233d4a580639dedd5"
+          },
+          "source": {
+            "path": "left-inverse-original/source.lean",
+            "sha256": "0e8f44afafea0148899f51ed4d84ac83836a040ff5c22dfd01fadc2778f983a7",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 660,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "partial-coverage",
+          "kind": "coverage",
+          "title": "Interpretation coverage: a ball condition and Nat.Prime 17",
+          "label": "Recorded interpretation coverage for a ball condition and Nat.Prime 17",
+          "caption": "The <strong>Interpretation coverage</strong> section of the Inspect panel, for a statement with a ball condition and <code>Nat.Prime 17</code>: one fragment interpreted, one kept as structure only, and <code>Nat.Prime</code> listed under meaning still folded.",
+          "fragment": {
+            "path": "partial-coverage/fragment.html",
+            "sha256": "61fa57a78783e4311a10606e616dd396fb92cb81bf34d167ab2fad387ab063f2"
+          },
+          "source": {
+            "path": "partial-coverage/source.lean",
+            "sha256": "e7eacdd6e794f819c8705a77fdd46f596b51a025915ec7a19d9641f061664f6b",
+            "form": "term"
+          }
+        },
+        {
+          "id": "maps-expanded-overview",
+          "kind": "logic-overview",
+          "title": "Whole statement after opening Function.Injective",
+          "label": "Recorded outline after opening Function.Injective",
+          "caption": "The <strong>Whole statement</strong> outline after <code>Function.Injective f</code> has been opened: the assumption now quantifies over its own two inputs. It is an outline of the statement, not a proof.",
+          "fragment": {
+            "path": "maps-expanded-overview/fragment.html",
+            "sha256": "b52f079b8fc80ffddd4a2a3229c5b5f1a64742a57a42a9df04a76786baea4fff"
+          },
+          "source": {
+            "path": "maps-expanded-overview/source.lean",
+            "sha256": "fdf7bc9a248983a53ebcc0bb6bc589bf0f243abbf132cdab8906262ddc62a08b",
+            "form": "term"
+          }
+        },
+        {
+          "id": "maps-expanded-injective",
+          "kind": "logic-step",
+          "title": "Given → then inside the opened assumption (reading step 4 of 14)",
+          "label": "Recorded reading step 4 of 14 inside the opened assumption",
+          "caption": "Step 4 of 14, “Given → then”, inside the opened assumption: given <code>f(a₁) = f(a₂)</code>, then <code>a₁ = a₂</code>. The note below records that Lean checked the expansion for definitional equality.",
+          "fragment": {
+            "path": "maps-expanded-injective/fragment.html",
+            "sha256": "4ac1f47ae1fde4c75e6b2ad83cd71a2fbef66523a34b7a2ca9ee7aed0fdf95a3"
+          },
+          "source": {
+            "path": "maps-expanded-injective/source.lean",
+            "sha256": "fdf7bc9a248983a53ebcc0bb6bc589bf0f243abbf132cdab8906262ddc62a08b",
+            "form": "term"
+          }
+        },
+        {
+          "id": "restricted-inverse-fields",
+          "kind": "structural-object",
+          "title": "Inside e: the fields and laws of a PartialEquiv (reading step 1 of 7)",
+          "label": "Recorded structure of e : PartialEquiv A B",
+          "caption": "Step 1 of 7 opens the declared structure of <code>e</code>: four data fields and three laws, and a closing line saying that one further field is not shown.",
+          "fragment": {
+            "path": "restricted-inverse-fields/fragment.html",
+            "sha256": "46a4972f5480685b3d98d2475b798c951f6e320877a2b35250a92efb1e1dd5e6"
+          },
+          "source": {
+            "path": "restricted-inverse-fields/source.lean",
+            "sha256": "818cfb75e95161103bb93c2c6c53e2f9e1ea25d730b80dd3a732a310e2158937",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 680,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "paths-identity-trace",
+          "kind": "identity-trace",
+          "title": "Identity thread for x at step 1, with the full visual statement open",
+          "source": {
+            "path": "paths-identity-trace/source.lean",
+            "sha256": "690a346d0c79199d950d9567b7b43fdb6375bc10af8b9e90a617bc130fb94b01",
+            "form": "term"
+          },
+          "context": {
+            "path": "paths-identity-trace/context@2x.png",
+            "sha256": "5ca3380a8231c1b72dae518f71ba3e24ea56ac012b5c12f9b5533da18afde564",
+            "width": 1728,
+            "height": 4306,
+            "alt": "The Visual sequence of g (f x) = h x at step 1, with x selected and the full visual statement open. A faint dashed line joins the eight places where x appears: its entry and its box at this step, the same two in the full statement, the start of both compared routes, and the inputs of f and h.",
+            "caption": "The identity thread in the <strong>Visual sequence</strong>: with <code>x</code> selected, a faint dashed line joins each place where the same <code>x</code> appears. Captured at twice the display density."
+          }
+        },
+        {
+          "id": "depends-app-context",
+          "kind": "app-context",
+          "title": "The application reading “For every x, some y” (Explore a sample, Choices)",
+          "source": {
+            "path": "depends-app-context/source.lean",
+            "sha256": "61d05a349bad19c2825e1ce1cfa25e010b8ca6f01e1706a6796370a2804bbf33",
+            "form": "term"
+          },
+          "context": {
+            "path": "depends-app-context/context@2x.png",
+            "sha256": "076dafdef52edf7c4a77aee6ef6c8f485dacbb986fe0c12ec7cd7963468a2fea",
+            "width": 2560,
+            "height": 2168,
+            "alt": "Definograph in a browser, reading the menu statement For every x, some y. The Statement menu, the tabs Visual sequence and Explore a sample with the Mathematical notation button, the representation tabs Choices, Condition, Relationships and Structure, and the view card Choices and dependencies.",
+            "caption": "The Definograph window with <strong>Explore a sample</strong> open for <code>∀ x : ℝ, ∃ y : ℝ, x &lt; y</code>: the representation tabs, with the <strong>Choices</strong> tab open, above the view card “Choices and dependencies”. The window is wider than this frame: scroll it sideways for its right-hand side, with the <strong>Lean source</strong> and <strong>Inspect</strong> buttons, the <strong>Mathematical notation</strong> button, <strong>Sample choices</strong> and, in the top bar, <strong>Source data</strong>. Captured at twice the display density."
+          }
+        },
+        {
+          "id": "sets-structure",
+          "kind": "semantic-map",
+          "title": "Statement structure: A ⊆ B → x ∈ A → x ∈ B",
+          "label": "Recorded Structure view of A ⊆ B → x ∈ A → x ∈ B",
+          "caption": "The <strong>Structure</strong> view with nothing selected: the objects on the left, the three relations on the right, and a connector for each role an object fills. Position and the curves of the connectors carry no meaning.",
+          "fragment": {
+            "path": "sets-structure/fragment.html",
+            "sha256": "f456af17457c210f7c0a16efd005368c2975f573aaf070ddedfd8344dc8106d4"
+          },
+          "source": {
+            "path": "sets-structure/source.lean",
+            "sha256": "d31c84a16b8d080424138cf77ebab164a262860489b1f538fd7e2392b1a86823",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 820,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "paths-structure",
+          "kind": "semantic-map",
+          "title": "Statement structure: g (f x) = h x",
+          "label": "Recorded Structure view of g (f x) = h x",
+          "caption": "The <strong>Structure</strong> view with nothing selected: the eleven objects of <code>g (f x) = h x</code> on the left, its four relations on the right (the equation and three function applications), and a connector for each role an object fills. Position and the curves of the connectors carry no meaning.",
+          "fragment": {
+            "path": "paths-structure/fragment.html",
+            "sha256": "f5dfa5ea50c6fea3cb32bcafb298b78a7501d4e7bb120f9c6e605f4a018cda6e"
+          },
+          "source": {
+            "path": "paths-structure/source.lean",
+            "sha256": "690a346d0c79199d950d9567b7b43fdb6375bc10af8b9e90a617bc130fb94b01",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 820,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        }
+      ]
+    },
+    {
+      "batch": "editor-3",
+      "createdAt": "2026-09-28T08:31:33.091Z",
+      "lean": "4.28.0",
+      "stylesheet": {
+        "path": "views.css",
+        "sha256": "e990489a363e79f6b86f273246706ba69211e6629cd8725a9734f1376906b2c1"
+      },
+      "keyframes": {
+        "renamed": {},
+        "dropped": [
+          "spin"
+        ]
+      },
+      "views": [
+        {
+          "id": "editor-panel",
+          "kind": "editor-panel-capture",
+          "title": "The Definograph panel after Visualize Selection",
+          "source": {
+            "path": "editor-panel/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          },
+          "context": {
+            "path": "editor-panel/context@2x.png",
+            "sha256": "e5e09f91fc7cb225ac57e56544fa65b28164a04416875dc0f8d9f730c13e2a52",
+            "width": 1760,
+            "height": 1762,
+            "alt": "The Definograph panel for QuantifierForallExists.lean after Definograph: Visualize Selection: the Definograph header; the line FROM YOUR LEAN EDITOR with the file name and the buttons Refresh from editor, Lean source, Source data and Inspect; the Visual sequence tab at reading step 1 of 4, Auxiliary entry _example, recorded kind auxDecl; and the Whole statement outline beside it.",
+            "caption": "The Definograph panel after <strong>Definograph: Visualize Selection</strong> on the proposition in <code>QuantifierForallExists.lean</code>. Rendered from the panel’s own page outside Visual Studio Code, at twice the display density."
+          }
+        },
+        {
+          "id": "editor-forallexists-source-data",
+          "kind": "editor-source-data",
+          "title": "Source data: the Check outcomes of the original selection",
+          "savedRecord": true,
+          "label": "Recorded Source data of the selected statement, Check outcomes tab",
+          "caption": "The editor’s <strong>Source data</strong> for the selected statement, on its <strong>Check outcomes</strong> tab: two kernel outcomes, both accepted. They concern the prepared context and the typing of the term; they do not certify the drawing or assert the statement. The record is a saved snapshot whose origin is unverified.",
+          "fragment": {
+            "path": "editor-forallexists-source-data/fragment.html",
+            "sha256": "34d336c570972ad73eb140e29f3d6e7e8ed4394d82d582f5c8a5fada2938a495"
+          },
+          "source": {
+            "path": "editor-forallexists-source-data/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          }
+        },
+        {
+          "id": "editor-occurrence-excerpt",
+          "kind": "editor-occurrence",
+          "title": "Excerpt: Chosen occurrence checks for the whole prepared term",
+          "savedRecord": true,
+          "excerpt": true,
+          "label": "Recorded excerpt from Checker input: the chosen occurrence checks",
+          "caption": "Excerpt from <strong>Checker input</strong> after <strong>Check chosen occurrence</strong> on the whole term: six checks, all accepted.",
+          "fragment": {
+            "path": "editor-occurrence-excerpt/fragment.html",
+            "sha256": "ae5437ca53020335bc1e3a91d1077b0cae2dc2a9e190d857f7599757d3a46aa9"
+          },
+          "source": {
+            "path": "editor-occurrence-excerpt/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          }
+        },
+        {
+          "id": "editor-history-steps-excerpt",
+          "kind": "editor-attempt",
+          "title": "Excerpt: the history after four steps, step 2 selected",
+          "savedRecord": true,
+          "excerpt": true,
+          "label": "Recorded excerpt from the history: four steps, step 2 selected",
+          "caption": "Excerpt from the history after four steps, with step 2 selected.",
+          "fragment": {
+            "path": "editor-history-steps-excerpt/fragment.html",
+            "sha256": "3ccee0b9e9e3a3eb69e5d84454e6ebb00f9677ea37430507e0f1cc0548553456"
+          },
+          "source": {
+            "path": "editor-history-steps-excerpt/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          }
+        },
+        {
+          "id": "editor-hypothesis-supply-excerpt",
+          "kind": "editor-supply",
+          "title": "Excerpt: Supply reading for h in from_hypothesis",
+          "savedRecord": true,
+          "excerpt": true,
+          "label": "Recorded excerpt from Supply reading for h in from_hypothesis",
+          "caption": "Excerpt from <strong>Supply reading</strong> for <code>h</code> in <code>from_hypothesis</code>: <code>h</code> read as supplying a proof of <code>P</code>, relative to three listed entries, one of them <code>h</code> itself.",
+          "fragment": {
+            "path": "editor-hypothesis-supply-excerpt/fragment.html",
+            "sha256": "a0b015770077379c1fe8fa6993df6e1ae29f1b6bac41d48f10ab8fae0957e80e"
+          },
+          "displayedIdentifiers": [
+            "the original selected occurrence (cbc11176)",
+            "attempt 1 (c3a0b956)"
+          ],
+          "source": {
+            "path": "editor-hypothesis-supply-excerpt/source.lean",
+            "sha256": "d08b151d13dc4b093abec35848290ae5f96bd79a9daeb8c18909f381bff3f9b4",
+            "form": "file"
+          }
+        },
+        {
+          "id": "editor-claimed-supply-excerpt",
+          "kind": "editor-supply",
+          "title": "Excerpt: Supply reading for claimed",
+          "savedRecord": true,
+          "excerpt": true,
+          "label": "Recorded excerpt from Supply reading for claimed",
+          "caption": "Excerpt from <strong>Supply reading</strong> for <code>claimed</code>: the recorded axioms include <code>sorryAx</code>, the axiom that stands for the missing proof.",
+          "fragment": {
+            "path": "editor-claimed-supply-excerpt/fragment.html",
+            "sha256": "2bd35a57f0409831afedf715dba0ceebc09743161bc85016094f31b913fc2c5c"
+          },
+          "displayedIdentifiers": [
+            "the original selected occurrence (7f04a1ed)",
+            "attempt 1 (59755424)"
+          ],
+          "source": {
+            "path": "editor-claimed-supply-excerpt/source.lean",
+            "sha256": "d08b151d13dc4b093abec35848290ae5f96bd79a9daeb8c18909f381bff3f9b4",
+            "form": "file"
+          }
+        },
+        {
+          "id": "editor-provenance-excerpt",
+          "kind": "editor-attempt",
+          "title": "Excerpt: Ordered provenance through step 2",
+          "savedRecord": true,
+          "excerpt": true,
+          "label": "Recorded excerpt from Ordered provenance through step 2",
+          "caption": "Excerpt from <strong>Ordered provenance</strong> with step 2 selected: two occurrences, the relation between them, and their formation lines.",
+          "fragment": {
+            "path": "editor-provenance-excerpt/fragment.html",
+            "sha256": "9519f6dba41194cfe96abc55101cf9f82a2e1eb89ae36125d4599440731dcf2e"
+          },
+          "displayedIdentifiers": [
+            "the original selected occurrence (581d0e25)",
+            "attempt 1 (5924bbbe)",
+            "attempt 2 (f35ccc4b)",
+            "attempt 4 (6b1770c8)"
+          ],
+          "source": {
+            "path": "editor-provenance-excerpt/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          }
+        },
+        {
+          "id": "editor-returnmap-structure-excerpt",
+          "kind": "editor-guided",
+          "title": "Excerpt: the structure inside system (step 1)",
+          "savedRecord": true,
+          "excerpt": true,
+          "label": "Recorded excerpt from step 1: the structure inside system",
+          "caption": "Excerpt from step 1 of the <strong>Visual sequence</strong>: the structure inside <code>system</code>, with its data and its law.",
+          "fragment": {
+            "path": "editor-returnmap-structure-excerpt/fragment.html",
+            "sha256": "3c04ef7720a1e5993f0385a61ced264dffb6e128c2204bae65beab6ae80c5a9b"
+          },
+          "source": {
+            "path": "editor-returnmap-structure-excerpt/source.lean",
+            "sha256": "21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 997,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "editor-returnmap-guided-path",
+          "kind": "editor-guided",
+          "title": "Visual reading, step 5: the round-trip map path",
+          "savedRecord": true,
+          "label": "Recorded Visual sequence, step 5 of 5: the round trip",
+          "caption": "The last step of the <strong>Visual sequence</strong>, step 5 of 5: the round trip through <code>send</code> and <code>back</code> compared with <code>x</code>. The map paths are required to agree; the figure does not check that they do.",
+          "fragment": {
+            "path": "editor-returnmap-guided-path/fragment.html",
+            "sha256": "fe89d70b28aecdeb7f74ad79578560200a6fedef20e3199975b482a71f13a080"
+          },
+          "source": {
+            "path": "editor-returnmap-guided-path/source.lean",
+            "sha256": "21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 758,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "editor-returnmap-provenance-excerpt",
+          "kind": "editor-attempt",
+          "title": "Excerpt: Ordered provenance from system to the law",
+          "savedRecord": true,
+          "excerpt": true,
+          "label": "Recorded excerpt from Ordered provenance: from system to the law",
+          "caption": "Excerpt from <strong>Ordered provenance</strong>: from <code>system</code> to its field <code>returns</code>, and from the field to its type, the law.",
+          "fragment": {
+            "path": "editor-returnmap-provenance-excerpt/fragment.html",
+            "sha256": "e27c0608759239602945f593ff0062515cbeb10677a645be3b5de015d402a229"
+          },
+          "displayedIdentifiers": [
+            "the original selected occurrence (3c9d90c7)",
+            "attempt 1 (0b49be6f)",
+            "attempt 2 (8a6f7071)",
+            "attempt 3 (31895a57)",
+            "attempt 4 (44314aa1)"
+          ],
+          "source": {
+            "path": "editor-returnmap-provenance-excerpt/source.lean",
+            "sha256": "21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409",
+            "form": "file"
+          }
+        },
+        {
+          "id": "editor-returnmap-supply-excerpt",
+          "kind": "editor-supply",
+          "title": "Excerpt: Supply reading for the field returns",
+          "savedRecord": true,
+          "excerpt": true,
+          "label": "Recorded excerpt from Supply reading for the field returns",
+          "caption": "Excerpt from <strong>Supply reading</strong>: the field <code>returns</code> of <code>system</code> read as supplying a proof of the law, with one frame, the projection.",
+          "fragment": {
+            "path": "editor-returnmap-supply-excerpt/fragment.html",
+            "sha256": "13609b94cbf5db3fd2a69fdd63c8f78ffc65cd403e2c15f7d5c915e48e5dc69c"
+          },
+          "displayedIdentifiers": [
+            "attempt 2 (8a6f7071)",
+            "attempt 3 (31895a57)",
+            "attempt 4 (44314aa1)"
+          ],
+          "source": {
+            "path": "editor-returnmap-supply-excerpt/source.lean",
+            "sha256": "21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409",
+            "form": "file"
+          }
+        }
+      ]
+    }
+  ]
+}

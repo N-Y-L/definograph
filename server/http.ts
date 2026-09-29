@@ -213,6 +213,17 @@ export function createLocalServer(options: { worker: WorkerBackend; port?: numbe
       return;
     }
     if ((request.method === 'GET' || request.method === 'HEAD') && options.distDir) {
+      // The SPA uses relative assets for its editor host. A trailing slash on
+      // these top-level readers would resolve them beneath the reader route.
+      if (url.pathname === '/source-data/' || url.pathname === '/packet/') {
+        response.writeHead(308, {
+          'Location': url.pathname.slice(0, -1) + url.search,
+          'Content-Length': 0,
+          'Cache-Control': 'no-cache',
+        });
+        response.end();
+        return;
+      }
       const file = await resolveStaticFile(options.distDir, url.pathname);
       if (file) {
         const contents = await readFile(file);

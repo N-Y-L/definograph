@@ -1,0 +1,12 @@
+/* Test fixture stylesheet. Not Definograph output. */
+.dg-view.dg-view--fixture{background:#fbfaf7;color:#263340;font-size:14px}
+.dg-view .fx-card{display:block;min-width:0}
+.dg-view .fx-note{margin:0 0 12px;font-size:13px;line-height:1.5}
+.dg-view .fx-diagram{display:block;width:100%;min-width:480px;height:auto}
+.dg-view .fx-box{fill:#ffffff;stroke:#b8c4cc}
+.dg-view .fx-label{fill:#263340;font-size:16px}
+.dg-view .fx-arrow{fill:none;stroke:#356b93;stroke-width:2}
+.dg-view .fx-arrowhead{fill:#356b93}
+:where(.dg-view) :where(span.dg-inert-button){display:inline-block;padding:1px 6px;background-color:#efefef}
+@media (max-width:40em){.dg-view .fx-note{font-size:12px}}
+@keyframes dg-fixture-fade{from{opacity:.5}to{opacity:1}}

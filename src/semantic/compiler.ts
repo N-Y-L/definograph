@@ -57,6 +57,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
   index(analysis.tree);
   const fields = [...reflectedFields(binders.values()), ...(enclosing.fields ?? [])];
   const objects = new Map<string, SemanticObject & { provenance: Provenance[] }>();
+  const ordinaryObjects = (ids: readonly string[]) => ids.filter(id => objects.get(id)?.binder?.role !== 'auxiliary');
   const objectKeys = new Map<string, string>();
   const relations: SemanticRelation[] = [];
   const scopes: SemanticScope[] = [];
@@ -94,11 +95,11 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
       const isImplicationHypothesis = node.kind === 'implies' && b.role === 'assumption' && node.children.length > 1;
       const binderScopeId = isImplicationHypothesis ? `scope:${node.children[1]!.id}` : scopeId;
       const id = object({ kind: 'var', id: b.id, name: b.name, type: b.type, typeDescriptor: b.typeDescriptor }, binderScopeId, provenance(node.id, 'binder'));
-      const dependsOn = b.dependsOn.map(dep => identities.get(dep)).filter((dep): dep is string => dep !== undefined && activeObjects.includes(dep));
-      choices.push({ id: `choice:${id}`, objectId: id, binderId: b.id, nodeId: node.id, role: b.role, dependsOn, availableObjectIds: [...activeObjects], scopeId: binderScopeId,
+      const dependsOn = b.dependsOn.map(dep => identities.get(dep)).filter((dep): dep is string => dep !== undefined && ordinaryObjects(activeObjects).includes(dep));
+      if (b.role !== 'auxiliary') choices.push({ id: `choice:${id}`, objectId: id, binderId: b.id, nodeId: node.id, role: b.role, dependsOn, availableObjectIds: ordinaryObjects(activeObjects), scopeId: binderScopeId,
         explanation: b.role === 'existential' ? 'Choose a witness using only earlier choices available in this scope. Its existence remains an obligation.'
           : b.role === 'universal' ? 'An arbitrary element of this type. A displayed sample represents one choice, never every element.'
-            : b.role === 'assumption' ? 'A local hypothesis; it is available only within this scope.' : b.role === 'parameter' ? 'A parameter of this definition. This function signature is not a universally quantified proposition.' : 'A function input, local to its body.' });
+            : b.role === 'assumption' ? 'A local hypothesis; it is available only within this scope.' : b.role === 'definition' ? 'A local definition with its stated value, available only in this scope.' : b.role === 'parameter' ? 'A parameter of this definition. This function signature is not a universally quantified proposition.' : 'A function input, local to its body.' });
       if (isImplicationHypothesis) implicationBinderId = id;
       else localObjects.push(id);
       // Projected data retain expression identities and are available only after
@@ -114,7 +115,7 @@ export function compileSemanticDocument(analysis: AnalysisInput, plugins?: reado
       const typeExpression = binderTypeExpression(node, b);
       const expandedType = checkedBinderTypeExpansion(b);
       const interpretationTypes = [typeExpression, expandedType].filter((type): type is Expr => Boolean(type));
-      const bundleRule = b.role !== 'assumption'
+      const bundleRule = b.role !== 'assumption' && b.role !== 'auxiliary'
         ? interpretationTypes.flatMap(type => registry.map(plugin => ({ plugin, type, match: plugin.matchBinder?.(value, type) }))).find(result => result.match)
         : undefined;
       if (bundleRule?.match) {

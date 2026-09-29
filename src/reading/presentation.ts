@@ -23,17 +23,18 @@ export function visibleReadingNodes(reading: ReadingDocument, limit: number): Se
 
 /** Layout grouping only. Quantifiers never cross a connective, and implication
  * premises combine only along an uninterrupted right-associated chain. */
-export function planReadingPresentation(reading: ReadingDocument): ReadingPresentation {
+export function planReadingPresentation(reading: ReadingDocument, options: { boundaryNodeIds?: readonly string[] } = {}): ReadingPresentation {
+  const boundaries = new Set(options.boundaryNodeIds);
   const nodeToRegionId: Record<string, string> = {};
   const register = <T extends ReadingRegion>(region: T): T => {
     region.sourceNodeIds.forEach(id => { nodeToRegionId[id] = region.id; });
     return region;
   };
   const visit = (node: ReadingNode): ReadingRegion => {
-    if (['forall', 'exists', 'parameter'].includes(node.kind) && node.binder) {
+    if (['forall', 'exists', 'parameter', 'definition', 'auxiliary'].includes(node.kind) && node.binder) {
       const binders = [node];
       let final = node;
-      while (final.children.length === 1 && final.children[0].kind === node.kind && final.children[0].binder) {
+      while (final.children.length === 1 && final.children[0].kind === node.kind && final.children[0].binder && !boundaries.has(final.children[0].id)) {
         final = final.children[0];
         binders.push(final);
       }

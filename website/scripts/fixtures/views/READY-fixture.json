@@ -1,0 +1,9 @@
+{
+  "role": "site self-test: hand-written declaration for the fixture batch (not Definograph output)",
+  "status": "ready",
+  "createdAt": "2026-09-27T12:00:00Z",
+  "batch": {
+    "manifest": "fixture-1/manifest.json",
+    "manifestSha256": "3d3ffd0a4fc1a45d30fde56731f1da7b1ebb18cb42828e05f7adafdab1a003ac"
+  }
+}

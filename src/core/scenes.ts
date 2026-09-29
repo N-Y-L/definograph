@@ -56,7 +56,7 @@ export function discoverScenes(tree: StatementNode): Scene[] {
         if (op && ['lt', 'le', 'eq', 'ne'].includes(op) && completeApplication(expr, 2, op === 'eq' || op === 'ne' ? 3 : 4, 'proposition')) {
           const [left, right] = comparisonArguments(expr)!;
           const variables = new Set([...expressionVariables(left), ...expressionVariables(right)]);
-          const variable = [...scoped].reverse().find(b => b.domain === 'real' && variables.has(b.id));
+          const variable = [...scoped].reverse().find(b => b.role !== 'auxiliary' && b.domain === 'real' && variables.has(b.id));
           if (variable) scenes.push({ ...base(expr, `Condition on ${variable.name}`), kind: 'interval', variable, relation: op as 'lt' | 'le' | 'eq' | 'ne', left, right });
         }
         if ((name === 'Membership.mem' || name === 'Set.Mem') && completeApplication(expr, 2, name === 'Membership.mem' ? 5 : 3, 'proposition')) {
@@ -76,8 +76,8 @@ export function discoverScenes(tree: StatementNode): Scene[] {
         visit(expr.fn, `${path}.fn`, undefined, exprDepth + 1);
         expr.args.forEach((arg, i) => { if (!emitted.has(`${path}.${i}`)) visit(arg, `${path}.${i}`, undefined, exprDepth + 1); });
       } else if (expr.kind === 'lambda') {
-        if (expr.binder.domain === 'real') {
-          const trial = evaluateExpression(expr.body, Object.fromEntries([...scoped, expr.binder].filter(b => b.domain === 'real').map(b => [b.id, 0.5])));
+        if (expr.binder.role !== 'auxiliary' && expr.binder.domain === 'real') {
+          const trial = evaluateExpression(expr.body, Object.fromEntries([...scoped, expr.binder].filter(b => b.role !== 'auxiliary' && b.domain === 'real').map(b => [b.id, 0.5])));
           if (trial.status === 'value' && typeof trial.value === 'number') {
             scenes.push({ ...base(expr, `Graph in ${expr.binder.name}`), kind: 'graph', input: expr.binder, body: expr.body, fn: expr } as GraphScene);
           }

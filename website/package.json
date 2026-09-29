@@ -1,0 +1,20 @@
+{
+  "name": "definograph-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Static public website for Definograph, an experimental reader for Lean mathematics.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "dev": "node scripts/dev.mjs",
+    "import-views": "node scripts/import-views.mjs",
+    "preview": "node scripts/dev.mjs --preview"
+  },
+  "devDependencies": {
+    "marked": "17.0.5"
+  }
+}

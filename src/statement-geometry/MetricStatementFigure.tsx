@@ -1,4 +1,5 @@
 import type { BallScene } from '../core';
+import { FigureScroll } from '../components/FigureScroll';
 import { metricReading } from './model';
 import './metric-statement.css';
 
@@ -16,7 +17,7 @@ export function MetricStatementFigure({scene}:{scene:BallScene}) {
       : singleton ? <div className="metric-empty"><b>•</b><span>Only the center {m.center}.{m.point ? ` Membership requires ${m.point} = ${m.center}.` : ''}</span></div>
       : <>
         {m.sign === undefined && <p className="metric-case-title">Positive-radius case · {m.radius} &gt; 0</p>}
-        <svg viewBox="0 0 460 200" role="img" aria-label={`${condition}. Positions are schematic; no coordinates are selected.`}>
+        <FigureScroll label="Metric region diagram; scroll to see all of it"><svg viewBox="0 0 460 200" role="img" aria-label={`${condition}. Positions are schematic; no coordinates are selected.`}>
           {m.presentation === 'circle' || m.presentation === 'square' ? <>
             {m.presentation === 'circle' ? <circle cx="205" cy="100" r="72" className={`metric-region ${m.boundary}`}/> : <rect x="133" y="28" width="144" height="144" rx="0" className={`metric-region ${m.boundary}`}/>}
             <line x1="205" y1="100" x2="277" y2="100" className="metric-radius"/>
@@ -37,7 +38,7 @@ export function MetricStatementFigure({scene}:{scene:BallScene}) {
             <text x="80" y="127" textAnchor="middle">0</text><text x="320" y="127" textAnchor="middle">{m.radius}</text>
             <text x="230" y="165" textAnchor="middle">{m.boundary === 'sphere' ? 'At the radius' : m.boundary === 'closed' ? 'At most the radius' : 'Below the radius'}</text>
           </>}
-        </svg>
+        </svg></FigureScroll>
         <div className="metric-condition">{condition}</div>
       </>}
     {m.sign === undefined && <div className="metric-radius-cases"><span><b>{m.radius} = 0</b> {m.zero === 'empty' ? 'empty region' : `only ${m.center}`}</span><span><b>{m.radius} &lt; 0</b> empty region</span></div>}

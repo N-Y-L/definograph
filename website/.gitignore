@@ -1,0 +1,8 @@
+/dist/
+/dist.partial/
+/dist-preview/
+/dist-preview.partial/
+/.logs/
+node_modules/
+.wrangler/
+.DS_Store

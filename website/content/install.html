@@ -1,0 +1,36 @@
+<header class="page-head">
+  <h1 id="setup">Setup and release status</h1>
+  <p class="lead">You can read the lessons, the examples and the recorded figures without installing anything. Running Definograph yourself means assembling it from source on your own computer.</p>
+</header>
+
+<section id="try-it-yourself">
+  <h2>Try it yourself</h2>
+  <p>Everything on this site works in a browser with nothing to install: the lessons, the examples, the recorded figures and the Lean files.</p>
+  <p>Source is available in the <a href="https://github.com/N-Y-L/definograph">Definograph GitHub repository</a>. Build the reader and its controller locally; no qualified installer or Marketplace release is provided.</p>
+  <p>Follow the repository’s README and the <a href="/install/local-setup/">local setup guide</a>. Keep the reader, native engine and editor controller at the same source revision. The figures on this site are recordings with stated dates, so a newer checkout can look different.</p>
+  <p>The editor extension package (VSIX) contains only the editor controller. It also needs the matching native engine, browser assets, Lean toolchain and compiled libraries.</p>
+</section>
+
+<section id="requirements">
+  <h2>Requirements and checked configurations</h2>
+  <p>The declared requirements are Lean <strong>4.28.0</strong>, Node.js <strong>22.12 or later</strong>, and Git. Editor use also requires VS Code <strong>1.95 or later</strong>, the official Lean extension (<code>leanprover.lean4</code>), and a trusted project whose imports have been built. A setup that downloads its own copy of the pinned Mathlib revision can use several GB.</p>
+  <p>Local checks used macOS arm64, Node.js 24.18.1, npm 11.16.0 and VS Code 1.138. Those checks do not establish support for every combination of these versions. Linux, WSL, remote hosts, other architectures and the declared minimum Node.js and VS Code versions remain unqualified. Native Windows linking is not implemented.</p>
+</section>
+
+<section id="assembly">
+  <h2>Build from a matching checkout</h2>
+  <p>The <a href="/install/local-setup/">local setup guide</a> gives the assembly commands, pinned dependencies and release qualifications for the build it describes. Start with its prerequisites.</p>
+  <p>Assembly installs JavaScript dependencies, prepares the Lean environment and native engine, builds the browser assets, verifies the local setup, and packages the editor controller. Keep these components at the same source revision. Packaging the VSIX alone does not assemble a working installation.</p>
+  <p>The guide also explains which parts of this assembly have been qualified. The <a href="/reference/">Reference</a> explains Definograph’s other limits.</p>
+</section>
+
+<section id="trust">
+  <h2>Use trusted source</h2>
+  <p>The editor re-elaborates the whole active buffer: Lean reads the whole file again, not only the selected range. Lean commands, macros and elaborators can execute project code; selecting a range does not isolate it from the rest of the file. Build changed imports with the project’s normal tools before refreshing.</p>
+  <p>Dependency installation uses <code>npm ci --ignore-scripts</code>. This suppresses dependency lifecycle scripts during that installation. The build, setup and packaging commands you run afterwards still execute code. The separate engine process does not provide a security sandbox.</p>
+</section>
+
+<section id="feedback">
+  <h2>Report a problem</h2>
+  <p>Use the <a href="https://github.com/N-Y-L/definograph/issues">issue tracker</a>. Include the source revision, operating system, tool versions, and the command or editor action that failed.</p>
+</section>

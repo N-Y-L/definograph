@@ -4,7 +4,7 @@ import { MAX_NUMERICAL_DIMENSION } from './core/limits';
 
 export function VariableControl({binder, value, onChange, names}: {binder: Binder; value: ScenarioValue | undefined; onChange: (value: ScenarioValue) => void; names: Record<string, string>}) {
   const [coordinate, setCoordinate] = useState(0);
-  if (binder.role === 'assumption' || binder.role === 'lambda') return null;
+  if (binder.role === 'auxiliary' || binder.role === 'assumption' || binder.role === 'lambda') return null;
   const vectorDimension = binder.dimension ?? (binder.domain?.endsWith('2') ? 2 : undefined);
   const supportedVector = binder.domain && ['sup2', 'euclidean2', 'supN', 'euclideanN'].includes(binder.domain) && vectorDimension !== undefined && Number.isSafeInteger(vectorDimension) && vectorDimension >= 1 && vectorDimension <= MAX_NUMERICAL_DIMENSION;
   const supported = binder.domain === 'real' || supportedVector;

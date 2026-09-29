@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { SemanticObject } from '../semantic/types';
 import type { TypedConstruction } from '../constructions/model';
 import type { StructuralField, StructuralObjectModel } from './types';
-import { StructuralObjectFigure } from './StructuralObjectFigure';
+import { StructuralObjectFigure, startsClosed } from './StructuralObjectFigure';
 
 const object = (id: string, label = id, type = 'M'): SemanticObject => ({ id, label, type, kind: 'expression', expression: { kind: 'var', id, name: label, type }, scopeId: 'scope:owner', provenance: [{ nodeId: 'owner', expressionPath: id, origin: 'elaborated-expression' }] });
 const field = (name: string, kind: 'data' | 'law' = 'data', type = 'M'): StructuralField => ({ name, projection: `UnseenRecord.${name}`, object: object(`field:${name}`, `e.${name}`, type), type, typeExpression: { kind: 'const', name: type }, kind, dependsOn: [] });
@@ -119,5 +119,48 @@ describe('generic structural object rendering', () => {
     const markers = [...rendered.matchAll(/<marker id="([^"]+)"/g)].map(match => match[1]);
     expect(markers).toHaveLength(2);
     expect(new Set(markers).size).toBe(2);
+  });
+});
+
+describe('closed boxes for law-free structures', () => {
+  const lawFree = () => base({ fields: [field('inner', 'data', 'Opaque M')] });
+  const enclosed = (model: StructuralObjectModel) => renderToStaticMarkup(createElement(StructuralObjectFigure, { model, enclosed: true }));
+
+  it('starts a complete law-free structure closed, naming the owner and counts, with the unchanged figure inside', () => {
+    const model = lawFree();
+    expect(startsClosed(model)).toBe(true);
+    const open = enclosed(model);
+    expect(open).toMatch(/^<section class="structural-object"/);
+    expect(open).toContain('<span class="sd-count">1 data field · 0 laws</span>');
+    expect(html(model)).toBe(`<details class="sd-closed-structure"><summary>Inside e · 1 data field · 0 laws</summary>${open}</details>`);
+    expect(html(model)).toContain('data-reading-object="field:inner"');
+  });
+
+  it('keeps law-bearing structures open, as before', () => {
+    for (const model of [mapped(), base({ fields: [field('inner', 'data', 'Opaque M'), field('bounded', 'law', 'Bounded e.inner')] }), base({ fields: [field('twice', 'law', 'Twice e')] })]) {
+      expect(startsClosed(model)).toBe(false);
+      const rendered = html(model);
+      expect(rendered).toMatch(/^<section class="structural-object"/);
+      expect(rendered).not.toContain('sd-closed-structure');
+      expect(rendered).toContain('aria-label="Laws carried by e"');
+    }
+  });
+
+  it('keeps a law-free box open when fields were omitted, reflection stopped, a parent is packed, nothing was reflected, or a disclosure already encloses it', () => {
+    const data = [field('inner', 'data', 'Opaque M')];
+    const models = [base({ fields: data, omittedFields: 1 }), base({ fields: data, stopReason: 'A field could not be reflected within its checked export budget.' }),
+      base({ fields: [{ ...field('toBase', 'data', 'Base M'), parent: 'Base' }] }), base()];
+    for (const model of models) {
+      expect(startsClosed(model)).toBe(false);
+      expect(html(model)).not.toContain('sd-closed-structure');
+    }
+    expect(enclosed(lawFree())).not.toContain('sd-closed-structure');
+  });
+
+  it('shares one count between the header and the summary', () => {
+    const rendered = html(base({ fields: [field('first'), field('second')] }));
+    expect(rendered).toContain('<summary>Inside e · 2 data fields · 0 laws</summary>');
+    expect(rendered).toContain('<span class="sd-count">2 data fields · 0 laws</span>');
+    expect(html(base({ fields: [field('first'), field('rule', 'law'), field('other', 'law')] }))).toContain('<span class="sd-count">1 data field · 2 laws</span>');
   });
 });

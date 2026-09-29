@@ -1,4 +1,5 @@
 import { useId, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { FigureScroll } from '../components/FigureScroll';
 import type { SemanticObject } from '../semantic/types';
 import type { ConstructionMap, ConstructionType, TypedConstruction } from '../constructions/model';
 import { readingObjectColor } from '../visual/object-identity';
@@ -11,9 +12,25 @@ export interface StructuralObjectFigureProps {
   onObjectSelect?: (id: string) => void;
   /** The caller supplies the ordinary logical reader, avoiding a renderer cycle. */
   renderLaw?: (field: StructuralField) => ReactNode;
+  /** An enclosing disclosure already controls visibility, so the box renders open. */
+  enclosed?: boolean;
 }
 type Interaction = Pick<StructuralObjectFigureProps, 'selectedObjectId' | 'onObjectSelect'>;
 const short = (value: string, limit = 44) => value.length > limit ? `${value.slice(0, limit - 1)}…` : value;
+
+/** One count for the header and the closed summary, so the two cannot disagree. */
+function FieldCounts({ model }: { model: StructuralObjectModel }) {
+  const data = model.fields.filter(field => field.kind === 'data').length, laws = model.fields.length - data;
+  return <>{data} data {data === 1 ? 'field' : 'fields'} · {laws} {laws === 1 ? 'law' : 'laws'}</>;
+}
+
+/** Kind-based, never name-based: a box starts closed only when Lean reflected every direct field,
+ * none is a law (Prop-valued), and none is a parent subobject, whose own laws the box does not list.
+ * Laws, omitted fields and stop reasons therefore stay in view. */
+export function startsClosed(model: StructuralObjectModel): boolean {
+  return model.fields.length > 0 && model.omittedFields === 0 && !model.stopReason
+    && model.fields.every(field => field.kind === 'data' && field.parent === undefined);
+}
 
 function ObjectControl({ id, label, title, ...interaction }: Interaction & { id?: string; label: string; title?: string }) {
   return id ? <button className={`sd-object${interaction.selectedObjectId === id ? ' sd-selected' : ''}`} type="button" data-reading-object={id}
@@ -68,11 +85,11 @@ function DataDiagram({ construction, ...interaction }: Interaction & { construct
   });
   const top = Math.min(0, ...routes.map(route => route.y - 20));
   const bottom = 212 + Math.max(0, ...construction.types.map(type => construction.members.filter(member => member.typeId === type.id).reduce((height, member) => height + (member.kind === 'set' ? 51 : 29), 0)));
-  return <svg className="sd-data-diagram" viewBox={`0 ${top} 660 ${bottom - top}`} role="group" aria-label="Data fields displayed using their declared carrier types, sets, and maps">
+  return <FigureScroll className="sd-data-scroll" label="Data fields diagram; scroll to see all of it"><svg className="sd-data-diagram" viewBox={`0 ${top} 660 ${bottom - top}`} role="group" aria-label="Data fields displayed using their declared carrier types, sets, and maps">
     <defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L7 4 L1 7"/></marker></defs>
     {routes.map(route => <SvgObject key={route.map.objectId} id={route.map.objectId} label={`Map field ${route.map.name} : ${route.map.type}`} {...interaction}><path data-structural-map={route.map.objectId} className="sd-map-arrow" d={route.path} markerEnd={`url(#${marker})`}/><text className="sd-map-name" x={route.x} y={route.y} textAnchor="middle">{short(route.map.name, 24)}</text></SvgObject>)}
     {construction.types.map(type => <Carrier key={type.id} type={type} construction={construction} x={positions.get(type.id)!} y={110} {...interaction}/>)}
-  </svg>;
+  </svg></FigureScroll>;
 }
 
 function SignatureFields({ construction, ...interaction }: Interaction & { construction: TypedConstruction }) {
@@ -87,14 +104,14 @@ function FieldList({ fields, ...interaction }: Interaction & { fields: readonly 
   return <dl className="sd-field-list">{fields.map(field => <div key={field.projection}><dt><ObjectControl id={field.object.id} label={field.name} title={`${field.name} : ${field.type}`} {...interaction}/></dt><dd>{field.type}</dd></div>)}</dl>;
 }
 
-export function StructuralObjectFigure({ model, renderLaw, ...interaction }: StructuralObjectFigureProps) {
+export function StructuralObjectFigure({ model, renderLaw, enclosed, ...interaction }: StructuralObjectFigureProps) {
   const [selectedLaw, setSelectedLaw] = useState<string>();
   const data = model.fields.filter(field => field.kind === 'data'), laws = model.fields.filter(field => field.kind === 'law');
   const lawIndex = Math.max(0, laws.findIndex(field => field.projection === selectedLaw)), law = laws[lawIndex];
   const owner: SemanticObject = model.object;
   const hasDiagram = model.construction.types.length > 0 || model.construction.maps.length > 0;
-  return <section className="structural-object" data-structural-object={owner.id} aria-label={`Inside ${owner.label}`}>
-    <header className="sd-heading"><div><span className="sd-eyebrow">Object structure</span><h3>Inside <ObjectControl id={owner.id} label={owner.label} title={`${owner.label} : ${owner.type}`} {...interaction}/></h3><p className="sd-declared-type" title={owner.type}>{owner.type}</p></div><span className="sd-count">{data.length} data {data.length === 1 ? 'field' : 'fields'} · {laws.length} {laws.length === 1 ? 'law' : 'laws'}</span></header>
+  const figure = <section className="structural-object" data-structural-object={owner.id} aria-label={`Inside ${owner.label}`}>
+    <header className="sd-heading"><div><span className="sd-eyebrow">Object structure</span><h3>Inside <ObjectControl id={owner.id} label={owner.label} title={`${owner.label} : ${owner.type}`} {...interaction}/></h3><p className="sd-declared-type" title={owner.type}>{owner.type}</p></div><span className="sd-count"><FieldCounts model={model}/></span></header>
     <p className="sd-context">These fields belong to this object, within the statement’s current quantifiers and assumptions.</p>
     {data.length > 0 && <div className="sd-data"><h4>What it contains</h4>{hasDiagram && <DataDiagram construction={model.construction} {...interaction}/>}<SignatureFields construction={model.construction} {...interaction}/><details className="sd-data-source" open={!hasDiagram && model.construction.signatures.length === 0}><summary>Field names and declared types</summary><FieldList fields={data} {...interaction}/></details>{hasDiagram && <p className="sd-diagram-note">Arrows show function types. Set frames show membership domains, with no coordinates, shape, size, or chosen elements.</p>}</div>}
     {laws.length > 0 && <section className="sd-laws" aria-label={`Laws carried by ${owner.label}`}><div className="sd-law-heading"><div><h4>What its fields must satisfy</h4><p>Read each law in declaration order.</p></div><span>{lawIndex + 1} / {laws.length}</span></div>
@@ -105,4 +122,6 @@ export function StructuralObjectFigure({ model, renderLaw, ...interaction }: Str
     {model.omittedFields > 0 && <p className="sd-remaining">{model.omittedFields} further {model.omittedFields === 1 ? 'field remains' : 'fields remain'} in the declared type.{model.stopReason ? ` ${model.stopReason}` : ''}</p>}
     {model.fields.length === 0 && <p className="sd-remaining">The declared object is retained without adding fields.{model.stopReason ? ` ${model.stopReason}` : ''}</p>}
   </section>;
+  // The closed box holds the same figure; nothing is removed, and opening it restores the original view.
+  return !enclosed && startsClosed(model) ? <details className="sd-closed-structure"><summary>Inside {short(owner.label, 96)} · <FieldCounts model={model}/></summary>{figure}</details> : figure;
 }

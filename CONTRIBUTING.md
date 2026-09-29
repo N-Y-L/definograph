@@ -26,7 +26,7 @@ does not encode. Names and notation are labels, not evidence of meaning.
 Use Node.js 22.12 or later and the committed npm lockfiles:
 
 ```sh
-npm ci
+npm ci --ignore-scripts
 npm ci --prefix extension --ignore-scripts
 ```
 
@@ -47,14 +47,21 @@ The fast, toolchain-independent check set is:
 
 ```sh
 npm run build
+npm run check:reader-drivers
 npm test
 npm run test:server
+npm run test:source-dependency
 npm run check:extension
 ```
 
 GitHub CI runs those commands. Its result does **not** imply native Lean checks
 or an installed VS Code extension passed. It installs npm dependencies; it does
 not run `setup:lean`, Lake, Elan, or download mathlib.
+
+`check:reader-drivers` applies strict TypeScript checks to the reader, action
+navigation and section-outline browser drivers and their imported modules. It
+does not launch a browser or replace their interaction checks. Other native
+integration scripts remain outside this focused type-check configuration.
 
 For native or semantic changes, configure and build the native engine first,
 then run the relevant integration suite. The complete local check set is:
