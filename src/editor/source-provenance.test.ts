@@ -60,9 +60,10 @@ describe('constructed provenance controls', () => {
     expect(alpha.occurrences.every(occurrence => occurrence.receipts.captureId === id(1))).toBe(true);
     expect(alpha.edges[1].relation).toEqual({ kind: 'containment', path: ['appArg'], binders: [], role: null });
     expect(canonical(history)).toBe(before);
-    expect(canonical(occurrenceProvenance(history, id(1), 1))).toBe(canonical(alpha));
+    const expectedAlpha = canonical(alpha);
+    expect(canonical(occurrenceProvenance(history, id(1), 1))).toBe(expectedAlpha);
     // Each derivation owns its bounded canonicalization session: a module-level session failed at iteration 4301 on this fixture.
-    for (let i = 0; i < 6000; i++) if (canonical(occurrenceProvenance(history, id(1), 1)) !== canonical(alpha)) throw Error(`derivation ${i} differs`);
+    for (let i = 0; i < 6000; i++) if (canonical(occurrenceProvenance(history, id(1), 1)) !== expectedAlpha) throw Error(`derivation ${i} differs`);
     // The second attempt replays the same seed and appends an equal checkpoint.
     const fresh = validateSourceDecomposition(second, history.snapshot, history);
     const step = fresh.checking.status === 'captured' ? fresh.checking.steps[1] : undefined;
@@ -73,7 +74,7 @@ describe('constructed provenance controls', () => {
     expect(beta.occurrences[2].pair).toEqual(alpha.occurrences[2].pair);
     expect(beta.occurrences[1].origin).toEqual(alpha.occurrences[1].origin);
     expect(beta.edges[0].receipts.captureId).toBe(id(2)); expect(alpha.edges[0].receipts.captureId).toBe(id(1));
-  });
+  }, 30_000); // The 6000-derivation regression needs headroom on shared CI runners.
 
   it('refuses unknown parents, out-of-range steps, stopped steps and tampered histories', () => {
     let history = append(initial().history, firstFocus(initial().history, 'appArg'));
