@@ -68,12 +68,12 @@ describe('bounded measured graph layout', () => {
       if(name!=='Metric.ball') expect(display.latex).not.toContain('Metric.ball');
     }
   });
-  it('typesets admitted output roles without interpreting opaque arguments', () => {
+  it('retains source fallback when a graph object no longer matches its producer expression', () => {
     const graph = scopedFixture().model.clauses.find(clause => clause.node.id === 'inclusion')!.graphs[0];
     const output = graph.nodes.find(node => node.object?.expression.kind === 'app' && node.object.expression.fn.kind === 'const' && node.object.expression.fn.name === 'Metric.ball')!;
     const opaque = { ...output, object: { ...output.object!, expression: {kind:'opaque' as const, text:'raw exact application'} } };
     const label = scopedGraphMathDisplay(opaque, graph)!;
-    expect(label.latex).toContain('Metric.ball'); expect(label.latex).toContain('delta'); expect(label.source).toBe(output.object!.label);
+    expect(label.latex).toBeUndefined(); expect(label.source).toBe(output.object!.label);
     const predicateGraph = { ...graph, nodes: graph.nodes.map(node => node.relation?.kind === 'metric-region' ? {...node, relation:{...node.relation, kind:'predicate' as const}, ports:node.ports.map(port=>({...port,output:false}))}:node) };
     expect(scopedGraphMathDisplay(opaque,predicateGraph)!.latex).toBeUndefined();
   });

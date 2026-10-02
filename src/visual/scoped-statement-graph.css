@@ -11,3 +11,6 @@
 .ssg-mode{display:flex;gap:8px;margin:8px 0 14px}.ssg-mode button{padding:7px 11px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:12px}.ssg-mode button[aria-pressed=true]{border-color:var(--focus);font-weight:600}
 
 .ssg-binder-selected{outline:2px solid var(--focus);outline-offset:1px}
+
+/* A focused antecedent must shrink around its own diagram scroll containers. */
+.ssg-assumptions>div{min-width:0;max-width:100%}

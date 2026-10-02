@@ -14,9 +14,11 @@ import { compactLabel } from './layout';
 import { FigureScroll, useFrameOverflow } from '../components/FigureScroll';
 import { useDiagramText } from '../components/use-diagram-text';
 import { MathLabel } from '../components/MathLabel';
-import { expressionMathDisplay, mathDisplay, sourceMathDisplay, type MathDisplay } from '../notation/math-display';
+import { expressionDisplayNode, mathDisplay, sourceMathDisplay, type MathDisplay } from '../notation/math-display';
 import { numericOperator } from '../core/expression';
+import { relationObjectMathDisplay } from '../notation/relation-math-display';
 import { layoutContainedRelation, layoutRelationComparison } from './relation-diagram-layout';
+import { labelShape, layoutExpressionFlow, layoutRegionLink, stackShapes, type LabelShape } from './generic-relation-layout';
 import { applicationFlow } from '../semantic/application-flow';
 import { formatExpression } from '../semantic/expression';
 import './statement-reading.css';
@@ -81,25 +83,24 @@ function FigureObject({ id, ctx, children, title }: { id?: string; ctx: RenderCo
   </g>;
 }
 
-function ObjectName({ id, x, y, ctx, max = 24, anchor = 'middle', suffix = '', fieldOnly = false }: { id?: string; x: number; y: number; ctx: RenderContext; max?: number; anchor?: 'start' | 'middle' | 'end'; suffix?: string; fieldOnly?: boolean }) {
+function objectMathLabel(id: string | undefined, ctx: RenderContext, inverse = false, relations: readonly SemanticRelation[] = []): MathDisplay {
   const object = id ? ctx.objects.get(id) : undefined;
-  const label = fieldOnly && object?.provenance.some(source => source.expressionPath.startsWith('binder.structure.')) ? object.label.slice(object.label.lastIndexOf('.') + 1) : object?.label ?? 'unspecified';
-  return <text x={x} y={y} textAnchor={anchor} className="sr-object-label">{compactLabel(label, max) + suffix}</text>;
+  if (!object) return sourceMathDisplay('unspecified');
+  if (!inverse) return relationObjectMathDisplay(object, relations, ctx.objects);
+  const base = expressionDisplayNode(object.expression);
+  return base ? mathDisplay({ kind: 'script', base, superscript: { kind: 'literal', value: -1 } }, `(${object.label})⁻¹`)
+    : sourceMathDisplay(`(${object.label})⁻¹`);
 }
 
-function Region({ id, x, y, width, height, ctx, children, labelTop = true }: { id?: string; x: number; y: number; width: number; height: number; ctx: RenderContext; children?: ReactNode; labelTop?: boolean }) {
-  return <><FigureObject id={id} ctx={ctx}><ellipse cx={x} cy={y} rx={width / 2} ry={height / 2} className="sr-set-outline"/><ObjectName id={id} x={x} y={labelTop ? y - height / 2 + 25 : y + height / 2 - 15} ctx={ctx} max={Math.min(24, Math.floor(width / 10))}/></FigureObject>{children}</>;
+function ObjectName({ label, labelKey, x, y }: { label: MathDisplay; labelKey: string; x: number; y: number }) {
+  return <MathLabel label={label} labelKey={labelKey} x={x} y={y} fontSize={18} className="sr-object-label"/>;
 }
 
-function NamedPoint({ id, x, y, ctx, labelY = 24 }: { id?: string; x: number; y: number; ctx: RenderContext; labelY?: number }) {
-  return <FigureObject id={id} ctx={ctx}><circle cx={x} cy={y} r="6" className="sr-named-point"/><circle cx={x} cy={y} r="16" fill="transparent"/><ObjectName id={id} x={x} y={y + labelY} ctx={ctx} max={Math.min(30, Math.max(8, Math.floor(Math.min(x, 500 - x) * 2 / 9) - 2))}/></FigureObject>;
-}
-
-function FigureArrow({ from, to, bend = 0, label, ctx }: { from: [number, number]; to: [number, number]; bend?: number; label?: string; ctx: RenderContext }) {
-  const mid = (from[0] + to[0]) / 2;
-  const y = (from[1] + to[1]) / 2 + bend;
-  const direction = to[0] >= from[0] ? 1 : -1;
-  return <><path d={`M ${from[0]} ${from[1]} Q ${mid} ${y + bend} ${to[0]} ${to[1]}`} className="sr-map-arrow"/><path d={`M ${to[0] - direction * 7} ${to[1] - 4} L ${to[0]} ${to[1]} L ${to[0] - direction * 7} ${to[1] + 4}`} className="sr-map-arrow"/>{label && <FigureObject id={label} ctx={ctx}><ObjectName id={label} x={mid} y={y - 12} ctx={ctx} max={22}/></FigureObject>}</>;
+function FigureArrow({ from, to }: { from: [number, number]; to: [number, number] }) {
+  const angle = Math.atan2(to[1] - from[1], to[0] - from[0]);
+  const head = (offset: number): [number, number] => [to[0] - 8 * Math.cos(angle + offset), to[1] - 8 * Math.sin(angle + offset)];
+  const a = head(.5), b = head(-.5);
+  return <><path d={`M ${from[0]} ${from[1]} L ${to[0]} ${to[1]}`} className="sr-map-arrow"/><path d={`M ${a[0]} ${a[1]} L ${to[0]} ${to[1]} L ${b[0]} ${b[1]}`} className="sr-map-arrow"/></>;
 }
 
 function port(relation: SemanticRelation, role: string): string | undefined { return relation.ports.find(candidate => candidate.role === role)?.objectId; }
@@ -117,29 +118,16 @@ export function expressionMapPath(objectId: string, relations: readonly Semantic
   return { inputs: inner.inputs, maps: [...inner.maps, flow.functionId], directions: [...inner.directions, flow.direction], output: objectId, collapsed: inner.collapsed };
 }
 
-function ExpressionPath({ objectId, relations, y, ctx }: { objectId: string; relations: readonly SemanticRelation[]; y: number; ctx: RenderContext }) {
-  const path = expressionMapPath(objectId, relations);
-  if (!path.maps.length) return <FigureObject id={objectId} ctx={ctx}><rect x="62" y={y - 28} width="357" height="56" rx="13" className="sr-expression-box"/><ObjectName id={objectId} x={240} y={y + 6} ctx={ctx} max={41}/></FigureObject>;
-  const positions = path.maps.map((_, index) => 170 + index * 174 / Math.max(1, path.maps.length - 1));
-  const lastMap = positions.at(-1)!;
-  return <g className="sr-expression-path" data-expression-output={objectId}>
-    {path.inputs.length === 1 ? <NamedPoint id={path.inputs[0]} x={62} y={y} ctx={ctx} labelY={24}/> : <>{path.inputs.map((input, index) => <FigureObject key={`${input}:${index}`} id={input} ctx={ctx}><text x="14" y={y - 15 * (path.inputs.length - 1) + index * 30 + 6} className="sr-input-index">{index + 1}</text><ObjectName id={input} x={76} y={y - 15 * (path.inputs.length - 1) + index * 30 + 6} ctx={ctx} max={12}/></FigureObject>)}</>}
-    <FigureArrow from={[path.inputs.length === 1 ? 80 : 120, y]} to={[positions[0] - 32, y]} ctx={ctx}/>
-    {path.maps.map((fn, index) => <g key={`${fn}:${index}`} data-map-function={fn} data-map-stage={index} data-map-direction={path.directions[index]}><FigureObject id={fn} ctx={ctx}><rect x={positions[index] - 31} y={y - 25} width="62" height="50" rx="10" className="sr-function-box"/><ObjectName id={fn} x={positions[index]} y={y + 6} ctx={ctx} max={8} fieldOnly suffix={path.directions[index] === 'inverse' ? '⁻¹' : ''}/></FigureObject>{index < path.maps.length - 1 && <FigureArrow from={[positions[index] + 34, y]} to={[positions[index + 1] - 34, y]} ctx={ctx}/>}</g>)}
-    <FigureArrow from={[lastMap + 34, y]} to={[426, y]} ctx={ctx}/><NamedPoint id={objectId} x={442} y={y} ctx={ctx} labelY={24}/>
-  </g>;
-}
-
 /** Basic containment and comparison keep their glyphs inside the shapes that
  * carry their meaning. Full object labels remain on the interactive groups. */
-function MeasuredRelationFigure({ relation, ctx }: { relation: SemanticRelation; ctx: RenderContext }) {
+function MeasuredRelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
   const text = useDiagramText();
   const nested = relation.kind === 'subset', comparison = relation.kind === 'equality' || relation.kind === 'inequality';
   const first = port(relation, comparison ? 'left' : nested ? 'superset' : 'set');
   const second = port(relation, comparison ? 'right' : nested ? 'subset' : 'element');
   const objectLabel = (id: string | undefined) => {
     const object = id ? ctx.objects.get(id) : undefined;
-    return object ? expressionMathDisplay(object.expression, object.label) : sourceMathDisplay('unspecified');
+    return object ? relationObjectMathDisplay(object, relations, ctx.objects) : sourceMathDisplay('unspecified');
   };
   const firstLabel = objectLabel(first), secondLabel = objectLabel(second);
   const firstSize = text.size('first', firstLabel.source, 18), secondSize = text.size('second', secondLabel.source, 18);
@@ -160,62 +148,116 @@ function MeasuredRelationFigure({ relation, ctx }: { relation: SemanticRelation;
   }
   const caption = comparison ? relation.kind === 'equality' ? 'The displayed expressions are required to satisfy this relation' : 'Order condition on the displayed expressions'
     : nested ? 'Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion.' : 'Membership condition · the named element belongs to the region';
-  return <figure className={`sr-relation-figure sr-figure-${relation.kind}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={{ minWidth: Math.ceil(width * 10 / 18), height: 'auto', aspectRatio: `${width} / ${height}` }} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
+  return <figure className={`sr-relation-figure sr-figure-${relation.kind}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={{ minWidth: width * .75, height: 'auto', aspectRatio: `${width} / ${height}` }} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
 
 function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
   if (compileRestrictedMap(ctx.document, relation, relations)) return <RestrictedMapFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   if (compileGraphConstraint(ctx.document, relation, relations)) return <GraphConstraintFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   if (!['image', 'preimage'].includes(relation.kind) && compileSetConstruction(ctx.document, relation, relations)) return <SetConstructionFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
-  let body: ReactNode;
-  let caption = relation.label;
-  let mapPaths = false;
   if (relation.kind === 'membership') {
-    const element = port(relation, 'element'), set = port(relation, 'set');
-    const application = producedBy(element, relations);
-    if (application?.kind === 'application' && application.ports.filter(p => p.role.startsWith('input')).length === 1 && port(application, 'input 1')) {
-      body = <><Region id={set} x={336} y={100} width={235} height={155} ctx={ctx}/><NamedPoint id={port(application, 'input 1')} x={78} y={110} ctx={ctx}/><FigureArrow from={[94, 107]} to={[318, 107]} label={port(application, 'function')} ctx={ctx}/><NamedPoint id={element} x={337} y={110} ctx={ctx}/></>;
-    } else return <MeasuredRelationFigure relation={relation} ctx={ctx}/>;
-    caption = 'Membership condition · the named element belongs to the region';
-  } else if (relation.kind === 'subset') {
-    const subset = port(relation, 'subset'), superset = port(relation, 'superset');
-    const image = producedBy(subset, relations);
-    if (image?.kind === 'image') {
-      body = <><Region id={port(image, 'set')} x={84} y={105} width={140} height={135} ctx={ctx}/><Region id={superset} x={350} y={103} width={255} height={173} ctx={ctx}/><Region id={subset} x={354} y={120} width={163} height={97} ctx={ctx} labelTop={false}/><FigureArrow from={[160, 99]} to={[273, 112]} bend={-18} label={port(image, 'function')} ctx={ctx}/></>;
-    } else return <MeasuredRelationFigure relation={relation} ctx={ctx}/>;
-    caption = 'Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion.';
-  } else if (relation.kind === 'image' || relation.kind === 'preimage') {
-    const source = port(relation, 'set'), result = port(relation, 'result');
-    body = <><Region id={source} x={113} y={106} width={175} height={153} ctx={ctx}/><Region id={result} x={387} y={106} width={175} height={153} ctx={ctx}/><FigureArrow from={relation.kind === 'image' ? [206, 110] : [294, 110]} to={relation.kind === 'image' ? [292, 110] : [208, 110]} bend={-12} label={port(relation, 'function')} ctx={ctx}/><text x="113" y="203" className="sr-role-label" textAnchor="middle">given set</text><text x="387" y="203" className="sr-role-label" textAnchor="middle">{relation.kind === 'image' ? 'image' : 'preimage'}</text></>;
-    caption = relation.kind === 'image' ? 'The image collects outputs of the map on the given set' : 'The preimage collects inputs whose outputs lie in the given set';
-  } else if (relation.kind === 'application') {
-    const inputs = relation.ports.filter(p => p.role.startsWith('input'));
-    body = <>{inputs.slice(0, 3).map((input, index) => <g key={input.role}><NamedPoint id={input.objectId} x={78} y={inputs.length > 1 ? 53 + index * 62 : 110} ctx={ctx} labelY={22}/><FigureArrow from={[94, inputs.length > 1 ? 53 + index * 62 : 108]} to={[236, 108]} ctx={ctx}/></g>)}<FigureObject id={port(relation, 'function')} ctx={ctx}><rect x="230" y="76" width="106" height="67" rx="13" className="sr-function-box"/><ObjectName id={port(relation, 'function')} x={283} y={115} ctx={ctx} max={16}/></FigureObject><FigureArrow from={[338, 108]} to={[420, 108]} ctx={ctx}/><NamedPoint id={port(relation, 'output')} x={439} y={110} ctx={ctx}/>{inputs.length > 3 && <text x="80" y="214" className="sr-role-label" textAnchor="middle">+ {counted(inputs.length - 3, 'input')}</text>}</>;
-    caption = componentMode(ctx.document) ? 'Application · ordered inputs and output expression' : 'Application · the map sends its inputs to this output';
+    const application = producedBy(port(relation, 'element'), relations);
+    if (!(application?.kind === 'application' && application.ports.filter(p => p.role.startsWith('input')).length === 1 && port(application, 'input 1')))
+      return <MeasuredRelationFigure relation={relation} relations={relations} ctx={ctx}/>;
+  } else if (relation.kind === 'subset' && producedBy(port(relation, 'subset'), relations)?.kind !== 'image') {
+    return <MeasuredRelationFigure relation={relation} relations={relations} ctx={ctx}/>;
   } else if (relation.kind === 'equality' || relation.kind === 'inequality') {
     const left = port(relation, 'left'), right = port(relation, 'right');
-    mapPaths = relation.kind === 'equality' && Boolean(left && right && (expressionMapPath(left, relations).maps.length || expressionMapPath(right, relations).maps.length));
-    if (mapPaths && left && right) {
-      body = <><ExpressionPath objectId={left} relations={relations} y={58} ctx={ctx}/><ExpressionPath objectId={right} relations={relations} y={179} ctx={ctx}/><path d="M442 87 V103 M442 140 V149" className="sr-role-connection"/><text x="442" y="130" textAnchor="middle" className="sr-comparison-symbol">{relation.label}</text></>;
-      const collapsed = expressionMapPath(left, relations).collapsed || expressionMapPath(right, relations).collapsed;
-      caption = `Compare the outputs of these map paths${relation.label === '≠' ? ': they are required to differ' : ': they are required to agree'}.${collapsed ? ' Further nested inputs retain their expression labels.' : ''}`;
-    } else {
-      return <MeasuredRelationFigure relation={relation} ctx={ctx}/>;
-    }
+    if (!(relation.kind === 'equality' && left && right && (expressionMapPath(left, relations).maps.length || expressionMapPath(right, relations).maps.length)))
+      return <MeasuredRelationFigure relation={relation} relations={relations} ctx={ctx}/>;
+  }
+  return <GenericRelationFigure relation={relation} relations={relations} ctx={ctx}/>;
+}
+
+/** Measured labels retain the existing schematic roles and source identities.
+ * Each input/output column reserves its full label before arrows are placed. */
+function GenericRelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
+  const text = useDiagramText();
+  const label = (id: string | undefined, inverse = false) => objectMathLabel(id, ctx, inverse, relations);
+  const size = (key: string, value: MathDisplay) => text.size(key, value.source, 18);
+  const name = (key: string, value: MathDisplay, x: number, y: number) => <ObjectName label={value} labelKey={key} x={x} y={y}/>;
+  const shaped = (id: string | undefined, key: string, value: MathDisplay, shape: LabelShape, kind: 'box' | 'point' | 'ellipse', x = 0, y = 0, functionBox = false) => <g transform={`translate(${x} ${y})`}><FigureObject id={id} ctx={ctx}>
+    {kind === 'point' ? <><circle cx={shape.width / 2} cy={shape.pointY} r="6" className="sr-named-point"/><circle cx={shape.width / 2} cy={shape.pointY} r="16" fill="transparent"/></>
+      : kind === 'ellipse' ? <ellipse cx={shape.width / 2} cy={shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} className="sr-set-outline"/>
+        : <rect width={shape.width} height={shape.height} rx="13" className={functionBox ? 'sr-function-box' : 'sr-expression-box'}/>}
+    {name(key, value, shape.width / 2, shape.label.baseline)}
+  </FigureObject></g>;
+  const flow = (path: ReturnType<typeof expressionMapPath>, prefix: string) => {
+    const inputs = path.inputs.map(id => label(id)), maps = path.maps.map((id, i) => label(id, path.directions[i] === 'inverse')), output = label(path.output);
+    const layout = layoutExpressionFlow(inputs.map((value, i) => size(`${prefix}:input:${i}`, value)), maps.map((value, i) => size(`${prefix}:map:${i}`, value)), size(`${prefix}:output`, output));
+    const inputRight = Math.max(0, ...layout.inputs.map(item => item.x + item.width));
+    const draw = () => <g className="sr-expression-path" data-expression-output={path.output}>
+      {layout.inputs.map((item, i) => <g key={`input:${i}`} data-input-index={i + 1}>{shaped(path.inputs[i], `${prefix}:input:${i}`, inputs[i], item, 'point', item.x, item.y)}<path d={`M${item.x + item.width / 2 + 18} ${item.y + item.pointY!} H${inputRight}`} className="sr-map-arrow"/><FigureArrow from={[inputRight, item.y + item.pointY!]} to={[layout.maps[0].x - 6, layout.arrowY]}/></g>)}
+      {layout.maps.map((item, i) => <g key={`map:${i}`} data-map-function={path.maps[i]} data-map-stage={i} data-map-direction={path.directions[i]}>{shaped(path.maps[i], `${prefix}:map:${i}`, maps[i], item, 'box', item.x, item.y, true)}<FigureArrow from={[item.x + item.width + 6, layout.arrowY]} to={i + 1 < layout.maps.length ? [layout.maps[i + 1].x - 6, layout.arrowY] : [layout.output.x + layout.output.width / 2 - 18, layout.arrowY]}/></g>)}
+      {shaped(path.output, `${prefix}:output`, output, layout.output, path.maps.length ? 'point' : 'box', layout.output.x, layout.output.y)}
+    </g>;
+    return { ...layout, draw, outputX: layout.output.x + layout.output.width / 2 };
+  };
+  let body: ReactNode, width: number, height: number, caption = relation.label;
+  const mapPaths = relation.kind === 'equality';
+  if (relation.kind === 'application') {
+    const inputs = relation.ports.filter(p => p.role.startsWith('input')).map(p => p.objectId);
+    const path = { inputs, maps: [port(relation, 'function')!], directions: ['forward' as const], output: port(relation, 'output')!, collapsed: false };
+    const layout = flow(path, 'application');
+    ({ width, height } = layout); body = layout.draw();
+    caption = componentMode(ctx.document) ? 'Application · ordered inputs and output expression' : 'Application · the map sends its inputs to this output';
+  } else if (mapPaths) {
+    const leftPath = expressionMapPath(port(relation, 'left')!, relations), rightPath = expressionMapPath(port(relation, 'right')!, relations);
+    const left = flow(leftPath, 'left'), right = flow(rightPath, 'right');
+    const operator = numericOperator(relation.expression), symbol = operator === 'eq' || operator === 'ne' ? mathDisplay({ kind: 'symbol', symbol: operator }, relation.label) : sourceMathDisplay(relation.label);
+    const symbolSize = text.size('comparison', symbol.source, 27), outputX = Math.max(left.outputX, right.outputX);
+    const rightY = left.height + symbolSize.height + 48;
+    width = outputX + Math.max(left.width - left.outputX, right.width - right.outputX); height = rightY + right.height;
+    body = <><g transform={`translate(${outputX - left.outputX} 0)`}>{left.draw()}</g><g transform={`translate(${outputX - right.outputX} ${rightY})`}>{right.draw()}</g><MathLabel label={symbol} labelKey="comparison" x={outputX} y={left.height + 24 + symbolSize.ascent} fontSize={27} className="sr-comparison-symbol"/><path d={`M${outputX} ${left.height - 4} V${left.height + 16} M${outputX} ${rightY - 16} V${rightY + 4}`} className="sr-role-connection"/></>;
+    caption = `Compare the outputs of these map paths${relation.label === '≠' ? ': they are required to differ' : ': they are required to agree'}.${leftPath.collapsed || rightPath.collapsed ? ' Further nested inputs retain their expression labels.' : ''}`;
+  } else if (['membership', 'subset', 'image', 'preimage'].includes(relation.kind)) {
+    const membership = relation.kind === 'membership', nested = relation.kind === 'subset';
+    const construction = membership ? producedBy(port(relation, 'element'), relations)! : nested ? producedBy(port(relation, 'subset'), relations)! : relation;
+    const leftId = port(construction, membership ? 'input 1' : 'set'), rightId = port(relation, membership ? 'set' : nested ? 'superset' : 'result');
+    const innerId = membership ? port(relation, 'element') : nested ? port(relation, 'subset') : undefined, mapId = port(construction, 'function');
+    const leftLabel = label(leftId), rightLabel = label(rightId), innerLabel = label(innerId), mapLabel = label(mapId);
+    const leftShape = labelShape(size('source', leftLabel), membership ? 'point' : 'ellipse');
+    const contained = membership || nested ? layoutContainedRelation(size('target', rightLabel), size('inner', innerLabel), nested) : undefined;
+    const rightShape = labelShape(size('target', rightLabel), 'ellipse');
+    const target = contained ?? rightShape, layout = layoutRegionLink(leftShape, target, size('map', mapLabel), membership ? leftShape.pointY : leftShape.height / 2, contained?.inner.y);
+    ({ width, height } = layout);
+    const from: [number, number] = [layout.left.x + (membership ? leftShape.width / 2 + 18 : leftShape.width + 8), layout.arrowY], to: [number, number] = [layout.right.x + (membership && contained ? contained.inner.x - 18 : -8), layout.arrowY];
+    // The point output remains inside its set. Region arrows join the boundary.
+    body = <>{shaped(leftId, 'source', leftLabel, leftShape, membership ? 'point' : 'ellipse', layout.left.x, layout.left.y)}<g transform={`translate(${layout.right.x} ${layout.right.y})`}>{contained ? <><FigureObject id={rightId} ctx={ctx}><ellipse cx={contained.outer.x} cy={contained.outer.y} rx={contained.outer.rx} ry={contained.outer.ry} className="sr-set-outline"/>{name('target', rightLabel, contained.outer.x, contained.outer.label.baseline)}</FigureObject><FigureObject id={innerId} ctx={ctx}>{nested ? <ellipse cx={contained.inner.x} cy={contained.inner.y} rx={contained.inner.rx} ry={contained.inner.ry} className="sr-set-outline"/> : <circle cx={contained.inner.x} cy={contained.inner.y} r="6" className="sr-named-point"/>}{name('inner', innerLabel, contained.inner.x, contained.inner.label.baseline)}</FigureObject></> : shaped(rightId, 'target', rightLabel, rightShape, 'ellipse')}</g><FigureObject id={mapId} ctx={ctx}>{name('map', mapLabel, layout.map.x + layout.map.width / 2, layout.map.baseline)}</FigureObject><FigureArrow from={relation.kind === 'preimage' ? to : from} to={relation.kind === 'preimage' ? from : to}/>{!membership && !nested && <><text x={layout.left.x + leftShape.width / 2} y={height - 10} textAnchor="middle" className="sr-role-label">given set</text><text x={layout.right.x + rightShape.width / 2} y={height - 10} textAnchor="middle" className="sr-role-label">{relation.kind}</text></>}</>;
+    caption = membership ? 'Membership condition · the named element belongs to the region' : nested ? 'Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion.' : relation.kind === 'image' ? 'The image collects outputs of the map on the given set' : 'The preimage collects inputs whose outputs lie in the given set';
   } else if (relation.kind === 'distance') {
-    body = <><NamedPoint id={port(relation, 'from')} x={89} y={110} ctx={ctx}/><NamedPoint id={port(relation, 'to')} x={411} y={110} ctx={ctx}/><path d="M109 109 H391 M110 101 V117 M390 101 V117" className="sr-distance-bracket"/><FigureObject id={port(relation, 'distance')} ctx={ctx}><ObjectName id={port(relation, 'distance')} x={250} y={88} ctx={ctx}/></FigureObject><text x="250" y="178" textAnchor="middle" className="sr-role-label">symbolic distance · no scale assigned</text></>;
+    const fromId = port(relation, 'from'), toId = port(relation, 'to'), distanceId = port(relation, 'distance');
+    const fromLabel = label(fromId), toLabel = label(toId), distanceLabel = label(distanceId);
+    const from = labelShape(size('from', fromLabel), 'point'), to = labelShape(size('to', toLabel), 'point'), distance = size('distance', distanceLabel);
+    width = Math.max(500, from.width + to.width + 100, distance.width + 40); const y = 24 + distance.height + 28;
+    height = y + Math.max(from.height, to.height) + 48;
+    const a = 20 + from.width / 2, b = width - 20 - to.width / 2;
+    body = <>{shaped(fromId, 'from', fromLabel, from, 'point', 20, y)}{shaped(toId, 'to', toLabel, to, 'point', width - 20 - to.width, y)}<path d={`M${a + 18} ${y + 12} H${b - 18} M${a + 18} ${y + 4} V${y + 20} M${b - 18} ${y + 4} V${y + 20}`} className="sr-distance-bracket"/><FigureObject id={distanceId} ctx={ctx}>{name('distance', distanceLabel, width / 2, 20 + distance.ascent)}</FigureObject><text x={width / 2} y={height - 16} textAnchor="middle" className="sr-role-label">symbolic distance · no scale assigned</text></>;
     caption = 'Distance in the stated metric';
   } else if (relation.kind === 'metric-region') {
-    body = <><NamedPoint id={port(relation, 'center')} x={99} y={62} ctx={ctx}/><FigureObject id={port(relation, 'radius')} ctx={ctx}><rect x="49" y="123" width="100" height="57" rx="11" className="sr-expression-box"/><ObjectName id={port(relation, 'radius')} x={99} y={158} ctx={ctx}/></FigureObject><FigureArrow from={[154, 64]} to={[280, 100]} ctx={ctx}/><FigureArrow from={[154, 150]} to={[280, 123]} ctx={ctx}/><FigureObject id={port(relation, 'region')} ctx={ctx}><rect x="288" y="66" width="184" height="91" rx="14" className="sr-expression-box"/><ObjectName id={port(relation, 'region')} x={380} y={116} ctx={ctx} max={24}/></FigureObject></>;
+    const centerId = port(relation, 'center'), radiusId = port(relation, 'radius'), regionId = port(relation, 'region');
+    const center = label(centerId), radius = label(radiusId), region = label(regionId);
+    const stack = stackShapes([labelShape(size('center', center), 'point'), labelShape(size('radius', radius), 'box')], 32);
+    const result = labelShape(size('region', region), 'box'), targetX = 20 + stack.width + 84;
+    width = targetX + result.width + 20; height = Math.max(stack.height, result.height) + 32;
+    const sourceY = (height - stack.height) / 2, resultY = (height - result.height) / 2;
+    body = <>{stack.items.map((item, i) => <g key={i}>{shaped(i ? radiusId : centerId, i ? 'radius' : 'center', i ? radius : center, item, i ? 'box' : 'point', item.x + 20, item.y + sourceY)}<FigureArrow from={[20 + stack.width + 6, sourceY + item.y + (i ? item.height / 2 : item.pointY!)]} to={[targetX - 6, resultY + result.height * (i ? .7 : .3)]}/></g>)}{shaped(regionId, 'region', region, result, 'box', targetX, resultY)}</>;
     caption = 'Region defined by its center, radius, and metric. No nonemptiness or membership of the center is assumed.';
   } else {
-    const slots = relation.ports.slice(0, 4);
-    const centerId = port(relation, 'function') ?? port(relation, 'relation') ?? port(relation, 'symbol');
-    const others = slots.filter(p => p.objectId !== centerId);
-    body = <><FigureObject id={centerId} ctx={ctx} title={relation.label}><rect x="160" y="65" width="180" height="79" rx="17" className="sr-expression-box"/>{centerId ? <ObjectName id={centerId} x={250} y={110} ctx={ctx} max={24}/> : <text x="250" y="110" textAnchor="middle" className="sr-object-label">{compactLabel(relation.label, 24)}</text>}</FigureObject>{others.map((p, index) => { const x = (index + 1) * 500 / (others.length + 1); return <g key={`${p.role}:${index}`}><path d={`M250 145 L${x} 178`} className="sr-role-connection"/><NamedPoint id={p.objectId} x={x} y={184} ctx={ctx} labelY={23}/></g>; })}{relation.kind === 'function-property' && <text x="250" y="171" className="sr-property-name" textAnchor="middle">{relation.label}</text>}</>;
+    const headPort = relation.ports.find(port => port.role === 'function') ?? relation.ports.find(port => port.role === 'relation') ?? relation.ports.find(port => port.role === 'symbol');
+    const centerId = headPort?.objectId;
+    const center = centerId ? label(centerId) : sourceMathDisplay(relation.label), centerShape = labelShape(size('head', center), 'box');
+    const others = relation.ports.filter(p => p !== headPort), labels = others.map(p => label(p.objectId));
+    const shapes = labels.map((value, i) => labelShape(size(`argument:${i}`, value), 'point'));
+    const rowWidth = shapes.reduce((sum, shape) => sum + shape.width, 0) + Math.max(0, shapes.length - 1) * 24;
+    width = Math.max(500, centerShape.width + 40, rowWidth + 40);
+    const rowY = centerShape.height + 64;
+    height = rowY + Math.max(0, ...shapes.map(shape => shape.height)) + 20;
+    let x = (width - rowWidth) / 2;
+    body = <>{shaped(centerId, 'head', center, centerShape, 'box', (width - centerShape.width) / 2, 16)}{shapes.map((shape, i) => { const left = x; x += shape.width + 24; return <g key={`${others[i].role}:${i}`}><path d={`M${width / 2} ${16 + centerShape.height} L${left + shape.width / 2} ${rowY + shape.pointY! - 10}`} className="sr-role-connection"/>{shaped(others[i].objectId, `argument:${i}`, labels[i], shape, 'point', left, rowY)}</g>; })}</>;
     caption = componentMode(ctx.document) ? 'Argument structure of this expression' : relation.fidelity === 'structural' ? 'Argument structure only · this expression has no interpreted geometric meaning' : `${relation.label} · a property required of the displayed object`;
   }
-  return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg viewBox="0 0 500 230" role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
+  return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={{ minWidth: width * .75, height: 'auto', aspectRatio: `${width} / ${height}` }} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
 
 function BinderStrip({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: RenderContext }) {

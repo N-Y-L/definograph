@@ -14,14 +14,24 @@ export function useDiagramText() {
   function measure() {
     if (!ref.current) return;
     const next: Record<string, MeasuredText> = {};
+    const retain = (element: Element) => {
+      const key = element.getAttribute('data-diagram-label')!, previous = measured.current[key];
+      if (previous?.text === (element.getAttribute('data-diagram-source') ?? element.textContent ?? '')) next[key] = previous;
+    };
     for (const text of ref.current.querySelectorAll<SVGTextElement>('text[data-diagram-label]')) {
       const box = text.getBBox(), baseline = Number(text.getAttribute('y'));
+      const ascent = baseline - box.y, descent = box.y + box.height - baseline;
+      // A closed disclosure has no glyph bounds. Its zero box must not turn a
+      // changing label baseline into a measurement/layout feedback loop.
+      if (![box.width, box.height, ascent, descent].every(Number.isFinite)
+        || box.width <= 0 || box.height <= 0 || ascent < 0 || descent < 0) { retain(text); continue; }
       next[text.getAttribute('data-diagram-label')!] = { text: text.getAttribute('data-diagram-source') ?? text.textContent ?? '', width: box.width, height: box.height,
-        ascent: baseline - box.y, descent: box.y + box.height - baseline };
+        ascent, descent };
     }
     for (const group of ref.current.querySelectorAll<SVGGElement>('g[data-diagram-label][data-math-label]')) {
       const size = measureMathLabel(group);
       if (size) next[group.getAttribute('data-diagram-label')!] = { text: group.getAttribute('data-diagram-source') ?? '', ...size };
+      else retain(group);
     }
     const previous = measured.current, keys = Object.keys(next);
     // Engines can vary subpixel glyph bounds slightly as the SVG resizes.

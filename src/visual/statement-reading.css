@@ -71,6 +71,7 @@
 .sr-named-point { fill:light-dark(var(--object-color), color-mix(in srgb,var(--object-color) 60%,#fff)); stroke:var(--surface); stroke-width:2; }
 .sr-figure-object:hover .sr-set-outline,.sr-figure-object.sr-object-selected .sr-set-outline { stroke-width:2.4; stroke-opacity:1; }
 .sr-figure-object:hover .sr-object-label,.sr-figure-object.sr-object-selected .sr-object-label { font-weight:650; }
+.sr-figure-object .sr-object-label[data-diagram-label] { font-weight:400; }
 .sr-figure-object.sr-object-selected .sr-named-point { r:8; }
 .sr-map-arrow { fill:none; stroke:light-dark(#7c8fa3, #b0bcc8); stroke-width:1.5; }
 .sr-role-label,.sr-input-index { fill:light-dark(#627381, #a1abb3); font-size:12px; }
