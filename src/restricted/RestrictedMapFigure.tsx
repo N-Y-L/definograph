@@ -3,6 +3,7 @@ import { FigureScroll } from '../components/FigureScroll';
 import { useDiagramText } from '../components/use-diagram-text';
 import { MathLabel } from '../components/MathLabel';
 import { expressionDisplayNode, expressionMathDisplay, mathDisplay, sourceMathDisplay, type MathDisplay } from '../notation/math-display';
+import { typesetStatement } from '../notation/render';
 import { layoutRestrictedMap, type RestrictedLabelBox, type RestrictedRegionLayout } from './restricted-map-layout';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { readingObjectColor } from '../visual/object-identity';
@@ -112,15 +113,32 @@ export function RestrictedRegionDiagram({ structure: model, selectedRegion, appl
   </svg></FigureScroll>;
 }
 
+function LawMath({ label }: { label: MathDisplay }) {
+  const rendered = useMemo(() => label.latex ? typesetStatement(label.latex) : undefined, [label.latex]);
+  return rendered?.status === 'rendered'
+    ? <span className="rm-law-math" data-math-source={label.source} aria-label={label.source} dangerouslySetInnerHTML={{ __html: rendered.html }}/>
+    : <span className="rm-law-math" data-math-source={label.source} data-math-fallback="source">{label.source}</span>;
+}
+
 function RoundTrip({ model, role }: { model: RestrictedMapStructure; role: 'source' | 'target' }) {
-  const source = role === 'source', region = source ? model.source : model.target, map = short(model.map.label, 28);
+  const source = role === 'source', region = source ? model.source : model.target;
+  const map = expressionMathDisplay(model.map.expression, model.map.label), mapNode = expressionDisplayNode(model.map.expression);
+  const inverseNode = mapNode && { kind: 'script' as const, base: mapNode, superscript: { kind: 'literal' as const, value: -1 } };
+  const inverseSource = `(${model.map.label})⁻¹`;
+  const inverse = inverseNode ? mathDisplay(inverseNode, inverseSource) : sourceMathDisplay(inverseSource);
+  const inputNode = { kind: 'identifier' as const, name: source ? 'x' : 'y' }, input = mathDisplay(inputNode);
+  const appliedNode = source ? mapNode : inverseNode;
+  const appliedSource = `${source ? `(${model.map.label})` : inverseSource}(${input.source})`;
+  const applied = appliedNode ? mathDisplay({ kind: 'application', fn: appliedNode, args: [inputNode] }, appliedSource) : sourceMathDisplay(appliedSource);
   return <div className="rm-law" data-restricted-law={role}>
     <div className="rm-law-condition">{region.empty ? 'Vacuous when this region is empty' : `For every element in the ${role} region`}</div>
-    <div className="rm-law-flow" aria-label={source ? 'Forward then inverse returns the original source element' : 'Inverse then forward returns the original target element'}>
-      <span className="rm-law-slot">{source ? 'x' : 'y'}</span><span className="rm-law-step"><b>{source ? map : `${map}⁻¹`}</b><span aria-hidden="true">⟶</span></span>
-      <span className="rm-law-slot">{source ? `${map}(x)` : `${map}⁻¹(y)`}</span><span className="rm-law-step"><b>{source ? `${map}⁻¹` : map}</b><span aria-hidden="true">⟶</span></span>
-      <span className="rm-law-slot rm-return">{source ? 'x' : 'y'}</span>
-    </div>
+    <FigureScroll className="rm-law-scroll" label={`${source ? 'Source' : 'Target'} round-trip law; scroll to see all of it`}>
+      <div className="rm-law-flow" aria-label={source ? 'Forward then inverse returns the original source element' : 'Inverse then forward returns the original target element'}>
+        <span className="rm-law-slot"><LawMath label={input}/></span><span className="rm-law-step"><b><LawMath label={source ? map : inverse}/></b><span aria-hidden="true">⟶</span></span>
+        <span className="rm-law-slot"><LawMath label={applied}/></span><span className="rm-law-step"><b><LawMath label={source ? inverse : map}/></b><span aria-hidden="true">⟶</span></span>
+        <span className="rm-law-slot rm-return"><LawMath label={input}/></span>
+      </div>
+    </FigureScroll>
     <span className="rm-law-caption">{source ? 'Back to the same source element' : 'Back to the same target element'}</span>
   </div>;
 }
