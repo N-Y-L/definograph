@@ -7,6 +7,7 @@ import { validateSourceHeadExposure, type HeadExposureTarget } from './source-he
 import { validateDecompositionHistory, type DecompositionHistory, type SourceDecompositionBundle } from './source-decomposition';
 import { createExactJsonTools, type JsonValue } from '../packets/packet';
 import { GUIDED_CONTEXT_CONTRACT, GUIDED_CONTEXT_MISMATCH } from './guided-context-contract';
+import { sanitizeSourcePresentation, fitSourcePresentationHistory } from './source-presentation';
 
 export interface EditorPosition { line: number; character: number }
 export interface EditorRange { start: EditorPosition; end: EditorPosition }
@@ -64,8 +65,10 @@ function sameOriginInput(fresh: SourceSnapshotOrigin, original: SourceSnapshotOr
   return fresh.sourceSha256 === original.sourceSha256 && same(fresh.engine, original.engine)
     && same(fresh.project, original.project) && same(fresh.document, original.document) && same(fresh.selection, original.selection);
 }
-function checkedBundle(value: unknown, original: SourceSnapshotOrigin, seen: Set<string>) {
-  if (!record(value) || Reflect.ownKeys(value).length !== 3 || Object.keys(value).sort().join(',') !== 'origin,record,snapshot'
+function checkedBundle(value: unknown, original: SourceSnapshotOrigin, seen: Set<string>, allowPresentation = false) {
+  const keys = record(value) && allowPresentation && Object.hasOwn(value, 'presentation')
+    ? 'origin,presentation,record,snapshot' : 'origin,record,snapshot';
+  if (!record(value) || Reflect.ownKeys(value).length !== keys.split(',').length || Object.keys(value).sort().join(',') !== keys
     || Object.values(Object.getOwnPropertyDescriptors(value)).some(d => !d.enumerable || !Object.hasOwn(d, 'value'))
     || !isSourceSnapshotOrigin(value.origin) || seen.has(value.origin.captureId) || !sameOriginInput(value.origin, original))
     throw new Error('Invalid continuation bundle association.');
@@ -73,7 +76,8 @@ function checkedBundle(value: unknown, original: SourceSnapshotOrigin, seen: Set
   if (snapshot.checking.status === 'captured' && snapshot.checking.binding.attempt !== value.origin.captureId)
     throw new Error('The snapshot belongs to another process.');
   seen.add(value.origin.captureId);
-  return { snapshot, origin: structuredClone(value.origin), record: value.record };
+  return { snapshot, origin: structuredClone(value.origin), record: value.record,
+    ...(allowPresentation && Object.hasOwn(value, 'presentation') ? { presentation: value.presentation } : {}) };
 }
 /** The host already validates Lean's response; this rejects unrelated window messages. */
 export function parseEditorMessage(value: unknown): EditorMessage | undefined {
@@ -111,31 +115,42 @@ export function parseEditorMessage(value: unknown): EditorMessage | undefined {
         if (occurrence.captureId !== origin.captureId) return undefined;
         if (value.headExposure !== undefined || value.headExposureUnavailable !== undefined || value.decompositions !== undefined || value.decompositionUnavailable !== undefined) {
           if (occurrence.checking.status !== 'captured' || !occurrence.checking.selected) return undefined;
-          assertSourceHistoryLimit({ sourceSnapshot: snapshot, sourceSnapshotOrigin: origin, sourceOccurrence: occurrence,
-            ...(value.headExposure !== undefined ? { headExposure: value.headExposure } : {}),
-            ...(value.decompositions !== undefined ? { decompositions: value.decompositions } : {}),
-            ...(value.decompositionUnavailable !== undefined ? { decompositionUnavailable: value.decompositionUnavailable } : {}) });
           const seen = new Set([origin.captureId]), { freeze } = createExactJsonTools();
           let retainedExposure: HeadExposureBundle | undefined;
           if (value.headExposure !== undefined) {
             const seed = checkedBundle(value.headExposure, origin, seen);
             const exposure = validateSourceHeadExposure(seed.record, seed.snapshot, { snapshot, occurrence });
             if (exposure.captureId !== seed.origin.captureId || exposure.parentCaptureId !== origin.captureId) return undefined;
-            retainedExposure = { ...seed, record: exposure }; freeze(retainedExposure);
+            retainedExposure = { snapshot: seed.snapshot, origin: seed.origin, record: exposure }; freeze(retainedExposure);
           }
           let decompositions: SourceDecompositionBundle[] | undefined;
           if (value.decompositions !== undefined) {
-            if (!Array.isArray(value.decompositions) || value.decompositions.length > 8) return undefined;
-            const bundles = value.decompositions.map(item => checkedBundle(item, origin, seen));
+            if (!Array.isArray(value.decompositions) || value.decompositions.length > 8
+              || Reflect.ownKeys(value.decompositions).length !== value.decompositions.length + 1) return undefined;
+            const bundles = Array.from({ length: value.decompositions.length }, (_, index) => {
+              const descriptor = Object.getOwnPropertyDescriptor(value.decompositions, index);
+              if (!descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')) throw new Error('Invalid continuation array.');
+              return checkedBundle(descriptor.value, origin, seen, true);
+            });
+            const historyAttachments = (attempts: unknown) => ({ sourceSnapshot: snapshot, sourceSnapshotOrigin: origin, sourceOccurrence: occurrence,
+              ...(retainedExposure ? { headExposure: retainedExposure } : {}), decompositions: attempts,
+              ...(value.decompositionUnavailable !== undefined ? { decompositionUnavailable: value.decompositionUnavailable } : {}) });
+            // Optional display data cannot prevent admission of valid exact records.
+            assertSourceHistoryLimit(historyAttachments(bundles.map(({ snapshot, origin, record }) => ({ snapshot, origin, record }))));
             const history = validateDecompositionHistory({ snapshot, occurrence,
               seed: retainedExposure ? { snapshot: retainedExposure.snapshot, record: retainedExposure.record } : null,
               attempts: bundles.map(item => ({ snapshot: item.snapshot, record: item.record })) });
             decompositions = history.attempts.map((item, i) => {
               if (item.record.captureId !== bundles[i].origin.captureId) throw new Error('Continuation origin does not match its record.');
-              return { ...item, origin: bundles[i].origin };
+              const presentation = sanitizeSourcePresentation(bundles[i].presentation, item.record);
+              return { ...item, origin: bundles[i].origin, ...(presentation ? { presentation } : {}) };
             });
+            decompositions = fitSourcePresentationHistory(decompositions, attempts => assertSourceHistoryLimit(historyAttachments(attempts)));
             freeze(decompositions); retainedHistories.set(decompositions, history);
           }
+          if (decompositions === undefined) assertSourceHistoryLimit({ sourceSnapshot: snapshot, sourceSnapshotOrigin: origin, sourceOccurrence: occurrence,
+            ...(retainedExposure ? { headExposure: retainedExposure } : {}),
+            ...(value.decompositionUnavailable !== undefined ? { decompositionUnavailable: value.decompositionUnavailable } : {}) });
           return { ...value, sourceSnapshot: snapshot, sourceOccurrence: occurrence,
             ...(retainedExposure ? { headExposure: retainedExposure } : {}), ...(decompositions ? { decompositions } : {}) } as unknown as EditorMessage;
         }

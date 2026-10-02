@@ -6,7 +6,8 @@ import { validateSourceDecomposition, type SourceDecompositionBundle } from './s
 import type { SourceSnapshotOrigin } from './source-origin';
 import type { JsonObject, JsonValue } from '../packets/packet';
 import type { HeadExposureCandidate } from './source-head-exposure';
-import { parseEditorMessage, type HeadExposureBundle } from './host';
+import { parseEditorMessage, retainedDecompositionHistory, type HeadExposureBundle } from './host';
+import { SOURCE_PRESENTATION_SCHEMA, SOURCE_PRESENTATION_NOTE } from './source-presentation';
 import { assertSourceHistoryLimit, MAX_SOURCE_HISTORY_BYTES } from './source-history';
 import { SourceSnapshotReading, savedSourceSnapshot } from './SourceSnapshotReading';
 import { SourceDecompositionReading, canContinueDecompositionStep } from './SourceDecompositionReading';
@@ -45,6 +46,30 @@ function secondExposure() {
 }
 
 describe('continuation host, retention and reading', () => {
+  it('admits optional text only beside decomposition records and preserves raw branded histories on rejection', () => {
+    const f = secondExposure(), checking = f.second.record.checking;
+    if (checking.status !== 'captured' || checking.steps[2].output.status !== 'candidate') throw Error('Missing fixture.');
+    const presentation = { schema: SOURCE_PRESENTATION_SCHEMA, captureId: f.second.record.captureId, status: 'available',
+      stepIndex: 2, target: 'type', result: checking.steps[2].output.result, text: '<script>ExpandedNat</script>' };
+    const exact = JSON.stringify(f.second.record);
+    for (const sidecar of [presentation, { ...presentation, target: 'term' }, { ...presentation, text: 'x'.repeat(200_000) }, { ...presentation, extra: true }]) {
+      const parsed = parseEditorMessage({ ...f.message, decompositions: [f.first, { ...f.second, presentation: sidecar }] });
+      if (!parsed || parsed.type === 'statementlens.status' || !parsed.decompositions) throw Error('Lost valid raw history.');
+      const bundle = parsed.decompositions[1], history = retainedDecompositionHistory(parsed.decompositions);
+      expect(JSON.stringify(bundle.record)).toBe(exact); expect(history?.attempts[1].record).toBe(bundle.record);
+      expect(bundle.presentation?.status).toBe(sidecar === presentation ? 'available' : 'unavailable');
+      expect(Object.isFrozen(bundle.presentation)).toBe(true);
+      const html = renderToStaticMarkup(createElement(SourceDecompositionReading, { attempts: parsed.decompositions }));
+      if (sidecar === presentation) { expect(html).toContain('&lt;script&gt;ExpandedNat&lt;/script&gt;'); expect(html).toContain(SOURCE_PRESENTATION_NOTE); expect(html).not.toContain('<script>'); }
+      else expect(html).toContain('Readable Lean text was rejected');
+    }
+    expect(parseEditorMessage({ ...f.message, headExposure: { ...f.seed, presentation } })).toBeUndefined();
+    expect(parseEditorMessage({ ...f.message, decompositions: [{ ...f.first, extra: true }] })).toBeUndefined();
+    const extended = [f.first]; Object.assign(extended, { extra: true });
+    expect(parseEditorMessage({ ...f.message, decompositions: extended })).toBeUndefined();
+    const accessor = [f.first]; Object.defineProperty(accessor, 0, { get: () => { throw Error('Must not invoke'); }, enumerable: true });
+    expect(parseEditorMessage({ ...f.message, decompositions: accessor })).toBeUndefined();
+  });
   it('validates ordered bundles with separate immutable original and fresh origins', () => {
     const f = secondExposure(), message = { ...f.message, decompositions: [f.first, f.second] }, parsed = parseEditorMessage(message);
     expect(parsed?.type).toBe('statementlens.error');

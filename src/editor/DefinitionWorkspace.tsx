@@ -7,6 +7,7 @@ import { operationOutcomeLabel } from './source-outcome-labels';
 import type { HeadExposureCandidate } from './source-head-exposure';
 import { nameText } from '../packets/syntax';
 import { counted } from '../core/counted';
+import { SourceResultPresentation } from './SourceResultPresentation';
 import './definition-workspace.css';
 
 export function DefinitionWorkspace({ state, onInspect, onReturn, onDetails }: {
@@ -44,10 +45,10 @@ export function DefinitionWorkspace({ state, onInspect, onReturn, onDetails }: {
     </section>}
     {state.phase === 'complete' && output && <section className="definition-comparison" aria-label="Inspected definition result">
       <h3>Recorded result of inspecting {'definition' in output ? nameText((output as HeadExposureCandidate).definition.name) : 'the definition'}</h3>
-      <code>{resultLabel?.text}</code>{resultLabel?.unavailable&&<p role="status">{resultLabel.unavailable}</p>}
+      <SourceResultPresentation record={record!} stepIndex={index!} presentation={state.resultPresentation}/>
       <p>This recorded definition result retains the application’s surrounding scope. Binders introduced inside it remain local.</p>
       <p>{accepted?'All recorded checks for this exposure were accepted.':'Not all checks for this candidate were accepted. Read the individual outcomes before relying on it.'}</p><ul aria-label="Definition check outcomes">{outcomes.map((check,index)=><li key={check.id}>{operationOutcomeLabel('expose',check.label,index)}: <strong>{check.outcome.tag}</strong></li>)}</ul>
-      <details><summary>Exact result and surrounding scope</summary><pre>{JSON.stringify(output.result,null,2)}</pre></details>
+      <details><summary>Exact result and surrounding scope</summary><code>{resultLabel?.text}</code>{resultLabel?.unavailable&&<p role="status">{resultLabel.unavailable}</p>}<pre>{JSON.stringify(output.result,null,2)}</pre></details>
       <details><summary>Read the result and its context</summary><PositionalReadingPane model={resultReading} title="Inspected definition"/></details>
     </section>}
     <footer><button type="button" className="quiet-button" onClick={onDetails}>Source, operations and check details ↗</button><p className="small muted">The original reading and new inspection records are retained separately. A source or selection change closes this workspace.</p></footer>

@@ -39,8 +39,33 @@ The original and inspection records remain separate. Reopening the workspace can
 reuse a matching retained statement history to choose another application.
 Source, selection or configuration changes invalidate the reading and close the
 workspace; a different or exhausted inspection history can require **Refresh**.
-The result's readable label has a display bound, with exact result and scope
-retained in the details when that label is unavailable.
+The result foregrounds native Lean notation when available, with exact elaborated
+syntax and scope retained in **Exact result and surrounding scope**.
+
+## Native notation for an exposed result
+
+The optional notation is printed from the captured exposed term in its own
+recorded telescope and original Lean environment. It does not open another
+definition, reinterpret the expression, supply a proof, or add a checking receipt.
+The original clause, local scope and individual check outcomes remain visible.
+Notation can hide universes, implicit arguments and instance choices: two distinct
+metric instances can both print as `{y | dist y x < δ}`. Their exact expressions
+remain distinct in the details; printed text is not expression identity.
+
+`sourceDecompositionPresentation` is a separate, versioned response sidecar
+(`definograph.source-presentation.v1`). An available presentation binds its text to
+the capture ID, last operation index, exposure target and exact result triple
+(home, term and type). The host validates the raw record first and rejects stale,
+wrong-result or malformed presentation locally. Neither optional text nor its
+association changes the exact candidate, receipts or historical replay.
+
+Printing is bounded to 4,000 input expression nodes across scope, term and carrier,
+input depth 80, recursion depth 128, 20,000 printer steps and at most 10,000 Lean
+heartbeats within the enclosing remaining budget. Display text is limited to 8,192
+Unicode characters and 32 KiB of UTF-8; the entire sidecar is at most 128 KiB.
+Printer omissions, unsupported results, failures and missing or over-budget text
+show an explicit fallback. Optional display data is dropped before exact records
+when the existing 4 MiB response or 16 MiB retained-history limit is reached.
 
 ## The step
 
@@ -207,6 +232,13 @@ The existing deadline, context and expression guards apply, with at most 65,536
 metadata fields, 128 parameters/universes, and an explicit omitted-field count.
 
 ## Verification
+
+`npm run test:source-presentation` exercises real native printing of Metric.ball,
+UniformContinuousOn, a renamed wrapper, shadowed lambda/let scope, dependent
+partial application, inferred-type exposure and distinct explicit metric instances. It also checks opaque
+refusal, printer/text limits, stale or wrong result associations, unchanged exact
+records and retained replay history. The test uses the configured pinned Lean
+engine and built imports; it does not download dependencies.
 
 `npm run test:source-head-exposure` exercises real fresh editor processes with
 unfamiliar and renamed compositions, function-type and dependent aliases, a recursive

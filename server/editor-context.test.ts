@@ -428,6 +428,28 @@ test('decomposition sends only a host-resolved exact prefix and one fresh operat
     assert.equal(result.ok, false, 'legacy guided failure does not erase the retained operation boundary');
   });
 });
+test('optional decomposition presentation cannot erase raw records or leak into unrelated responses', async () => {
+  await syntheticContext("response.sourceDecompositionPresentation={unrequested:true};", async request => {
+    const result = await analyzeEditorContext(request);
+    assert.ok(result.sourceSnapshot); assert.equal(Object.hasOwn(result, 'sourceDecompositionPresentation'), false);
+  });
+  for (const status of ['unavailable', 'wrong-capture', 'oversized', 'extra']) {
+    await syntheticContext(decompositionReply + `if(input.decomposition){
+      response.sourceDecompositionPresentation={schema:'definograph.source-presentation.v1',captureId:input.captureId,status:'unavailable',reason:'Printer unavailable in this synthetic control.'};
+      if(${JSON.stringify(status)}==='wrong-capture')response.sourceDecompositionPresentation.captureId=input.decomposition.previousCaptureId;
+      if(${JSON.stringify(status)}==='oversized')response.sourceDecompositionPresentation.reason='x'.repeat(200000);
+      if(${JSON.stringify(status)}==='extra')response.sourceDecompositionPresentation.extra=true;
+    }`, async request => {
+      const result = await analyzeEditorContext(await decompositionParentRequest(request));
+      const raw = result.sourceDecomposition as { captureId: string; checking: { status: string } };
+      const presentation = result.sourceDecompositionPresentation as { captureId: string; status: string; reason: string };
+      assert.ok(raw); assert.equal(raw.checking.status, 'unavailable'); assert.ok(Object.isFrozen(raw));
+      assert.equal(Object.hasOwn(raw, 'presentation'), false); assert.equal(presentation.captureId, raw.captureId);
+      assert.equal(presentation.status, 'unavailable'); assert.ok(Object.isFrozen(presentation));
+      assert.match(presentation.reason, status === 'unavailable' ? /Printer unavailable/ : /was rejected/);
+    });
+  }
+});
 test('invalid or stale decomposition ancestry is rejected before another process starts', async () => {
   await syntheticContext("fs.appendFileSync(process.argv[1] + '.runs','x');" + decompositionReply, async request => {
     const parent = await decompositionParentRequest(request);

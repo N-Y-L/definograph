@@ -498,8 +498,78 @@ private def capturedOccurrenceJson
   Definograph.checkExactNaturalBudget record
   return record
 
+/-- Optional notation is a sidecar, never a field of an exact capture or receipt. -/
+def presentationUnavailable (captureId reason : String) : Json := Json.mkObj [
+  ("schema", toJson "definograph.source-presentation.v1"), ("captureId", toJson captureId),
+  ("status", toJson "unavailable"), ("reason", toJson (reason.take 512).toString)]
+
+/-- Print only the last requested exposure, from its owned telescope in the
+original environment. The printer may hide implicit arguments; it supplies no
+new checked expression, reduction, or receipt. Its Meta state is always restored. -/
+private def capturedPresentation (captureId : String) (initial : Environment)
+    (originalOptions : Options) (requestedSteps : Nat)
+    (captured : Definograph.CapturedSource Definograph.NamedDecompositionResult) : MetaM Json := do
+  let absent := presentationUnavailable captureId "No captured exposed result is available for native notation."
+  let .ok result := captured.capture.value | return absent
+  unless result.steps.size == requestedSteps do return absent
+  let some step := result.steps.back? | return absent
+  let .expose target := step.operation | return absent
+  let .exposed candidate _ := step.output | return absent
+  let context := DefinographAdmission.contextExpr step.input.context
+  let expression := V6Structured.dec candidate.after
+  let carrier := V6Structured.dec candidate.carrier
+  if [context, expression, carrier].any (fun e => e.approxDepth > 80) ||
+      context.sizeWithoutSharing + expression.sizeWithoutSharing + carrier.sizeWithoutSharing > 4000 then
+    return presentationUnavailable captureId "The exposed result or its scope exceeds the optional notation input limit."
+  let ctx ← readThe Core.Context
+  let now ← IO.getNumHeartbeats
+  let used := now - ctx.initHeartbeats
+  let remaining := if ctx.maxHeartbeats == 0 then 10000000 else ctx.maxHeartbeats - used
+  -- Leave budget for the unchanged context response and any other optional views.
+  let budget := min 10000000 (remaining - 1000000)
+  if budget < 1000 then
+    return presentationUnavailable captureId "No optional notation printing budget remains."
+  let saved ← Meta.saveState
+  try
+    tryCatchRuntimeEx (withTheReader Core.Context (fun state =>
+      { state with initHeartbeats := now, maxHeartbeats := budget, maxRecDepth := min state.maxRecDepth 128 }) do
+      -- withOptions also refreshes Core.Context.maxRecDepth, including when the
+      -- delaborator changes an option internally, so keep the cap in both places.
+      withEnv initial <| withOptions (fun _ => originalOptions
+          |>.set `maxRecDepth (min (maxRecDepth.get originalOptions) 128)
+          |>.set `pp.maxSteps (min (getPPMaxSteps originalOptions) 20000)
+          |>.set `pp.beta false) do
+        withLCtx {} {} do
+          DefinographAdmission.withCoreContext step.input.context fun vars => do
+            let opened := DefinographAdmission.instantiateSlots vars candidate.after
+            if opened.hasLooseBVars then
+              return presentationUnavailable captureId "The exposed result could not be printed in its recorded scope."
+            let printed ← PrettyPrinter.ppExprWithInfos opened
+            let omitted := printed.infos.toList.any fun (_, info) => match info with
+              | .ofDelabTermInfo term => term.docString?.any fun reason =>
+                [PrettyPrinter.Delaborator.OmissionReason.deep,
+                  .proof, .maxSteps].any (fun omission => reason == omission.toString)
+              | _ => false
+            if omitted then
+              return presentationUnavailable captureId "The native printer omitted a subexpression under its display options or limits; the exact result is retained."
+            let text := printed.fmt.pretty 88
+            if text.length > 8192 || text.utf8ByteSize > 32768 then
+              return presentationUnavailable captureId "Native notation exceeds the display text limit; the exact result is retained."
+            let .ok exactResult := Definograph.selectedTripleJson step.input.context candidate.after candidate.carrier
+              | return presentationUnavailable captureId "The result association exceeds the optional notation serialization limit."
+            let value := Json.mkObj [
+              ("schema", toJson "definograph.source-presentation.v1"), ("captureId", toJson captureId),
+              ("status", toJson "available"), ("stepIndex", toJson step.index),
+              ("target", target.json), ("result", exactResult), ("text", toJson text)]
+            if value.compress.utf8ByteSize > 128 * 1024 then
+              return presentationUnavailable captureId "The result association exceeds the optional notation transport limit."
+            return value) fun _ =>
+        pure (presentationUnavailable captureId "Native notation is unavailable for this result; its exact expression and scope are retained.")
+  finally saved.restore
+
 private def preparedOccurrence (captureId : String) (request : OccurrenceRequest)
-    (term : TermInfo) (originalType : Expr) : MetaM Json := do
+    (term : TermInfo) (originalType : Expr)
+    (presentation : Option (IO.Ref (Option Json)) := none) : MetaM Json := do
   let saved ← Meta.saveState
   try
     tryCatchRuntimeEx (do
@@ -532,6 +602,8 @@ private def preparedOccurrence (captureId : String) (request : OccurrenceRequest
           return checkingUnavailable "unsupported" "source-policy" "The prepared source contains a placeholder (sorry)."
         tryCatchRuntimeEx (do
           if let some plan := request.decomposition then
+            let initial ← getEnv
+            let originalOptions ← getOptions
             let result ← Definograph.captureNamedDecomposition captureId (decompositionOperationName plan.profile) {
               declarationPrefix := .str `StatementLens.SourceDecomposition captureId,
               universeParams := params, heartbeatFor := fun _ => 200000, retainedMetadata := .rawV1
@@ -542,7 +614,16 @@ private def preparedOccurrence (captureId : String) (request : OccurrenceRequest
                 "decomposition-capture" reason true
             | .ok captured =>
               match Definograph.capturedDecompositionJson captured with
-              | .ok value => return value
+              | .ok value =>
+                if let some output := presentation then
+                  -- A failure anywhere in this optional path, including its
+                  -- input preflight, must not replace the serialized exact record.
+                  let readable ← tryCatchRuntimeEx
+                    (capturedPresentation captureId initial originalOptions plan.operations.size captured)
+                    (fun _ => pure (presentationUnavailable captureId
+                      "Native notation is unavailable for this result; its exact expression and scope are retained."))
+                  output.set (some readable)
+                return value
               | .error reason =>
                 let kind := if reason == "decomposition checking exceeds the nesting limit" ||
                     reason == "decomposition checking exceeds 2 MiB" then "limit" else "error"
@@ -583,7 +664,7 @@ selected InfoTree term. Parent JSON is compared as data only: it never rebuilds
 an environment, local context or metavariable state, and never supplies a proof. -/
 private def captureFreshSelection (term : TermInfo) (context : ContextInfo) (captureId : String)
     (selection : Selection) (request : OccurrenceRequest) (freshSnapshot : Json)
-    (finish : Json → Json) : IO Json := do
+    (finish : Json → Json) (presentation : Option (IO.Ref (Option Json)) := none) : IO Json := do
   unless validCaptureId captureId do throw (IO.userError "captureId must be a UUID")
   unless request.parentCaptureId != captureId do
     return finish (checkingUnavailable "prerequisite" "parent-match" "An occurrence requires a fresh capture identity.")
@@ -613,7 +694,7 @@ private def captureFreshSelection (term : TermInfo) (context : ContextInfo) (cap
     | some type =>
       term.runMetaM context (withOptions (fun opts =>
         opts.set `maxRecDepth (512 : Nat) |>.set `maxHeartbeats (400000 : Nat))
-        (preparedOccurrence captureId request term type))
+        (preparedOccurrence captureId request term type presentation))
   return finish checking
 
 /-- Fresh ordinary extraction; the established occurrence schema is unchanged. -/
@@ -634,13 +715,17 @@ def captureHeadExposure (term : TermInfo) (context : ContextInfo) (captureId : S
 /-- Replay a retained linear prefix against this fresh source, then perform one
 explicit new operation. Comparison JSON is never used as elaboration input. -/
 def captureDecomposition (term : TermInfo) (context : ContextInfo) (captureId : String)
-    (selection : Selection) (requestValue freshSnapshot : Json) : IO Json := do
+    (selection : Selection) (requestValue freshSnapshot : Json) : IO (Json × Json) := do
   let request ← IO.ofExcept (parseDecompositionRequest requestValue)
   if let some plan := request.decomposition then
     unless captureId != plan.previousCaptureId do
-      return boundDecomposition (decompositionRecord request captureId
-        (checkingUnavailable "prerequisite" "parent-match" "Decomposition requires a fresh capture identity."))
-  captureFreshSelection term context captureId selection request freshSnapshot
-    (fun checking => boundDecomposition (decompositionRecord request captureId checking))
+      return (boundDecomposition (decompositionRecord request captureId
+        (checkingUnavailable "prerequisite" "parent-match" "Decomposition requires a fresh capture identity.")),
+        presentationUnavailable captureId "Native notation requires a fresh result capture.")
+  let presentation ← IO.mkRef (none : Option Json)
+  let record ← captureFreshSelection term context captureId selection request freshSnapshot
+    (fun checking => boundDecomposition (decompositionRecord request captureId checking)) (some presentation)
+  return (record, (← presentation.get).getD
+    (presentationUnavailable captureId "No captured exposed result is available for native notation."))
 
 end StatementLens.SourceSnapshot

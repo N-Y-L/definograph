@@ -11,6 +11,7 @@ import { SourceSnapshotError, type SourceSnapshot } from '../../src/editor/sourc
 import type { HeadExposureBundle } from '../../src/editor/source-history.js';
 import { assertSourceHistoryLimit } from '../../src/editor/source-history.js';
 import type { SourceDecompositionBundle } from '../../src/editor/source-decomposition.js';
+import { sanitizeSourcePresentation, fitSourcePresentationHistory } from '../../src/editor/source-presentation.js';
 import { createExactJsonTools } from '../../src/packets/packet.js';
 import { continuationCommand, requireContinuationParent, type ContinuationAction } from './continuation.js';
 import { GUIDED_CONTEXT_CONTRACT, GUIDED_CONTEXT_MISMATCH } from '../../src/editor/guided-context-contract.js';
@@ -125,7 +126,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!lifecycle.accepts(ticket) || doc.version !== metadata.version) return;
       if (dirtyDependency(doc)) throw new Error("Another Lean buffer changed during analysis. Save and build imported dependencies, then refresh.");
       const { sourceSnapshot, sourceSnapshotOrigin, sourceSnapshotUnavailable, sourceOccurrence, sourceOccurrenceUnavailable,
-        sourceHeadExposure, sourceHeadExposureUnavailable, sourceDecomposition, sourceDecompositionUnavailable, ...guided } = analysis;
+        sourceHeadExposure, sourceHeadExposureUnavailable, sourceDecomposition, sourceDecompositionUnavailable, sourceDecompositionPresentation, ...guided } = analysis;
       let attachments: object;
       if (decomposition && parent) {
         if (sourceDecomposition !== undefined && (sourceSnapshot === undefined || !isSourceSnapshotOrigin(sourceSnapshotOrigin))
@@ -134,10 +135,12 @@ export function activate(context: vscode.ExtensionContext): void {
         let attempts = parent.decompositions ?? [], unavailable = sourceDecompositionUnavailable;
         if (sourceDecomposition !== undefined) {
           const next: SourceDecompositionBundle = { snapshot: sourceSnapshot as SourceSnapshot, origin: sourceSnapshotOrigin as SourceSnapshotOrigin, record: sourceDecomposition as SourceDecompositionBundle['record'] };
-          const proposed = [...attempts, next];
+          const presentation = sanitizeSourcePresentation(sourceDecompositionPresentation, next.record);
+          if (presentation) next.presentation = presentation;
           try {
-            assertSourceHistoryLimit({ sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence,
-              ...(parent.headExposure ? { headExposure: parent.headExposure } : {}), decompositions: proposed }, 20 * 1024);
+            const proposed = fitSourcePresentationHistory([...attempts, next], decompositions => assertSourceHistoryLimit({
+              sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence,
+              ...(parent.headExposure ? { headExposure: parent.headExposure } : {}), decompositions }, 20 * 1024));
             createExactJsonTools().freeze(proposed); attempts = proposed;
           } catch (error) {
             if (!(error instanceof SourceSnapshotError) || error.code !== 'limit') throw error;

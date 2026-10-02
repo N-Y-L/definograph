@@ -207,6 +207,41 @@ def transport : MetaM Unit := do
       "deep actual closures were not omitted as one complete record"
   IO.println "PASS occurrence transport: unchanged guided prefix, independent attachments, combined cap and actual deep closure omission"
 
+def presentationTransport : MetaM Unit := do
+  let text := fun count => toJson (String.ofList (List.replicate count 'x'))
+  let exact := Json.mkObj [("captureId", toJson childId), ("checking", toJson "unchanged exact record")]
+  let sidecar := Json.mkObj [("schema", toJson "definograph.source-presentation.v1"),
+    ("captureId", toJson childId), ("status", toJson "available"), ("text", text (96 * 1024))]
+  let legacy := Json.mkObj [("ok", toJson true), ("diagnostics", Json.arr #[])]
+  let base := legacy.setObjVal! "sourceDecomposition" exact
+  let baseline := StatementLens.Context.serializeContextResponse base
+  let shown := StatementLens.Context.serializeContextResponse (base.setObjVal! "sourceDecompositionPresentation" sidecar)
+  let decoded ← IO.ofExcept (Json.parse shown)
+  require (shown.startsWith (baseline.dropEnd 1).toString && field decoded "sourceDecomposition" == exact &&
+    field decoded "sourceDecompositionPresentation" == sidecar)
+    "optional presentation changed the serialized exact prefix"
+  -- Simulated bounded attachments exercise the aggregate response guard rather
+  -- than the earlier per-sidecar admission guard.
+  let common := legacy.setObjVal! "source" (text (1900 * 1024)) |>.setObjVal! "sourceSnapshot" (text (1500 * 1024))
+  let record := exact.setObjVal! "padding" (text (620 * 1024))
+  let limitedText := StatementLens.Context.serializeContextResponse
+    (common.setObjVal! "sourceDecomposition" record |>.setObjVal! "sourceDecompositionPresentation" sidecar)
+  let limited ← IO.ofExcept (Json.parse limitedText)
+  require (limitedText.utf8ByteSize ≤ 4 * 1024 * 1024 && field limited "sourceDecomposition" == record &&
+    field (field limited "sourceDecompositionPresentation") "status" == toJson "unavailable")
+    "presentation displaced a complete exact record at the aggregate limit"
+  let emptyRecord := exact.setObjVal! "padding" (text 0)
+  let emptySize := (StatementLens.Context.serializeContextResponse
+    (common.setObjVal! "sourceDecomposition" emptyRecord)).utf8ByteSize
+  let fullRecord := exact.setObjVal! "padding" (text (4 * 1024 * 1024 - emptySize - 8))
+  let fullText := StatementLens.Context.serializeContextResponse
+    (common.setObjVal! "sourceDecomposition" fullRecord |>.setObjVal! "sourceDecompositionPresentation" sidecar)
+  let full ← IO.ofExcept (Json.parse fullText)
+  require (fullText.utf8ByteSize ≤ 4 * 1024 * 1024 && field full "sourceDecomposition" == fullRecord &&
+    (full.getObjVal? "sourceDecompositionPresentation").toOption.isNone)
+    "optional fallback displaced exact bytes when no display budget remained"
+  IO.println "PASS optional presentation transport: exact byte prefix, local fallback and omission preserve complete raw records"
+
 end StatementLens.SourceOccurrenceControls
 
 #eval StatementLens.SourceOccurrenceControls.ordinary
@@ -214,3 +249,4 @@ end StatementLens.SourceOccurrenceControls
 #eval StatementLens.SourceOccurrenceControls.boundaries
 #eval StatementLens.SourceOccurrenceControls.inferenceAndOutcomes
 #eval StatementLens.SourceOccurrenceControls.transport
+#eval StatementLens.SourceOccurrenceControls.presentationTransport

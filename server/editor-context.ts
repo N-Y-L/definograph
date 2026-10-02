@@ -15,6 +15,7 @@ import { GUIDED_CONTEXT_CONTRACT, GUIDED_CONTEXT_MISMATCH } from '../src/editor/
 import { validateSourceHeadExposure, type HeadExposureTarget, type SourceHeadExposure } from '../src/editor/source-head-exposure.js';
 import { validateDecompositionHistory, decompositionPlan, validateSourceDecomposition,
   type DecompositionOperation, type SourceDecompositionBundle } from '../src/editor/source-decomposition.js';
+import { sanitizeSourcePresentation } from '../src/editor/source-presentation.js';
 
 export interface EditorPosition { line: number; character: number }
 export interface EditorRange { start: EditorPosition; end: EditorPosition }
@@ -281,6 +282,8 @@ export async function analyzeEditorContext(request: EditorContextRequest): Promi
     if (response.sourceDecompositionUnavailable !== undefined && (typeof response.sourceDecompositionUnavailable !== 'string' || [...response.sourceDecompositionUnavailable].length > 4096 || Object.hasOwn(response, 'sourceDecomposition'))) throw new WorkerError('EDITOR_PROTOCOL', 'Invalid decomposition omission record.');
     if (!decomposition && (Object.hasOwn(response, 'sourceDecomposition') || Object.hasOwn(response, 'sourceDecompositionUnavailable'))) throw new WorkerError('EDITOR_PROTOCOL', 'The context worker returned an unrequested decomposition result.');
     if (decomposition && !Object.hasOwn(response, 'sourceDecomposition') && !Object.hasOwn(response, 'sourceDecompositionUnavailable')) throw new WorkerError('EDITOR_PROTOCOL', 'The context worker omitted the requested decomposition result.');
+    // Display-only data is meaningful only beside a requested exact record.
+    if (!decomposition || !Object.hasOwn(response, 'sourceDecomposition')) delete response.sourceDecompositionPresentation;
     // The process cannot supply host provenance. Associate only the native
     // attachment we received during this request with the actual input/build.
     delete response.sourceSnapshotOrigin;
@@ -325,6 +328,8 @@ export async function analyzeEditorContext(request: EditorContextRequest): Promi
         const matchesParent = same(snapshot.selection, parent.snapshot.selection) && same(snapshot.prepared, parent.snapshot.prepared) && same(snapshot.policy, parent.snapshot.policy);
         if (!matchesParent && (checked.checking.status === 'captured' || checked.checking.attempted)) throw new WorkerError('EDITOR_PROTOCOL', 'Decomposition ran against a changed prepared parent.');
         response.sourceDecomposition = checked;
+        if (Object.hasOwn(response, 'sourceDecompositionPresentation'))
+          response.sourceDecompositionPresentation = sanitizeSourcePresentation(response.sourceDecompositionPresentation, checked);
       }
     }
     if (Object.hasOwn(response, 'sourceOccurrence') && !Object.hasOwn(response, 'sourceSnapshot')) throw new WorkerError('EDITOR_PROTOCOL', 'A source occurrence requires its fresh source snapshot.');

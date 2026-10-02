@@ -13,7 +13,7 @@
     "check:reader-drivers": "tsc --project tsconfig.reader-drivers.json",
     "test": "vitest run",
     "test:server": "tsx --test server/*.test.ts",
-    "check": "npm run build && npm run check:reader-drivers && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation && npm run test:atlas && npm run test:cues && npm run test:sets && npm run test:editor && npm run test:source-dependency && npm run test:source-snapshot && npm run test:source-snapshot-controls && npm run test:source-occurrence && npm run test:source-occurrence-controls && npm run test:source-head-exposure && npm run test:source-decomposition && npm run test:source-fields && npm run test:source-logical && npm run test:graphs && npm run test:graph-reading && npm run test:inspection && npm run test:definition-previews && npm run test:corpus && npm run test:restricted && npm run test:restricted-reading && npm run test:structure-export && npm run test:decomposition",
+    "check": "npm run build && npm run check:reader-drivers && npm test && npm run test:server && npm run test:lean && npm run test:integration && npm run test:semantic && npm run test:reading && npm run test:notation && npm run test:atlas && npm run test:cues && npm run test:sets && npm run test:editor && npm run test:source-dependency && npm run test:source-snapshot && npm run test:source-snapshot-controls && npm run test:source-occurrence && npm run test:source-occurrence-controls && npm run test:source-head-exposure && npm run test:source-decomposition && npm run test:source-presentation && npm run test:source-fields && npm run test:source-logical && npm run test:graphs && npm run test:graph-reading && npm run test:inspection && npm run test:definition-previews && npm run test:corpus && npm run test:restricted && npm run test:restricted-reading && npm run test:structure-export && npm run test:decomposition",
     "start": "tsx server/index.ts",
     "setup:lean": "node scripts/lean-build.mjs",
     "test:lean": "node scripts/lean-test.mjs",
@@ -43,7 +43,8 @@
     "test:source-head-exposure": "node --import tsx scripts/source-head-exposure-integration.ts",
     "test:source-decomposition": "node --import tsx scripts/source-decomposition-integration.ts",
     "test:source-fields": "node --import tsx scripts/source-field-integration.ts",
-    "test:source-logical": "node --import tsx scripts/source-logical-integration.ts"
+    "test:source-logical": "node --import tsx scripts/source-logical-integration.ts",
+    "test:source-presentation": "node --import tsx scripts/source-presentation-integration.ts"
   },
   "engines": {
     "node": ">=22.12"

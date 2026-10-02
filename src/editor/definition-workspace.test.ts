@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { DefinitionWorkspace } from './DefinitionWorkspace';
+import { SOURCE_PRESENTATION_SCHEMA, SOURCE_PRESENTATION_NOTE } from './source-presentation';
 import type { JsonObject, JsonValue } from '../packets/packet';
 import type { PositionalStructuralInput } from '../packets/structure';
 import { definitionOccurrences } from './definition-occurrences';
@@ -188,7 +192,7 @@ describe('definition workspace exact continuation', () => {
     f.controller.start(f.anchor, f.message(other, '3'));
     expect(f.controller.state?.phase).toBe('unavailable'); expect(f.controller.state?.message).toContain('Refresh'); expect(f.posts).toHaveLength(0);
   });
-  it('checks the branded application, then exposes the checked focus and retains the exact result', () => {
+  it.each(['available', 'absent', 'stale', 'budget'] as const)('checks the branded application, retaining exact result with %s presentation', variant => {
     const f = prepare(), catalogue = f.controller.state!.catalogue!;
     const choices = definitionOccurrences(catalogue, { filter: 'ForeignWrapper' });
     if (choices.status !== 'available') throw Error(choices.reason);
@@ -196,10 +200,26 @@ describe('definition workspace exact continuation', () => {
     const focused = next(f.history, { kind: 'focus', path: [] });
     f.controller.status(f.status('3')); expect(f.controller.result(f.message(focused, '3'))).toBe(true);
     expect(f.controller.state?.phase).toBe('exposing'); expect(f.posts.at(-1)?.command.type).toBe('statementlens.exposeFocusedHead');
-    const exposed = next(focused, { kind: 'expose', target: 'term' }, o(o(f.f.value.checking).exposure)), final = f.message(exposed, '4');
+    const exposed = next(focused, { kind: 'expose', target: 'term' }, o(o(f.f.value.checking).exposure));
+    const wire = clone(f.message(exposed, '4')), bundle = wire.decompositions!.at(-1)!, check = bundle.record.checking;
+    if (check.status !== 'captured' || check.steps.at(-1)!.output.status !== 'candidate') throw Error('Missing fixture result.');
+    if (variant !== 'absent') Object.assign(bundle, { presentation: { schema: SOURCE_PRESENTATION_SCHEMA,
+      captureId: variant === 'stale' ? id(99) : bundle.record.captureId, status: 'available', stepIndex: 2, target: 'term',
+      result: (check.steps.at(-1)!.output as { result: unknown }).result, text: variant === 'budget' ? 'x'.repeat(8193) : '<b>same same</b>' } });
+    const final = parsed(wire), exact = JSON.stringify(bundle.record);
     f.controller.status(f.status('4')); expect(f.controller.result(final)).toBe(true);
     expect(f.controller.state?.phase).toBe('complete'); expect(f.controller.state?.result).toBe(final.decompositions!.at(-1)!.record);
     expect(f.controller.state?.anchor.analysis).toBe(f.anchor.analysis); expect(f.posts).toHaveLength(4);
+    expect(JSON.stringify(f.controller.state?.result)).toBe(exact);
+    expect(f.controller.state?.resultPresentation?.status).toBe(variant === 'available' ? 'available' : 'unavailable');
+    const html = renderToStaticMarkup(createElement(DefinitionWorkspace, { state: f.controller.state!, onInspect() {}, onReturn() {}, onDetails() {} }));
+    expect(html).toContain('Original clause'); expect(html).toContain('Selected clause'); expect(html).toContain('Definition check outcomes');
+    expect(html).toContain('Exact result and surrounding scope'); expect(html).toContain('surrounding scope');
+    if (variant === 'available') {
+      expect(html).toContain('&lt;b&gt;same same&lt;/b&gt;'); expect(html).not.toContain('<b>same same</b>');
+      expect(html).toContain(SOURCE_PRESENTATION_NOTE);
+      expect(html.indexOf('Readable Lean result')).toBeLessThan(html.indexOf('<summary>Exact result and surrounding scope'));
+    } else expect(html).toContain(variant === 'absent' ? 'not retained' : 'was rejected');
   });
   it('refuses a valid answer for a different focus path before exposing anything', () => {
     const f = prepare(), model = definitionOccurrences(f.controller.state!.catalogue!, { filter: 'ForeignWrapper' });

@@ -210,18 +210,18 @@ unsafe def analyze (request : Json) : IO Json := do
           } exposureRequest fresh
           pure (some value, none)
         catch error => pure (none, some ((error.toString.take 4096).toString))
-  let (decomposition, decompositionFailure) ← match (request.getObjVal? "decomposition").toOption with
-    | none => pure (none, none)
+  let (decomposition, decompositionFailure, presentation) ← match (request.getObjVal? "decomposition").toOption with
+    | none => pure (none, none, none)
     | some decompositionRequest => match snapshot with
-      | none => pure (none, some "A fresh source snapshot is unavailable; decomposition checking did not begin.")
+      | none => pure (none, some "A fresh source snapshot is unavailable; decomposition checking did not begin.", none)
       | some fresh => do
         try
-          let value ← SourceSnapshot.captureDecomposition chosen.term chosen.context captureId {
+          let (value, presentation) ← SourceSnapshot.captureDecomposition chosen.term chosen.context captureId {
             startByte := chosen.startByte, endByte := chosen.endByte,
             requestedStartByte := start, requestedEndByte := stop
           } decompositionRequest fresh
-          pure (some value, none)
-        catch error => pure (none, some ((error.toString.take 4096).toString))
+          pure (some value, none, some presentation)
+        catch error => pure (none, some ((error.toString.take 4096).toString), none)
   let result ← try exportCandidate chosen source fileName request catch error =>
     pure (obj [("ok", toJson false), ("error", str error.toString), ("diagnostics", Json.arr #[])])
   let mut diagnostics := #[]
@@ -241,6 +241,7 @@ unsafe def analyze (request : Json) : IO Json := do
   if let some value := headExposure then result := result.setObjVal! "sourceHeadExposure" value
   if let some reason := headExposureFailure then result := result.setObjVal! "sourceHeadExposureUnavailable" (str reason)
   if let some value := decomposition then result := result.setObjVal! "sourceDecomposition" value
+  if let some value := presentation then result := result.setObjVal! "sourceDecompositionPresentation" value
   if let some reason := decompositionFailure then result := result.setObjVal! "sourceDecompositionUnavailable" (str reason)
   if let some snapshot := snapshot then return result.setObjVal! "sourceSnapshot" snapshot
   if let some reason := captureFailure then return result.setObjVal! "sourceSnapshotUnavailable" (str reason)
@@ -258,10 +259,12 @@ def serializeContextResponse (result : Json) : String := Id.run do
   let headExposureUnavailable := (result.getObjVal? "sourceHeadExposureUnavailable").toOption
   let decomposition := (result.getObjVal? "sourceDecomposition").toOption
   let decompositionUnavailable := (result.getObjVal? "sourceDecompositionUnavailable").toOption
+  let presentation := (result.getObjVal? "sourceDecompositionPresentation").toOption
   let legacy := match result.getObj? with
     | .ok fields => Json.mkObj (fields.toList.filter fun (key, _) =>
       !["sourceSnapshot", "sourceSnapshotUnavailable", "sourceOccurrence", "sourceOccurrenceUnavailable",
-        "sourceHeadExposure", "sourceHeadExposureUnavailable", "sourceDecomposition", "sourceDecompositionUnavailable"].contains key)
+        "sourceHeadExposure", "sourceHeadExposureUnavailable", "sourceDecomposition", "sourceDecompositionUnavailable",
+        "sourceDecompositionPresentation"].contains key)
     | .error _ => result
   let serialized := Response.serializeResponse legacy
   let legacyText := if serialized.utf8ByteSize > 2097152 then
@@ -295,7 +298,16 @@ def serializeContextResponse (result : Json) : String := Id.run do
   match decomposition with
   | some value =>
     let complete := append exposureText "sourceDecomposition" value
-    if complete.utf8ByteSize ≤ 4 * 1024 * 1024 then return complete
+    if complete.utf8ByteSize ≤ 4 * 1024 * 1024 then
+      if let some sidecar := presentation then
+        let withPresentation := append complete "sourceDecompositionPresentation" sidecar
+        if withPresentation.utf8ByteSize ≤ 4 * 1024 * 1024 then return withPresentation
+        -- Optional display must never displace the exact checking history.
+        let captureId := (value.getObjValAs? String "captureId").toOption.getD ""
+        let omitted := append complete "sourceDecompositionPresentation" (SourceSnapshot.presentationUnavailable captureId
+          "Native notation is omitted because the complete response exceeds its transport limit.")
+        if omitted.utf8ByteSize ≤ 4 * 1024 * 1024 then return omitted
+      return complete
     return append exposureText "sourceDecomposition" (SourceSnapshot.omitDecompositionChecking value
       "The combined context response exceeds 4 MiB; the complete decomposition checking record is omitted.")
   | none => match decompositionUnavailable with

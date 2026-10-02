@@ -185,8 +185,13 @@ test('extension controller orders host messages, cancels stale analysis, and gua
         {index:0,operation:{kind:'expose',target:'term'},output:exposureRecord.checking.exposure,replay:'matched'},
         {index:1,operation:{kind:'focus',path:[]},output:{status:'candidate',result:occurrence.checking.selected,checking:{status:'completed'}},replay:'new'},
       ]}});
-    focusRequest.resolve({...focusFresh,sourceDecomposition:focusRecord}); await focusCall;
+    const exactFocus = JSON.stringify(focusRecord);
+    focusRequest.resolve({...focusFresh,sourceDecomposition:focusRecord,
+      sourceDecompositionPresentation:intoContext({schema:'definograph.source-presentation.v1',captureId:focusRecord.captureId,status:'unavailable',reason:'Synthetic display unavailable.'})}); await focusCall;
     assert.equal(messages.at(-1).decompositions.length,1); assert.equal(messages.at(-1).decompositions[0].record,focusRecord);
+    assert.equal(messages.at(-1).decompositions[0].presentation.status,'unavailable');
+    assert.equal(JSON.stringify(focusRecord),exactFocus,'display sidecar leaves the exact continuation record unchanged');
+    assert.equal(Object.hasOwn(messages.at(-1).analysis ?? {},'sourceDecompositionPresentation'),false,'display sidecar is removed from guided analysis');
     assert.equal(messages.at(-1).headExposure.record,exposureRecord); assert.equal(messages.at(-1).sourceOccurrence,occurrence);
     assert.equal(Object.isFrozen(focusRecord.checking.steps),true);
     const exposeFocused = {type:'statementlens.exposeFocusedHead',parentCaptureId:next.sourceSnapshotOrigin.captureId,

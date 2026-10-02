@@ -11,6 +11,7 @@ import { headExposureValidation as headRules, validateSourceHeadExposure, type H
   type HeadExposureCandidate, type HeadExposureTarget, type SourceHeadExposure } from './source-head-exposure';
 import { validateHeadExpression } from './head-exposure-replay';
 import type { SourceSnapshotOrigin } from './source-origin';
+import type { SourcePresentation } from './source-presentation';
 import { validateLogicalCandidate, logicalDeclarations, type LogicalCandidate } from './logical-inspection-replay';
 import { validateDirectFieldCatalogue, validateDirectFieldCandidate, directFieldDeclarations,
   type DirectFieldCatalogue, type DirectFieldEntry } from './field-inspection-replay';
@@ -45,7 +46,7 @@ export interface SourceDecomposition {
     checks: SnapshotReceipt[]; audits: SnapshotAudit[]; environmentSnapshotCount: number;
   };
 }
-export interface SourceDecompositionBundle { snapshot: SourceSnapshot; origin: SourceSnapshotOrigin; record: SourceDecomposition }
+export interface SourceDecompositionBundle { snapshot: SourceSnapshot; origin: SourceSnapshotOrigin; record: SourceDecomposition; presentation?: SourcePresentation }
 export interface DecompositionHistory {
   snapshot: SourceSnapshot; occurrence: SourceOccurrence;
   seed: { snapshot: SourceSnapshot; record: SourceHeadExposure } | null;

@@ -6,6 +6,7 @@ import type { SourceSnapshotOrigin } from './source-origin';
 import { definitionOccurrences, definitionOccurrenceFocus, type DefinitionOccurrence } from './definition-occurrences';
 import { DECOMPOSITION_MAX_ATTEMPTS, DECOMPOSITION_MAX_OPERATIONS, decompositionPlan, validateDecompositionHistory,
   type DecompositionOperation, type SourceDecomposition } from './source-decomposition';
+import { sourceResultPresentation, type SourcePresentation } from './source-presentation';
 
 type Result = Extract<EditorMessage, { type: 'statementlens.analysis' }>;
 type Status = Extract<EditorMessage, { type: 'statementlens.status' }>;
@@ -25,6 +26,7 @@ export interface DefinitionWorkspaceState {
   chosen?: DefinitionOccurrence;
   result?: SourceDecomposition;
   resultStep?: number;
+  resultPresentation?: SourcePresentation;
 }
 function same(a: unknown, b: unknown): boolean {
   // Canonicalization budgets belong to one comparison, not the webview lifetime.
@@ -208,7 +210,8 @@ export class DefinitionWorkspaceController {
       if (step.operation.kind !== 'expose' || step.operation.target !== 'term' || !('definition' in step.output)) {
         this.unavailable('No definition exposure was retained.'); return true;
       }
-      this.stage = null; this.publish({ phase: 'complete', message: 'Definition inspection completed in the application’s recorded scope. Check outcomes are shown below.', result: record, resultStep: stepIndex });
+      this.stage = null; this.publish({ phase: 'complete', message: 'Definition inspection completed in the application’s recorded scope. Check outcomes are shown below.', result: record, resultStep: stepIndex,
+        resultPresentation: sourceResultPresentation(record, stepIndex, bundles?.at(-1)?.presentation) });
     } else { this.cancel(); return false; }
     return true;
   }

@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import { StructuralFieldValue, StructuralReading } from '../packets/StructuralReading';
 import { nameText } from '../packets/syntax';
 import type { DecompositionHistory, SourceDecomposition, SourceDecompositionBundle, DecompositionOperation } from './source-decomposition';
+import { SourceResultPresentation } from './SourceResultPresentation';
 import { ProvenancePanel, deriveProvenance, guidedLogicalRoot } from './SourceProvenanceReading';
 import { SupplierPanel, deriveSupplier } from './SourceSupplierReading';
 import { operationOutcomeLabel } from './source-outcome-labels';
@@ -140,6 +141,7 @@ function AttemptReading({ bundle, parentTitle, history, currentOrigin, onContinu
       <ol className="continuation-steps" aria-label="Ordered continuation steps">{checking.steps.map(step => <li key={step.index}><button type="button" aria-pressed={selected === step.index} onClick={() => setSelected(step.index)}>Step {step.index + 1} · {operationTitle(step.operation)}<small>{step.replay} · {counted(step.receiptCount, 'outcome')}</small></button></li>)}</ol>
       <SourceReaderOutline namespace={outlineId} attempt={outline} sections={sections}/>
       {landing('step')}
+      {step?.operation.kind === 'expose' && step.output.status === 'candidate' && <SourceResultPresentation record={record} stepIndex={selected} presentation={bundle.presentation}/>}
       <StepReading key={`${record.captureId}:${selected}`} record={record} index={selected} logicalRoot={logicalRoot} onContinue={onContinue}/>
       {landing('provenance')}
       <ProvenancePanel key={`provenance:${record.captureId}:${selected}`} history={history} derived={derived} currentOrigin={currentOrigin} occurrenceAnchorPrefix={occurrenceAnchorPrefix}/>
