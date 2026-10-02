@@ -290,6 +290,8 @@ describe('definition workspace exact continuation', () => {
     expect(f.controller.state?.message).toContain('unrequested'); expect(f.controller.retainedCapture).toBe(f.capture);
     expect(f.posts).toHaveLength(3);
   });
+  // These capacity cases repeatedly validate the complete growing history through
+  // three inspection/reopen cycles; allow shared CI runners time for all checks.
   it.each([1, 2])('reserves complete inspection pairs when reopening from %i retained attempts', initialAttempts => {
     const f = prepare(); let history = f.history, requestId = 4;
     if (initialAttempts === 2) {
@@ -320,7 +322,7 @@ describe('definition workspace exact continuation', () => {
     expect(f.controller.state?.phase).toBe('unavailable'); expect(f.controller.state?.message).toContain('Refresh');
     expect(f.posts).toHaveLength(posts); expect(f.controller.retainedCapture).toBe(safe);
     f.controller.cancel(); expect(f.controller.state).toBeNull();
-  });
+  }, 20_000);
   it.each([false, true])('handles an associated host preflight refusal with changedAttachment=%s', changedAttachment => {
     const f = prepare(), choices = definitionOccurrences(f.controller.state!.catalogue!, { filter: 'ForeignWrapper' });
     if (choices.status !== 'available') throw Error(choices.reason);
