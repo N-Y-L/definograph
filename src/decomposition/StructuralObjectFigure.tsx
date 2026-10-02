@@ -1,5 +1,7 @@
 import { useId, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { FigureScroll } from '../components/FigureScroll';
+import { layoutMapDiagram } from '../components/map-diagram-layout';
+import { useDiagramText } from '../components/use-diagram-text';
 import type { SemanticObject } from '../semantic/types';
 import type { ConstructionMap, ConstructionType, TypedConstruction } from '../constructions/model';
 import { readingObjectColor } from '../visual/object-identity';
@@ -55,40 +57,42 @@ function MapRow({ map, construction, ...interaction }: Interaction & { map: Cons
   </div>;
 }
 
-function Carrier({ type, construction, x, y, ...interaction }: Interaction & { type: ConstructionType; construction: TypedConstruction; x: number; y: number }) {
+function Carrier({ type, construction, x, y, width, ...interaction }: Interaction & { type: ConstructionType; construction: TypedConstruction; x: number; y: number; width: number }) {
   const sets = construction.members.filter(member => member.typeId === type.id && member.kind === 'set');
   const elements = construction.members.filter(member => member.typeId === type.id && member.kind === 'element');
   const height = 74 + sets.length * 51 + elements.length * 29;
   return <g data-structural-carrier={type.id}>
-    <SvgObject id={type.objectId} label={`Carrier type: ${type.label}`} {...interaction}><rect className="sd-carrier" x={x - 78} y={y} width="156" height={height} rx="10"/><text className="sd-carrier-name" x={x} y={y + 28} textAnchor="middle">{short(type.label, 17)}</text><text className="sd-svg-caption" x={x} y={y + 47} textAnchor="middle">carrier type</text></SvgObject>
-    {sets.map((set, index) => <SvgObject key={set.objectId} id={set.objectId} label={`Set field ${set.name} in ${type.label}`} {...interaction}><g data-structural-region={set.objectId}><rect className="sd-set-region" x={x - 65} y={y + 60 + index * 51} width="130" height="41" rx="5"/><text className="sd-set-name" x={x} y={y + 85 + index * 51} textAnchor="middle">{short(set.name, 15)}</text></g></SvgObject>)}
-    {elements.map((element, index) => <SvgObject key={element.objectId} id={element.objectId} label={`Field ${element.name} : ${type.label}`} {...interaction}><text className="sd-element-name" x={x} y={y + 78 + sets.length * 51 + index * 29} textAnchor="middle">{short(element.name, 17)}</text></SvgObject>)}
+    <SvgObject id={type.objectId} label={`Carrier type: ${type.label}`} {...interaction}><rect className="sd-carrier" x={x - width / 2} y={y} width={width} height={height} rx="10"/><text data-diagram-label={`type:${type.id}`} className="sd-carrier-name" x={x} y={y + 28} textAnchor="middle">{short(type.label, 17)}</text><text className="sd-svg-caption" x={x} y={y + 47} textAnchor="middle">carrier type</text></SvgObject>
+    {sets.map((set, index) => <SvgObject key={set.objectId} id={set.objectId} label={`Set field ${set.name} in ${type.label}`} {...interaction}><g data-structural-region={set.objectId}><rect className="sd-set-region" x={x - width / 2 + 13} y={y + 60 + index * 51} width={width - 26} height="41" rx="5"/><text data-diagram-label={`member:${set.objectId}`} className="sd-set-name" x={x} y={y + 85 + index * 51} textAnchor="middle">{short(set.name, 15)}</text></g></SvgObject>)}
+    {elements.map((element, index) => <SvgObject key={element.objectId} id={element.objectId} label={`Field ${element.name} : ${type.label}`} {...interaction}><text data-diagram-label={`member:${element.objectId}`} className="sd-element-name" x={x} y={y + 78 + sets.length * 51 + index * 29} textAnchor="middle">{short(element.name, 17)}</text></SvgObject>)}
   </g>;
 }
 
 /** Generic arrows and containment come from typed primitive data, never field names. */
 function DataDiagram({ construction, ...interaction }: Interaction & { construction: TypedConstruction }) {
-  const marker = `sd-arrow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const compact = construction.types.length > 0 && construction.types.length <= 3 && construction.maps.length <= 5;
   if (!compact) return <div className="sd-data-list">{construction.maps.map(map => <MapRow key={map.objectId} map={map} construction={construction} {...interaction}/>)}
     <div className="sd-types">{construction.types.map(type => <div className="sd-type" key={type.id}><ObjectControl id={type.objectId} label={type.label} {...interaction}/>{construction.members.filter(member => member.typeId === type.id).map(member => <div className="sd-member" key={member.objectId}><span>{member.kind === 'set' ? 'set field' : 'field'}</span><ObjectControl id={member.objectId} label={member.name} title={`${member.name} : ${member.type}`} {...interaction}/></div>)}</div>)}</div>
   </div>;
-  const positions = new Map(construction.types.map((type, index) => [type.id, construction.types.length === 1 ? 330 : 95 + index * 470 / (construction.types.length - 1)]));
-  const lanes = new Map<string, number>();
-  const routes = construction.maps.map(map => {
-    const from = positions.get(map.domainId)!, to = positions.get(map.codomainId)!, pair = [map.domainId, map.codomainId].sort().join(':');
-    const lane = lanes.get(pair) ?? 0; lanes.set(pair, lane + 1);
-    const base = 105, height = 45 + lane * 31;
-    const path = from === to ? `M${from - 38} ${base} C${from - 102} ${base - height * 2},${from + 102} ${base - height * 2},${from + 38} ${base}`
-      : `M${from} ${base} Q${(from + to) / 2} ${base - height * 2},${to} ${base}`;
-    return { map, path, x: (from + to) / 2, y: base - height * (from === to ? 1.5 : 1) - 8 };
-  });
-  const top = Math.min(0, ...routes.map(route => route.y - 20));
-  const bottom = 212 + Math.max(0, ...construction.types.map(type => construction.members.filter(member => member.typeId === type.id).reduce((height, member) => height + (member.kind === 'set' ? 51 : 29), 0)));
-  return <FigureScroll className="sd-data-scroll" label="Data fields diagram; scroll to see all of it"><svg className="sd-data-diagram" viewBox={`0 ${top} 660 ${bottom - top}`} role="group" aria-label="Data fields displayed using their declared carrier types, sets, and maps">
+  return <DataGraph construction={construction} {...interaction}/>;
+}
+
+function DataGraph({ construction, ...interaction }: Interaction & { construction: TypedConstruction }) {
+  const marker = `sd-arrow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const text = useDiagramText();
+  const layout = layoutMapDiagram(construction.types.map(type => {
+    const members = construction.members.filter(member => member.typeId === type.id);
+    const width = Math.max(156, text.size(`type:${type.id}`, short(type.label, 17), 18).width + 24,
+      ...members.map(member => text.size(`member:${member.objectId}`, short(member.name, member.kind === 'set' ? 15 : 17), 14).width + (member.kind === 'set' ? 50 : 24)));
+    return { id: type.id, width, height: 74 + members.reduce((sum, member) => sum + (member.kind === 'set' ? 51 : 29), 0) };
+  }), construction.maps.map(map => ({ id: map.objectId, from: map.domainId, to: map.codomainId, label: text.size(`map:${map.objectId}`, short(map.name, 24), 15) })));
+  return <FigureScroll className="sd-data-scroll" label="Data fields diagram; scroll to see all of it"><svg ref={text.ref} className="sd-data-diagram" style={{ minWidth: layout.width }} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label="Data fields displayed using their declared carrier types, sets, and maps">
     <defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L7 4 L1 7"/></marker></defs>
-    {routes.map(route => <SvgObject key={route.map.objectId} id={route.map.objectId} label={`Map field ${route.map.name} : ${route.map.type}`} {...interaction}><path data-structural-map={route.map.objectId} className="sd-map-arrow" d={route.path} markerEnd={`url(#${marker})`}/><text className="sd-map-name" x={route.x} y={route.y} textAnchor="middle">{short(route.map.name, 24)}</text></SvgObject>)}
-    {construction.types.map(type => <Carrier key={type.id} type={type} construction={construction} x={positions.get(type.id)!} y={110} {...interaction}/>)}
+    {construction.maps.map((map, index) => {
+      const route = layout.edges[index];
+      return <SvgObject key={map.objectId} id={map.objectId} label={`Map field ${map.name} : ${map.type}`} {...interaction}><path data-structural-map={map.objectId} className="sd-map-arrow" d={route.path} markerEnd={`url(#${marker})`}/><text data-diagram-label={`map:${map.objectId}`} className="sd-map-name" x={route.labelX} y={route.labelY} textAnchor="middle">{short(map.name, 24)}</text></SvgObject>;
+    })}
+    {construction.types.map((type, index) => <Carrier key={type.id} type={type} construction={construction} x={layout.nodes[index].x} y={layout.nodes[index].y} width={layout.nodes[index].width} {...interaction}/>)}
   </svg></FigureScroll>;
 }
 

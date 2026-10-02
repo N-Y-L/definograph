@@ -84,7 +84,22 @@ export function activate(context: vscode.ExtensionContext): void {
     if (action && action.kind !== 'decomposition' && (parent?.headExposure || parent?.decompositions !== undefined)) throw new Error('This history retains its original occurrence and earlier attempts. Save it and Refresh to start another source history.');
     if (action?.kind === 'decomposition') {
       if (!parent?.occurrence) throw new Error('No checked occurrence is retained in this session.');
-      requireContinuationParent(parent.headExposure ?? null, parent.decompositions ?? [], action, parent.occurrence.path, parent.occurrence);
+      try {
+        requireContinuationParent(parent.headExposure ?? null, parent.decompositions ?? [], action, parent.occurrence.path, parent.occurrence);
+      } catch (error) {
+        // A retained, current parent exists only after native work has finished.
+        // Associate this refusal with a new request without losing that history;
+        // stale captures, in-flight duplicates and malformed commands fail earlier.
+        const ticket = lifecycle.begin(metadata);
+        const message = error instanceof Error ? error.message : 'This continuation is unavailable.';
+        retained = { ...parent, ticket };
+        post({ type: 'statementlens.status', phase: 'analyzing', requestId: ticket.requestId, document: metadata });
+        post({ type: 'statementlens.error', requestId: ticket.requestId, document: metadata, message,
+          sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence,
+          ...(parent.headExposure ? { headExposure: parent.headExposure } : {}),
+          decompositions: parent.decompositions ?? [], decompositionUnavailable: message });
+        return;
+      }
     }
     if (action?.kind === 'head-exposure' && (!parent?.occurrence || parent.occurrence.checking.status !== 'captured'
       || parent.occurrence.checking.action.status !== 'completed' || !parent.occurrence.checking.selected || parent.occurrence.captureId !== parent.origin.captureId))

@@ -2,6 +2,18 @@
 
 The default reader presents one mathematical step at a time, with the complete logical overview alongside. Previous, Next, and the step selector change the focus. There is no timed playback. The full static visual statement remains available below the sequence, and the representation is usable with reduced motion.
 
+In the VS Code reader, **Inspect a definition in this statement** keeps the
+current clause and ordered context alongside the inspection. **Return to
+reading** restores the exact selected step, including a construction step within
+a clause. The [definition workspace](editor-definition-exposure.md#inspect-from-the-statement)
+retains the original reading separately from the inspected result and its checks.
+
+Typed-map figures use measured label dimensions and a shared layout with a
+separate route for each map. Dense diagrams keep their readable size and scroll
+horizontally in a narrower reading column. An overflowing frame is named and
+keyboard-focusable so it can be scrolled without a pointer; a fitting frame adds
+no extra Tab stop. The routes and spacing carry no additional mathematical meaning.
+
 The compiler in `src/reading/cues.ts` derives a portable cue plan from the elaborated semantic document and the complete reading document. A cue identifies its exact source nodes, expression scope, enclosing logical branches, assumptions, visible objects, and relations. It carries semantic object identities rather than matching displayed names. Application stages follow their inputs before an outer comparison. Constructors are reusable; there is no dispatch by theorem name.
 
 ## Meaning that must survive sequencing

@@ -224,6 +224,58 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     await receiver!({...occurrenceCommand,parentCaptureId:next.sourceSnapshotOrigin.captureId});
     assert.equal(pending.length,0,'document revision invalidates the retained parent');
     await establishParent();
+    const boundedOccurrenceCall = receiver!({...occurrenceCommand,path:[]}); await tick();
+    const boundedOccurrenceRequest = pending.shift()!;
+    const boundedSource = sourceResult(boundedOccurrenceRequest.request,'dd0e8400-e29b-41d4-a716-446655440000');
+    const boundedOccurrence = intoContext({...occurrence,captureId:boundedSource.sourceSnapshotOrigin.captureId,path:[]});
+    boundedOccurrenceRequest.resolve({...boundedSource,sourceOccurrence:boundedOccurrence}); await boundedOccurrenceCall;
+    const boundedFocus = {type:'statementlens.focusExposedPart',parentCaptureId:boundedOccurrence.captureId,
+      previousCaptureId:boundedOccurrence.captureId,parentStepIndex:0,path:[]};
+    for (let index = 0; index < 8; index++) {
+      const call = receiver!(boundedFocus); await tick();
+      const request = pending.shift()!;
+      assert.equal(request.request.decomposition.attempts.length,index);
+      if (index === 7) {
+        const beforeDuplicates = messages.length;
+        for (const invalid of [boundedFocus,{...boundedFocus,parentCaptureId:parentId},{...boundedFocus,term:['const','forged']}])
+          await receiver!(invalid);
+        assert.equal(pending.length,0,'duplicate, obsolete and malformed requests cannot start another analysis');
+        assert.equal(messages.length,beforeDuplicates,'rejected controls cannot replace the active request status');
+        assert.equal(request.request.signal.aborted,false,'preflight rejection cannot cancel active native work');
+      }
+      const fresh = sourceResult(request.request,`ee0e840${index}-e29b-41d4-a716-446655440000`);
+      const record = intoContext({schema:'control-only-decomposition',captureId:fresh.sourceSnapshotOrigin.captureId,
+        parentCaptureId:boundedOccurrence.captureId,previousCaptureId:boundedOccurrence.captureId,parentStepIndex:0,
+        operations:[{kind:'focus',path:[]}],checking:{status:'captured',action:{status:'completed'},steps:[
+          {index:0,operation:{kind:'focus',path:[]},output:{status:'candidate',result:boundedOccurrence.checking.selected,checking:{status:'completed'}},replay:'new'},
+        ]}});
+      request.resolve({...fresh,sourceDecomposition:record}); await call;
+    }
+    const completeHistory = messages.at(-1);
+    const exhaustedCommand = {type:'statementlens.exposeFocusedHead',parentCaptureId:boundedOccurrence.captureId,
+      previousCaptureId:completeHistory.decompositions.at(-1).record.captureId,parentStepIndex:0,target:'term'};
+    let lastResult = completeHistory;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const beforeRefusal = messages.length;
+      await receiver!(exhaustedCommand);
+      assert.equal(pending.length,0,'the ninth attempt is refused without calling native analysis');
+      assert.equal(messages.length,beforeRefusal+2,'a bounded refusal sends both status and terminal result');
+      const status = messages.at(-2), result = messages.at(-1);
+      assert.equal(status.type,'statementlens.status'); assert.equal(status.phase,'analyzing');
+      assert.equal(result.type,'statementlens.error'); assert.equal(result.requestId,status.requestId);
+      assert.ok(BigInt(status.requestId)>BigInt(lastResult.requestId),'the refusal starts a new request');
+      assert.deepEqual(status.document,lastResult.document);
+      assert.deepEqual(result.document,status.document,'the refusal completes the exact document association');
+      assert.match(result.decompositionUnavailable,/Eight continuation attempts/);
+      assert.equal(result.message,result.decompositionUnavailable);
+      assert.equal(result.sourceSnapshot,completeHistory.sourceSnapshot);
+      assert.equal(result.sourceSnapshotOrigin,completeHistory.sourceSnapshotOrigin);
+      assert.equal(result.sourceOccurrence,boundedOccurrence);
+      assert.equal(result.decompositions,completeHistory.decompositions,'refusal retains all eight attempts unchanged');
+      lastResult = result;
+    }
+    await establishParent();
+    assert.equal(messages.at(-1).sourceSnapshotOrigin.captureId,parentId,'Refresh recovers from exhausted history');
     listeners.config!({affectsConfiguration:()=>true});
     assert.equal(messages.at(-1).phase,'stale','configuration changes invalidate the process association');
     await receiver!(occurrenceCommand); assert.equal(pending.length,0,'configuration changes discard retained parent');

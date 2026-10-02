@@ -12,6 +12,8 @@ import { compileReading } from '../reading/compiler';
 import { compileSetConstruction, SetConstructionFigure } from '../set-constructions';
 import { compactLabel } from './layout';
 import { FigureScroll, useFrameOverflow } from '../components/FigureScroll';
+import { useDiagramText } from '../components/use-diagram-text';
+import { layoutContainedRelation, layoutRelationComparison } from './relation-diagram-layout';
 import { applicationFlow } from '../semantic/application-flow';
 import { formatExpression } from '../semantic/expression';
 import './statement-reading.css';
@@ -19,6 +21,8 @@ import { compileReadingCues, type ReadingCue } from '../reading/cues';
 import { GuidedReading } from './GuidedReading';
 import { contextEntryTitle } from '../core/context-entry';
 import { counted } from '../core/counted';
+import { createReadingCueSelection, notifyReadingCueSelection, resolveReadingCue, type ReadingCueSelection } from './reading-cue-selection';
+export type { ReadingCueSelection } from './reading-cue-selection';
 
 export interface StatementReadingViewProps {
   reading: ReadingDocument;
@@ -29,6 +33,11 @@ export interface StatementReadingViewProps {
   /** Focus a particular relation when multiple applications share a clause.
    * Clear this controlled selection in onNodeSelect to resume step navigation. */
   selectedRelationId?: string;
+  /** Retain an exact stage across remounts. Undefined uses local attention state;
+   * null clears retained attention. The token belongs to its document reference. */
+  selectedCue?: ReadingCueSelection | null;
+  /** Called after the existing node/source callbacks for guided navigation. */
+  onCueChange?: (selection: ReadingCueSelection | null) => void;
   onObjectSelect?: (id: string) => void;
   onNodeSelect?: (id: string) => void;
   /** A guided stage may focus an application inside its enclosing node. Called
@@ -116,6 +125,33 @@ function ExpressionPath({ objectId, relations, y, ctx }: { objectId: string; rel
   </g>;
 }
 
+/** Basic containment and comparison keep their glyphs inside the shapes that
+ * carry their meaning. Full object labels remain on the interactive groups. */
+function MeasuredRelationFigure({ relation, ctx }: { relation: SemanticRelation; ctx: RenderContext }) {
+  const text = useDiagramText();
+  const nested = relation.kind === 'subset', comparison = relation.kind === 'equality' || relation.kind === 'inequality';
+  const first = port(relation, comparison ? 'left' : nested ? 'superset' : 'set');
+  const second = port(relation, comparison ? 'right' : nested ? 'subset' : 'element');
+  const firstLabel = compactLabel(first ? ctx.objects.get(first)?.label ?? 'unspecified' : 'unspecified', 24);
+  const secondLabel = compactLabel(second ? ctx.objects.get(second)?.label ?? 'unspecified' : 'unspecified', 24);
+  const firstSize = text.size('first', firstLabel, 18), secondSize = text.size('second', secondLabel, 18);
+  const name = (key: string, label: string, x: number, y: number) => <text data-diagram-label={key} className="sr-object-label" x={x} y={y} textAnchor="middle">{label}</text>;
+  let body: ReactNode, width: number, height: number;
+  if (comparison) {
+    const layout = layoutRelationComparison(firstSize, secondSize, text.size('symbol', relation.label, 27));
+    ({ width, height } = layout);
+    const box = (id: string | undefined, label: string, key: string, slot: typeof layout.left) => <FigureObject id={id} ctx={ctx}><rect x={slot.x} y={slot.y} width={slot.width} height={slot.height} rx="23" className="sr-expression-box"/>{name(key, label, slot.labelX, slot.labelY)}</FigureObject>;
+    body = <>{box(first, firstLabel, 'first', layout.left)}<text data-diagram-label="symbol" x={layout.symbolX} y={layout.symbolY} textAnchor="middle" className="sr-comparison-symbol">{relation.label}</text>{box(second, secondLabel, 'second', layout.right)}</>;
+  } else {
+    const layout = layoutContainedRelation(firstSize, secondSize, nested);
+    ({ width, height } = layout);
+    body = <><FigureObject id={first} ctx={ctx}><ellipse cx={layout.outer.x} cy={layout.outer.y} rx={layout.outer.rx} ry={layout.outer.ry} className="sr-set-outline"/>{name('first', firstLabel, layout.outer.x, layout.outer.label.baseline)}</FigureObject><FigureObject id={second} ctx={ctx}>{nested ? <ellipse cx={layout.inner.x} cy={layout.inner.y} rx={layout.inner.rx} ry={layout.inner.ry} className="sr-set-outline"/> : <><circle cx={layout.inner.x} cy={layout.inner.y} r="6" className="sr-named-point"/><circle cx={layout.inner.x} cy={layout.inner.y} r="16" fill="transparent"/></>}{name('second', secondLabel, layout.inner.x, layout.inner.label.baseline)}</FigureObject></>;
+  }
+  const caption = comparison ? relation.kind === 'equality' ? 'The displayed expressions are required to satisfy this relation' : 'Order condition on the displayed expressions'
+    : nested ? 'Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion.' : 'Membership condition · the named element belongs to the region';
+  return <figure className={`sr-relation-figure sr-figure-${relation.kind}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={{ minWidth: Math.ceil(width * 10 / 18), height: 'auto', aspectRatio: `${width} / ${height}` }} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic relation`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
+}
+
 function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
   if (compileRestrictedMap(ctx.document, relation, relations)) return <RestrictedMapFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   if (compileGraphConstraint(ctx.document, relation, relations)) return <GraphConstraintFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
@@ -128,14 +164,14 @@ function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelati
     const application = producedBy(element, relations);
     if (application?.kind === 'application' && application.ports.filter(p => p.role.startsWith('input')).length === 1 && port(application, 'input 1')) {
       body = <><Region id={set} x={336} y={100} width={235} height={155} ctx={ctx}/><NamedPoint id={port(application, 'input 1')} x={78} y={110} ctx={ctx}/><FigureArrow from={[94, 107]} to={[318, 107]} label={port(application, 'function')} ctx={ctx}/><NamedPoint id={element} x={337} y={110} ctx={ctx}/></>;
-    } else body = <Region id={set} x={250} y={100} width={312} height={160} ctx={ctx}><NamedPoint id={element} x={250} y={110} ctx={ctx}/></Region>;
+    } else return <MeasuredRelationFigure relation={relation} ctx={ctx}/>;
     caption = 'Membership condition · the named element belongs to the region';
   } else if (relation.kind === 'subset') {
     const subset = port(relation, 'subset'), superset = port(relation, 'superset');
     const image = producedBy(subset, relations);
     if (image?.kind === 'image') {
       body = <><Region id={port(image, 'set')} x={84} y={105} width={140} height={135} ctx={ctx}/><Region id={superset} x={350} y={103} width={255} height={173} ctx={ctx}/><Region id={subset} x={354} y={120} width={163} height={97} ctx={ctx} labelTop={false}/><FigureArrow from={[160, 99]} to={[273, 112]} bend={-18} label={port(image, 'function')} ctx={ctx}/></>;
-    } else body = <><Region id={superset} x={250} y={102} width={360} height={180} ctx={ctx}/><Region id={subset} x={250} y={120} width={223} height={103} ctx={ctx}/></>;
+    } else return <MeasuredRelationFigure relation={relation} ctx={ctx}/>;
     caption = 'Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion.';
   } else if (relation.kind === 'image' || relation.kind === 'preimage') {
     const source = port(relation, 'set'), result = port(relation, 'result');
@@ -153,8 +189,7 @@ function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelati
       const collapsed = expressionMapPath(left, relations).collapsed || expressionMapPath(right, relations).collapsed;
       caption = `Compare the outputs of these map paths${relation.label === '≠' ? ': they are required to differ' : ': they are required to agree'}.${collapsed ? ' Further nested inputs retain their expression labels.' : ''}`;
     } else {
-      body = <><FigureObject id={left} ctx={ctx}><rect x="42" y="63" width="175" height="95" rx="23" className="sr-expression-box"/><ObjectName id={left} x={129} y={116} ctx={ctx} max={24}/></FigureObject><text x="250" y="120" textAnchor="middle" className="sr-comparison-symbol">{relation.label}</text><FigureObject id={right} ctx={ctx}><rect x="283" y="63" width="175" height="95" rx="23" className="sr-expression-box"/><ObjectName id={right} x={370} y={116} ctx={ctx} max={24}/></FigureObject></>;
-      caption = relation.kind === 'equality' ? 'The displayed expressions are required to satisfy this relation' : 'Order condition on the displayed expressions';
+      return <MeasuredRelationFigure relation={relation} ctx={ctx}/>;
     }
   } else if (relation.kind === 'distance') {
     body = <><NamedPoint id={port(relation, 'from')} x={89} y={110} ctx={ctx}/><NamedPoint id={port(relation, 'to')} x={411} y={110} ctx={ctx}/><path d="M109 109 H391 M110 101 V117 M390 101 V117" className="sr-distance-bracket"/><FigureObject id={port(relation, 'distance')} ctx={ctx}><ObjectName id={port(relation, 'distance')} x={250} y={88} ctx={ctx}/></FigureObject><text x="250" y="178" textAnchor="middle" className="sr-role-label">symbolic distance · no scale assigned</text></>;
@@ -169,8 +204,7 @@ function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelati
     body = <><FigureObject id={centerId} ctx={ctx} title={relation.label}><rect x="160" y="65" width="180" height="79" rx="17" className="sr-expression-box"/>{centerId ? <ObjectName id={centerId} x={250} y={110} ctx={ctx} max={24}/> : <text x="250" y="110" textAnchor="middle" className="sr-object-label">{compactLabel(relation.label, 24)}</text>}</FigureObject>{others.map((p, index) => { const x = (index + 1) * 500 / (others.length + 1); return <g key={`${p.role}:${index}`}><path d={`M250 145 L${x} 178`} className="sr-role-connection"/><NamedPoint id={p.objectId} x={x} y={184} ctx={ctx} labelY={23}/></g>; })}{relation.kind === 'function-property' && <text x="250" y="171" className="sr-property-name" textAnchor="middle">{relation.label}</text>}</>;
     caption = componentMode(ctx.document) ? 'Argument structure of this expression' : relation.fidelity === 'structural' ? 'Argument structure only · this predicate has no interpreted geometric meaning' : `${relation.label} · a property required of the displayed object`;
   }
-  const comparison = !mapPaths && (relation.kind === 'equality' || relation.kind === 'inequality');
-  return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg viewBox={comparison ? '0 45 500 130' : '0 0 500 230'} role="group" aria-label={`${relation.label}: schematic relation`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
+  return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg viewBox="0 0 500 230" role="group" aria-label={`${relation.label}: schematic relation`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
 
 function BinderStrip({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: RenderContext }) {
@@ -361,24 +395,28 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   const { reading, document: semantic, selectedObjectId, selectedRelationId } = props;
   const surface = useRef<HTMLDivElement>(null);
   const complete = useRef<HTMLDetailsElement>(null);
-  const [guideChoice, setGuideChoice] = useState<{ document: SemanticDocument; cueId: string; nodeId: string } | null>(null);
+  const [guideChoice, setGuideChoice] = useState<ReadingCueSelection | null>(null);
   const [nodeLimit, setNodeLimit] = useState(100);
   const previousSelection = useRef(reading.selection.nodeId);
   const [traces, setTraces] = useState<{ id: string; path: string }[]>([]);
   const maps = useMemo<Maps>(() => ({ objects: new Map(semantic.objects.map(object => [object.id, object])), relations: new Map(semantic.relations.map(relation => [relation.id, relation])), panels: new Map(reading.panels.map(panel => [panel.id, panel])) }), [semantic, reading]);
   const presentation = useMemo(() => planReadingPresentation(reading, { boundaryNodeIds: componentMode(semantic) && semantic.presentation?.targetNodeId ? [semantic.presentation.targetNodeId] : [] }), [reading, semantic]);
   const cuePlan = useMemo(() => compileReadingCues(reading, semantic), [reading, semantic]);
-  const activeCue = (selectedRelationId ? cuePlan.cues.find(cue => cue.stage.relationId === selectedRelationId) : undefined) ?? (guideChoice?.document === semantic && guideChoice.nodeId === reading.selection.nodeId ? cuePlan.cues.find(cue => cue.id === guideChoice.cueId) : undefined) ?? cuePlan.cues.find(cue => cue.sourceNodeIds.includes(reading.selection.nodeId)) ?? (reading.selection.nodeId === reading.root.id ? cuePlan.cues[0] : undefined);
+  const activeCue = resolveReadingCue({ plan: cuePlan, document: semantic, selectedNodeId: reading.selection.nodeId,
+    rootNodeId: reading.root.id, selectedRelationId, selection: props.selectedCue === undefined ? guideChoice : props.selectedCue });
   function chooseCue(cue: ReadingCue) {
-    setGuideChoice({ document: semantic, cueId: cue.id, nodeId: cue.nodeId });
-    props.onNodeSelect?.(cue.nodeId);
-    props.onSourceSelect?.(cue.stage.relationId ?? cue.nodeId);
+    const selection = createReadingCueSelection(semantic, cue);
+    if (props.selectedCue === undefined) setGuideChoice(selection);
+    notifyReadingCueSelection(selection, props);
   }
   function chooseNode(id: string) {
-    const cue = cuePlan.cues.find(candidate => candidate.sourceNodeIds.includes(id));
-    if (cue) setGuideChoice({ document: semantic, cueId: cue.id, nodeId: id });
-    else if (complete.current) complete.current.open = true;
+    const cue = cuePlan.cues.find(candidate => candidate.sourceNodeIds.includes(id) && candidate.stage.kind === 'clause')
+      ?? cuePlan.cues.find(candidate => candidate.sourceNodeIds.includes(id));
+    const selection = cue ? createReadingCueSelection(semantic, cue, id) : null;
+    if (props.selectedCue === undefined) setGuideChoice(selection);
+    if (!cue && complete.current) complete.current.open = true;
     props.onNodeSelect?.(id);
+    props.onCueChange?.(selection);
   }
   useLayoutEffect(() => {
     const root = surface.current;

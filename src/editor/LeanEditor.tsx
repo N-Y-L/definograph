@@ -30,12 +30,12 @@ const lean = StreamLanguage.define<{comment: number}>({
   },
 });
 const style = HighlightStyle.define([
-  { tag: tags.keyword, color: '#8463aa' },
-  { tag: tags.typeName, color: '#247d84' },
-  { tag: tags.variableName, color: '#324967' },
-  { tag: tags.operator, color: '#5378a6' },
-  { tag: tags.number, color: '#a46e35' },
-  { tag: tags.comment, color: '#8490a0', fontStyle: 'italic' },
+  { tag: tags.keyword, color: 'var(--editor-keyword)' },
+  { tag: tags.typeName, color: 'var(--editor-type)' },
+  { tag: tags.variableName, color: 'var(--editor-variable)' },
+  { tag: tags.operator, color: 'var(--editor-operator)' },
+  { tag: tags.number, color: 'var(--editor-number)' },
+  { tag: tags.comment, color: 'var(--editor-comment)', fontStyle: 'italic' },
 ]);
 const abbreviations: Record<string, string> = {
   forall:'∀', exists:'∃', R:'ℝ', N:'ℕ', Z:'ℤ', Q:'ℚ', in:'∈', notin:'∉',
@@ -69,14 +69,14 @@ export function LeanEditor({value, onChange, onAnalyze, onSelection, editorRef}:
       ]),
       EditorView.updateListener.of(update => {if (update.docChanged) callbacks.current.onChange(update.state.doc.toString()); if(update.selectionSet){const s=update.state.selection.main;callbacks.current.onSelection?.(s.from,s.to);}}),
       EditorView.theme({
-        '&':{fontSize:'12px',background:'#fbfcfe',color:'#324967'},
+        '&':{fontSize:'12px',background:'var(--surface)',color:'var(--editor-variable)'},
         '.cm-content':{fontFamily:'"SFMono-Regular",Consolas,monospace',padding:'16px 0',minHeight:'200px',lineHeight:'1.85'},
         '.cm-scroller':{overflow:'auto',maxHeight:'390px'},
-        '.cm-gutters':{background:'#f5f7fa',color:'#a4afbc',border:'none',fontSize:'10px'},
+        '.cm-gutters':{background:'var(--surface)',color:'var(--muted)',border:'none',fontSize:'10px'},
         '.cm-lineNumbers .cm-gutterElement':{padding:'0 7px'},
-        '.cm-activeLine,.cm-activeLineGutter':{background:'#eaf1f966'},
+        '.cm-activeLine,.cm-activeLineGutter':{background:'var(--editor-active-line)'},
         '&.cm-focused':{outline:'none'},
-        '.cm-cursor':{borderLeftColor:'#366fac'},
+        '.cm-cursor':{borderLeftColor:'var(--editor-cursor)'},
       }),
     ]})});
     editorRef.current=view;

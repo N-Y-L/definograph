@@ -10,8 +10,10 @@ Definograph is an experimental research implementation. It does not yet explain 
 
 - **Follow the logic.** Read quantifiers, assumptions and conclusions in sequence, with the whole statement alongside.
 - **Trace an object.** Highlight its visible occurrences and inspect maps, inputs and relationships.
-- **Inspect structure.** Read direct record fields and laws, expose a definition explicitly, and revisit bounded inspection histories with their recorded checks.
+- **Inspect structure.** Read direct record fields and laws. In VS Code, [inspect a definition](docs/editor-definition-exposure.md#inspect-from-the-statement) with its actual arguments and scope, then return to the same reading step. Bounded histories retain the recorded checks.
 - **Explore supported examples.** View selected set, graph, restricted-map and metric relations. Numerical samples remain separate from the statement's assertions.
+
+The reader uses pure white base surfaces in light mode and pure black in dark mode. The standalone reader follows the system theme; the VS Code companion follows the editor theme. Mathematical regions keep their semantic colors, and dense map diagrams scroll while preserving readable labels.
 
 For example, enter this statement term:
 
@@ -65,6 +67,8 @@ npm run package --prefix extension -- --out /absolute/path/to/new/definograph-0.
 ```
 
 Choose a new output path; packaging refuses to overwrite an existing VSIX. Use **Extensions: Install from VSIX…**, then set `statementLens.engineDirectory` in VS Code **User settings** to this matching built checkout's absolute path. In a trusted Lean 4.28.0 project with built imports, run **Definograph: Visualize Selection**.
+
+A selected proof opens **Statement of your selected proof**, its inferred proposition with the recorded context. **Inspect a definition in this statement** keeps the original reading alongside a searchable list of actual applications. An inspection shows its recorded result and individual check outcomes; an opaque or unsupported head reports its boundary. **Return to reading** restores the exact step.
 
 The VSIX contains the extension controller only. The reader assets, native engine, toolchain and compiled imports remain separate prerequisites. Source is available here; there is no qualified one-click installer or Marketplace release. The [editor guide](docs/editor-integration.md) covers assembly, supported journeys and failure states. Retained `StatementLens` module names and `statementLens.*` settings are compatibility identifiers.
 

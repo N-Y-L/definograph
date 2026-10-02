@@ -1,5 +1,7 @@
 import { useId, useMemo, type KeyboardEvent, type ReactNode, type CSSProperties } from 'react';
 import { FigureScroll } from '../components/FigureScroll';
+import { layoutMapDiagram } from '../components/map-diagram-layout';
+import { useDiagramText } from '../components/use-diagram-text';
 import type { ReadingBinder } from '../reading/types';
 import type { SemanticDocument } from '../semantic/types';
 import { compileTypedConstruction, isUsefulConstruction, type ConstructionMap, type ConstructionSignature, type ConstructionType, type TypedConstruction } from './model';
@@ -47,29 +49,20 @@ function MemberLabels({ type, model, component, ...interaction }: Presentation &
 /** A small shared-carrier diagram; arrow endpoints come only from exact function types. */
 function MapGraph({ model, component, ...interaction }: Presentation & { model: TypedConstruction }) {
   const marker = `tc-arrow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
-  const width = 660, y = 111;
-  const positions = new Map(model.types.map((type, index) => [type.id, model.types.length === 1 ? width / 2 : 75 + index * (width - 150) / (model.types.length - 1)]));
-  const indices = new Map(model.types.map((type, index) => [type.id, index]));
-  const parallelCounts = new Map<string, number>();
-  const routes = model.maps.map(map => {
-      const start = positions.get(map.domainId)!, end = positions.get(map.codomainId)!;
-      const pair = [map.domainId, map.codomainId].sort().join(':');
-      const lane = parallelCounts.get(pair) ?? 0; parallelCounts.set(pair, lane + 1);
-      const forward = end >= start, offset = forward ? 36 : -36;
-      const hops = Math.abs(indices.get(map.domainId)! - indices.get(map.codomainId)!);
-      // Adjacent maps form a clear baseline. Longer maps pass above it; further
-      // parallel/reverse arrows use lower lanes rather than crossing that arc.
-      const curve = lane > 0 ? -(30 + lane * 14) : hops === 1 ? 0 : 48 + Math.max(0, hops - 2) * 10;
-      const d = start === end ? `M${start - 23} ${y - 19} C${start - 81} ${24 - lane * 9},${start + 81} ${24 - lane * 9},${start + 23} ${y - 19}` : `M${start + offset} ${y} Q${(start + end) / 2} ${y - curve * 2},${end - offset} ${y}`;
-      return { map, start, end, lane, curve, d };
-  });
-  const height = Math.max(175, ...routes.map(route => route.start !== route.end && route.curve < 0 ? y - route.curve + 30 : 175));
-  return <FigureScroll className="tc-map-graph" label="Types and maps diagram; scroll to see all of it"><svg viewBox={`0 0 ${width} ${height}`} role="group" aria-label={component ? 'Arrows between declared annotations' : 'Maps between the declared types'}><defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L7 4 L1 7"/></marker></defs>
-    {routes.map(({ map, start, end, lane, curve, d }) => {
-      return <SvgObject key={map.objectId} id={map.objectId} label={annotationLabel(map.role, map.name, map.type, component)} {...interaction}><path className="tc-map-arrow" d={d} markerEnd={`url(#${marker})`}/><text className="tc-map-name" x={(start + end) / 2} y={start === end ? 35 - lane * 9 : y - curve - 10} textAnchor="middle">{short(map.name, 16)}</text></SvgObject>;
+  const text = useDiagramText();
+  const layout = layoutMapDiagram(model.types.map(type => ({ id: type.id, width: Math.max(68, text.size(`type:${type.id}`, short(type.label, 8), 21).width + 24), height: 40 })),
+    model.maps.map(map => ({ id: map.objectId, from: map.domainId, to: map.codomainId, label: text.size(`map:${map.objectId}`, short(map.name, 16), 18) })));
+  const minimumWidth = Math.ceil(layout.width * 10 / 18);
+  return <FigureScroll className="tc-map-graph" label="Types and maps diagram; scroll to see all of it"><svg ref={text.ref} style={{ minWidth: minimumWidth }} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={component ? 'Arrows between declared annotations' : 'Maps between the declared types'}><defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L7 4 L1 7"/></marker></defs>
+    {model.maps.map((map, index) => {
+      const route = layout.edges[index];
+      return <SvgObject key={map.objectId} id={map.objectId} label={annotationLabel(map.role, map.name, map.type, component)} {...interaction}><path className="tc-map-arrow" d={route.path} markerEnd={`url(#${marker})`}/><text data-diagram-label={`map:${map.objectId}`} className="tc-map-name" x={route.labelX} y={route.labelY} textAnchor="middle">{short(map.name, 16)}</text></SvgObject>;
     })}
-    {model.types.map(type => <SvgObject key={type.id} id={type.objectId} label={`${typeLabel(type.label, component)}${type.introduced ? ', introduced here' : ', in scope'}`} {...interaction}><rect className="tc-type-node" x={positions.get(type.id)! - 34} y={y - 20} width="68" height="40" rx="9"/><text className="tc-type-name" x={positions.get(type.id)} y={y + 7} textAnchor="middle">{short(type.label, 8)}</text></SvgObject>)}
-  </svg><div className="tc-graph-members" style={{ gridTemplateColumns: `repeat(${model.types.length}, minmax(0, 1fr))` }}>{model.types.map(type => <MemberLabels key={type.id} type={type} model={model} component={component} {...interaction}/>)}</div></FigureScroll>;
+    {model.types.map((type, index) => {
+      const node = layout.nodes[index], label = text.size(`type:${type.id}`, short(type.label, 8), 21);
+      return <SvgObject key={type.id} id={type.objectId} label={`${typeLabel(type.label, component)}${type.introduced ? ', introduced here' : ', in scope'}`} {...interaction}><rect className="tc-type-node" x={node.x - node.width / 2} y={node.y} width={node.width} height={node.height} rx="9"/><text data-diagram-label={`type:${type.id}`} className="tc-type-name" x={node.x} y={node.y + (node.height - label.height) / 2 + label.ascent} textAnchor="middle">{short(type.label, 8)}</text></SvgObject>;
+    })}
+  </svg><div className="tc-graph-members" style={{ minWidth: minimumWidth, columnGap: 0, gridTemplateColumns: `repeat(${model.types.length}, minmax(0, 1fr))` }}>{model.types.map(type => <MemberLabels key={type.id} type={type} model={model} component={component} {...interaction}/>)}</div></FigureScroll>;
 }
 
 function MapRow({ map, model, component, ...interaction }: Presentation & { map: ConstructionMap; model: TypedConstruction }) {

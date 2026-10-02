@@ -1,0 +1,62 @@
+/* The standalone reader follows the system. A VS Code webview follows its host. */
+:root {
+  color-scheme: light;
+  --surface: light-dark(#fff, #000);
+  --inverse-ink: light-dark(#fff, #000);
+  --ink: light-dark(#202f3e, #e5eaf0);
+  --muted: light-dark(#5f6c76, #b4bec8);
+  --border: light-dark(#dedfdc, #54616d);
+  --blue: light-dark(#3c558f, #98bfff);
+  --focus: var(--vscode-focusBorder, light-dark(#285c93, #a8c9ff));
+  --line-structure: light-dark(#818e96, #8b9caa);
+  --line-structure-raw: light-dark(#928b81, #b5a994);
+  --line-scope: light-dark(#9d83aa, #ba9ecb);
+  --line-reference: light-dark(#8b719a, #bfa3d0);
+  --line-reference-target: light-dark(#9a81a7, #bfa3d0);
+  --line-fold: light-dark(#7e8f98, #92a7b4);
+  --line-tree: light-dark(#848e93, #94a4af);
+  --state-selected-bg: light-dark(#e6eee8, #16271f);
+  --state-selected-border: light-dark(#61766b, #8cb9a1);
+  --scroll-shadow: light-dark(#2633402e, #ffffff36);
+  --diagram-blend-mode: darken;
+  --region-highlight-opacity: .22;
+  --editor-keyword: light-dark(#8463aa, #c3a3e3);
+  --editor-type: light-dark(#247d84, #86cbd1);
+  --editor-variable: light-dark(#324967, #b0c2d8);
+  --editor-operator: light-dark(#5378a6, #a5c3ea);
+  --editor-number: light-dark(#a46e35, #dfb783);
+  --editor-comment: light-dark(#667482, #aebac9);
+  --editor-active-line: light-dark(#eaf1f966, #142b4566);
+  --editor-cursor: light-dark(#366fac, #a8c9ff);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(:has(body:is(.vscode-light, .vscode-dark, .vscode-high-contrast, .vscode-high-contrast-light))) {
+    color-scheme: dark;
+    --diagram-blend-mode: lighten;
+    --region-highlight-opacity: .45;
+  }
+}
+
+:root:has(body:is(.vscode-dark, .vscode-high-contrast:not(.vscode-high-contrast-light))) {
+  color-scheme: dark;
+  --diagram-blend-mode: lighten;
+  --region-highlight-opacity: .45;
+}
+
+:root:has(body:is(.vscode-high-contrast, .vscode-high-contrast-light)) {
+  --ink: light-dark(#000, #fff);
+  --muted: light-dark(#222, #ddd);
+  --border: light-dark(#000, #fff);
+  --focus: var(--vscode-focusBorder, light-dark(#000, #ffff00));
+}
+
+html, body { background: var(--surface); color: var(--ink); }
+input, textarea, select { background-color: var(--surface); color: var(--ink); }
+.skip-link { color: var(--inverse-ink); }
+
+.lean-editor .cm-editor, .lean-editor .cm-gutters { background: var(--surface); color: var(--ink); }
+.lean-editor .cm-gutters { border-color: var(--border); }
+.lean-editor .cm-activeLineGutter { background: var(--state-selected-bg); }
+.lean-editor .cm-cursor { border-left-color: var(--ink); }
+.lean-editor .cm-selectionBackground, .lean-editor .cm-focused .cm-selectionBackground { background: light-dark(#d9e9f7, #183450); }

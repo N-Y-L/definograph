@@ -6,13 +6,15 @@ import { compileSemanticDocument, planViews } from './semantic';
 import type { PlannedView } from './semantic/types';
 import { SemanticView } from './visual';
 import { compileReading, compileReadingCues } from './reading';
-import { acceptsEditorResult, acceptsEditorStatus, getEditorHost, parseEditorMessage, type EditorCommand, type EditorSession, type HeadExposureBundle } from './editor/host';
+import { acceptsEditorResult, acceptsEditorStatus, getEditorHost, parseEditorMessage, type EditorCommand, type EditorMessage, type EditorSession, type HeadExposureBundle } from './editor/host';
 import { followSourceStatus, revealSourceResult, sourceActionResultAnchor, type PendingSourceAction, type SourceActionRequest, type SourceResultAnchor } from './editor/source-action-navigation';
 import { inspectSmallDefinitions } from './semantic/inspection';
 import { checkedBinderTypeExpansion } from './semantic/expression';
 import { compileInterpretationReport } from './semantic/coverage';
 import { InterpretationCoverage } from './visual/InterpretationCoverage';
-import { StatementReadingView } from './visual/StatementReadingView';
+import { StatementReadingView, type ReadingCueSelection } from './visual/StatementReadingView';
+import { DefinitionWorkspace } from './editor/DefinitionWorkspace';
+import { DefinitionWorkspaceController, type DefinitionWorkspaceState } from './editor/definition-workspace';
 import { MetricStatementFigure } from './statement-geometry/MetricStatementFigure';
 import { expressionKey } from './semantic';
 import type { AnalysisRequest } from './protocol';
@@ -59,6 +61,7 @@ function StatementTree({node,selected,choose,interpreted,depth=0}:{node:Statemen
 export default function App(){
   const host=useMemo(()=>getEditorHost(),[]);
   const hostSession=useRef<EditorSession|null>(null);
+  const lastEditorResult=useRef<Extract<EditorMessage,{type:'statementlens.analysis'}>|null>(null);
   const sourceAction=useRef<PendingSourceAction|null>(null);
   const [sourceResult,setSourceResult]=useState<{anchor:SourceResultAnchor}|null>(null);
   const [editorSession,setEditorSession]=useState<EditorSession|null>(null);
@@ -81,6 +84,14 @@ export default function App(){
   const [error,setError]=useState('');
   const [health,setHealth]=useState<{ready:boolean;leanVersion?:string;issue?:string}|null>(null);
   const [drawer,setDrawer]=useState<'source'|'inspect'|'guide'|null>(null);
+  const [selectedCue,setSelectedCue]=useState<ReadingCueSelection|null>(null);
+  const [definitionWorkspace,setDefinitionWorkspace]=useState<DefinitionWorkspaceState|null>(null);
+  const definitionController=useRef<DefinitionWorkspaceController|null>(null);
+  if(!definitionController.current)definitionController.current=new DefinitionWorkspaceController((request,command)=>{
+    sourceAction.current={request};host?.postMessage(command);
+  },setDefinitionWorkspace);
+  const definitionWorkflow=definitionController.current;
+  const returnFocus=useRef<{nodeId:string;cue:ReadingCueSelection|null}|null>(null);
   const [showNotation,setShowNotation]=useState(false);
   const [expandNames,setExpandNames]=useState<string[]>([]);
   const [expandName,setExpandName]=useState('');
@@ -116,7 +127,7 @@ export default function App(){
   const typedAnalysis=current as (Analysis&{validation?:string;declaration?:{name:string;kind:string;module:string};expansion?:unknown;definitions?:{name:string;canExpand:boolean}[]})|null;
 
   async function analyze(text=source,inputMode=mode,expansions=expandNames,closeEditor=true){
-    if(host){sourceAction.current=null;host.postMessage({type:'statementlens.refresh',expansion:{constants:expansions,maxDepth:2}});return;}
+    if(host){definitionWorkflow.cancel();sourceAction.current=null;host.postMessage({type:'statementlens.refresh',expansion:{constants:expansions,maxDepth:2}});return;}
     if(!text.trim())return;
     const generation=++request.current;
     const initiatingDrawer=drawer;
@@ -145,17 +156,27 @@ export default function App(){
           if(message.phase==='idle'||!acceptsEditorStatus(hostSession.current,message))return;
           sourceAction.current=followSourceStatus(sourceAction.current,message);
           const session:EditorSession={requestId:message.requestId,document:message.document,phase:message.phase};
-          hostSession.current=session;setEditorSession(session);setAnalysis(null);setSource('');setSourceCapture(null);setSourceCaptureIssue('');setAnalyzedKey('');setError('');setBusy(message.phase==='analyzing');setObjectId('');
+          const retainReading=definitionWorkflow.status(message);
+          hostSession.current=session;setEditorSession(session);
+          if(!retainReading){lastEditorResult.current=null;setAnalysis(null);setSource('');setSourceCapture(null);setSourceCaptureIssue('');setAnalyzedKey('');setSelectedCue(null);returnFocus.current=null;}
+          setError('');setBusy(message.phase==='analyzing');setObjectId('');
           return;
         }
         if(!acceptsEditorResult(hostSession.current,message))return;
         const answered=sourceActionResultAnchor(sourceAction.current,message);sourceAction.current=null;
+        const retainReading=definitionWorkflow.result(message);
+        const retainedMessage=retainReading?definitionWorkflow.retainedCapture:message;
+        if(retainedMessage)lastEditorResult.current=retainedMessage.type==='statementlens.analysis'?retainedMessage:null;
         const session:EditorSession={requestId:message.requestId,document:message.document,phase:message.type==='statementlens.error'?'error':'idle'};
         hostSession.current=session;setEditorSession(session);setBusy(false);
-        setSourceCapture(message.sourceSnapshot&&message.sourceSnapshotOrigin?{snapshot:message.sourceSnapshot,origin:message.sourceSnapshotOrigin,occurrence:message.sourceOccurrence,occurrenceUnavailable:message.sourceOccurrenceUnavailable,headExposure:message.headExposure,headExposureUnavailable:message.headExposureUnavailable,decompositions:message.decompositions,decompositionUnavailable:message.decompositionUnavailable}:null);
-        setSourceCaptureIssue(message.sourceSnapshotUnavailable??(!message.sourceSnapshot?message.sourceOccurrenceUnavailable??'':''));
-        if(answered)setSourceResult({anchor:answered});
+        if(retainedMessage){
+          setSourceCapture(retainedMessage.sourceSnapshot&&retainedMessage.sourceSnapshotOrigin?{snapshot:retainedMessage.sourceSnapshot,origin:retainedMessage.sourceSnapshotOrigin,occurrence:retainedMessage.sourceOccurrence,occurrenceUnavailable:retainedMessage.sourceOccurrenceUnavailable,headExposure:retainedMessage.headExposure,headExposureUnavailable:retainedMessage.headExposureUnavailable,decompositions:retainedMessage.decompositions,decompositionUnavailable:retainedMessage.decompositionUnavailable}:null);
+          setSourceCaptureIssue(retainedMessage.sourceSnapshotUnavailable??(!retainedMessage.sourceSnapshot?retainedMessage.sourceOccurrenceUnavailable??'':''));
+        }
+        if(answered&&!retainReading)setSourceResult({anchor:answered});
+        if(retainReading){setError('');setHealth({ready:true,leanVersion:'4.28.0'});return;}
         if(message.type==='statementlens.error'){setAnalysis(null);setError(message.message);if(message.source!==undefined)setSource(message.source);return;}
+        setSelectedCue(null);returnFocus.current=null;
         const data=message.analysis;const policy=data.expansionPolicy as {constants?:unknown}|undefined;const expansions=Array.isArray(policy?.constants)?policy.constants.filter((name):name is string=>typeof name==='string').slice(0,12):[];const key=JSON.stringify([data.source,'term',expansions]);
         const effective=autoInspectRef.current?inspectSmallDefinitions(data):data;
         currentKey.current=key;setSource(data.source);setMode('term');setExpandNames(expansions);setExampleId('');setAnalysis(data);setAnalyzedKey(key);setInspectBody(false);setSelected(data.tree.id);setObjectId('');setOverrideView('');setScenario(initialScenario(effective.tree));setExperience('read');setError('');setHealth({ready:true,leanVersion:'4.28.0'});
@@ -169,8 +190,20 @@ export default function App(){
   function edit(text:string){setSource(text);setExampleId(examples.find(e=>e.source===text)?.id??'');currentKey.current=JSON.stringify([text,mode,expandNames]);setError('');}
   // Only an explicit inspection posted from this view moves the drawer and focus to its answer.
   useEffect(()=>{if(sourceResult)revealSourceResult(sourceResult.anchor);},[sourceResult]);
-  function requestSource(request:SourceActionRequest,command:EditorCommand){sourceAction.current={request};host?.postMessage(command);}
-  function chooseNode(id:string){setSelected(id);setOverrideView('');setDrawer(null);}
+  function requestSource(request:SourceActionRequest,command:EditorCommand){definitionWorkflow.cancel();sourceAction.current={request};host?.postMessage(command);}
+  function chooseNode(id:string){setSelectedCue(null);setSelected(id);setOverrideView('');setDrawer(null);}
+  function startDefinitionInspection(){
+    if(!host||!checked||!editorSession||!sourceCapture||busy)return;
+    returnFocus.current={nodeId:selected,cue:selectedCue};setDrawer(null);setExperience('read');
+    definitionWorkflow.start({analysis:checked,document:editorSession.document,origin:sourceCapture.origin,
+      clause:selectedNode?.lean??checked.pretty,proofType:checked.provenance?.selectionKind==='proof-type'},lastEditorResult.current??undefined);
+  }
+  function returnToReading(){
+    if(definitionWorkspace&&['preparing','focusing','exposing'].includes(definitionWorkspace.phase))return;
+    const focus=returnFocus.current;definitionWorkflow.cancel();setExperience('read');setDrawer(null);
+    if(focus){setSelected(focus.nodeId);setSelectedCue(focus.cue);}returnFocus.current=null;
+    requestAnimationFrame(()=>window.document.querySelector<HTMLElement>('.rg-navigation select')?.focus());
+  }
   function chooseObject(id:string){setObjectId(id);setInspectorTab('objects');setDrawer('inspect');}
   function loadExample(id:string){setAutoInspect(true);const e=examples.find(x=>x.id===id)!;setExampleId(id);setMode('term');setExpandNames([]);setSource(e.source);currentKey.current=JSON.stringify([e.source,'term',[]]);void analyze(e.source,'term',[]);}
   function changeVariable(id:string,value:ScenarioValue){if(current)setScenario(old=>updateScenario(current.tree,old,id,value));}
@@ -187,7 +220,7 @@ export default function App(){
   const activeExample=mode==='term'?examples.find(example=>example.id===exampleId):undefined;
   const editorFileName=editorSession?.document.fileName.split(/[\\/]/).at(-1);
   const parentDeclaration=current?.provenance?.parentDeclaration;
-  const title=host?('Your selected expression'):mode==='declaration'?checked?.provenance?.declaration?.name??source.trim():activeExample?.title??'Your mathematical statement';
+  const title=host?(checked?.provenance?.selectionKind==='proof-type'?'Statement of your selected proof':'Your selected expression'):mode==='declaration'?checked?.provenance?.declaration?.name??source.trim():activeExample?.title??'Your mathematical statement';
   return <div className="app-shell">
     <a className="skip-link" href="#statement-reading">Skip to the statement</a>
     <header className="topbar"><a href="#statement-reading" className="brand" aria-label="Definograph home">Definograph</a><nav className="top-actions" aria-label="Workspace tools">{!host&&<><a className="quiet-button" href="/packet">Saved packet</a><a className="quiet-button" href="/source-data">Source data</a></>}<span className="local-label"><i className={health?.ready?'ready':''}/>{host?'Lean editor':health?.ready?'Lean connected':'Connecting to Lean'}</span><button className="quiet-button" onClick={()=>setDrawer('guide')}>Guide</button><button className="toolbar-button" onClick={exportDocument} disabled={!current}>Export</button></nav></header>
@@ -216,12 +249,14 @@ export default function App(){
       <section className="visual-panel" id="statement-reading" aria-label="Statement reading">
 
         {current&&document&&reading&&plan&&primary?<>
-          <div className="visual-title"><div className="atlas-kicker"><span>THE VISUAL STATEMENT</span><span className="status-tag">{host?'Project context fragment':checked?.definitionTree&&inspectBody?'Definition body':typedAnalysis?.validation?.includes('declaration')?'Signature checked by Lean':'Type checked by Lean'}</span></div><h1>{title}</h1>{host&&typeof parentDeclaration==='string'&&<p>Recorded enclosing declaration: <code>{parentDeclaration}</code></p>}<p>{host?'The selected expression with its recorded local context. Reading a fragment does not assert a theorem.':activeExample?.description??'Read the objects and relationships in their logical context.'}</p></div>
+          <div className="visual-title"><div className="atlas-kicker"><span>THE VISUAL STATEMENT</span><span className="status-tag">{host?'Project context fragment':checked?.definitionTree&&inspectBody?'Definition body':typedAnalysis?.validation?.includes('declaration')?'Signature checked by Lean':'Type checked by Lean'}</span></div><h1>{title}</h1>{host&&typeof parentDeclaration==='string'&&<p>Recorded enclosing declaration: <code>{parentDeclaration}</code></p>}<p>{host?(checked?.provenance?.selectionKind==='proof-type'?'Reading the inferred statement of the selected proof, with its recorded context.':'The selected expression with its recorded local context. Reading a fragment does not assert a theorem.'):activeExample?.description??'Read the objects and relationships in their logical context.'}</p></div>
           {host&&current.diagnostics.length>0&&<button className="editor-diagnostics-note quiet-button" onClick={()=>setDrawer('inspect')}>{current.diagnostics.length} Lean {current.diagnostics.length===1?'diagnostic':'diagnostics'} in this buffer · inspect ↗</button>}
           {checked?.definitionTree&&<div className="definition-mode" aria-label="Declaration view">{(['body','signature'] as const).map(view=><button key={view} className={inspectBody===(view==='body')?'active':''} aria-pressed={inspectBody===(view==='body')} onClick={()=>{const body=view==='body';const tree=body?checked.definitionTree!:checked.tree;setInspectBody(body);setExperience('read');setInspectorTab('objects');setSelected(tree.id);setObjectId('');setOverrideView('');setScenario(initialScenario(tree));}}>{view==='body'?'Definition body':'Typed signature'}</button>)}<span>{inspectBody?'The body describes the result under its parameters.':'Parameters specify inputs; they do not assert a proposition.'}</span></div>}
+          {host&&sourceCapture&&!definitionWorkspace&&<button type="button" className="toolbar-button" disabled={busy} onClick={startDefinitionInspection}>Inspect a definition in this statement</button>}
           <div className="experience-tabs" aria-label="Reading and exploration"><button className={experience==='read'?'active':''} aria-pressed={experience==='read'} onClick={()=>{setExperience('read');setInspectorTab('objects');}}>Visual sequence</button><button className={experience==='explore'?'active':''} aria-pressed={experience==='explore'} onClick={()=>{setExperience('explore');setInspectorTab(primary.fidelity==='numerical'?'scenario':'objects');}}>Explore a sample</button><button className="notation-toggle" aria-pressed={showNotation} onClick={()=>setShowNotation(!showNotation)}>{showNotation?'Hide notation':'Mathematical notation'}</button></div>
           {showNotation&&<FeatureBoundary fallback={<section className="notation-fallback"><p>Mathematical typesetting could not load. The checked Lean statement is available here.</p><pre>{current.pretty}</pre></section>}><Suspense fallback={<p>Loading mathematical notation…</p>}><MathematicalStatement notation={inspectBody&&checked?.definitionTree?checked.definitionReadableMath:checked?.readableMath} lean={current.pretty}/></Suspense></FeatureBoundary>}
-          {experience==='read'?<StatementReadingView reading={reading} document={document} selectedObjectId={objectId} onObjectSelect={chooseObject} onNodeSelect={chooseNode} renderGeometry={panel=>{
+          <div className={`definition-reading-layout${definitionWorkspace?' is-inspecting':''}`}><div>
+          {experience==='read'?<StatementReadingView reading={reading} document={document} selectedCue={selectedCue} onCueChange={setSelectedCue} selectedObjectId={objectId} onObjectSelect={chooseObject} onNodeSelect={chooseNode} renderGeometry={panel=>{
             // Replace only a complete membership clause, never geometry nested inside an unknown claim.
             const roots=panel.rootRelationIds.map(id=>document.relations.find(r=>r.id===id)).filter(Boolean);
             if(roots.length!==1||roots[0]?.kind!=='membership')return null;
@@ -234,6 +269,7 @@ export default function App(){
           <article className="view-card primary-view"><header><div><span className="view-index">01</span><strong>{primary.title}</strong></div><span className={`fidelity ${primary.fidelity}`}>{primary.fidelity==='numerical'?'Numerical illustration':primary.fidelity==='symbolic'?'Symbolic relationships':'Formal structure'}</span></header>{scene&&(scene.context.length>0||scene.guards.length>0)&&<div className="view-context">{scene.context.map((c,i)=><span key={i}>{c}</span>)}{scene.guards.length>0&&<span>Under {scene.guards.length} local {scene.guards.length===1?'assumption':'assumptions'}</span>}</div>}{renderView(primary)}<div className="view-reason"><span>Why this view</span><p>{primary.reason}</p></div></article>
           {supports.map((view,i)=><article className="view-card supporting-view" key={view.id}><header><div><span className="view-index">0{i+2}</span><strong>{view.title}</strong></div><span className="fidelity">{kindLabel[view.kind]}</span></header>{renderView(view)}</article>)}
           </>}
+          </div>{definitionWorkspace&&<DefinitionWorkspace state={definitionWorkspace} onInspect={chosen=>definitionWorkflow.inspect(chosen)} onReturn={returnToReading} onDetails={()=>{setSourceTab('snapshot');setDrawer('source');}}/>}</div>
           {current.automaticInspection&&<div className="automatic-reading-note"><span>Reading <code>{current.automaticInspection.constant}</code> through its checked definition.</span><button type="button" onClick={()=>{setDrawer('inspect');setInspectorTab('objects');}}>See original and details ↗</button></div>}
           {expandNames.length>0&&<div className="expansion-note">{allNodes.filter(n=>n.expansion).length?`${allNodes.filter(n=>n.expansion).length} definition expansions checked by Lean for definitional equality.`:'No selected definition occurred at an expandable fragment head.'}</div>}
           <div className="reading-footnote"><span>A diagram of the statement, not a proof.</span><button className="quiet-button" onClick={()=>setDrawer('inspect')}>Interpretation details ↗</button></div>

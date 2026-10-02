@@ -159,12 +159,13 @@ describe('typed construction grammar', () => {
     expect(html).not.toContain('type="number"');
   });
 
-  it('routes adjacent maps on a straight baseline and a longer map above them', () => {
-    const { html } = rendered([carrier('A'), carrier('B'), carrier('C'), map('f', variable('A'), variable('B')), map('g', variable('B'), variable('C')), map('h', variable('A'), variable('C'))]);
+  it('retains every map control and gives each map a distinct label lane', () => {
+    const { html, model } = rendered([carrier('A'), carrier('B'), carrier('C'), map('f', variable('A'), variable('B')), map('g', variable('B'), variable('C')), map('h', variable('A'), variable('C'))]);
     const paths = [...html.matchAll(/class="tc-map-arrow" d="([^"]+)"/g)].map(match => match[1]);
     expect(paths).toHaveLength(3);
-    expect(paths[0]).toMatch(/^M[\d.]+ 111 Q[\d.]+ 111,[\d.]+ 111$/);
-    expect(paths[1]).toMatch(/^M[\d.]+ 111 Q[\d.]+ 111,[\d.]+ 111$/);
-    expect(paths[2]).toMatch(/^M[\d.]+ 111 Q[\d.]+ 15,[\d.]+ 111$/);
+    model.maps.forEach(map => expect(html).toContain(`data-diagram-label="map:${map.objectId}"`));
+    const labels = [...html.matchAll(/class="tc-map-name" x="([^"]+)" y="([^"]+)"/g)];
+    expect(new Set(labels.map(match => match[2])).size).toBe(3);
+    expect(html).toContain('class="figure-scroll tc-map-graph"');
   });
 });

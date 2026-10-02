@@ -6,6 +6,42 @@ shows the exposed result, exact trace and fresh check outcomes. The result uses 
 same guided and structural readers as the original occurrence. No definition name
 or fixture recognizer is registered to make this operation work.
 
+## Inspect from the statement
+
+In the VS Code reader, a selected proof is presented as **Statement of your
+selected proof**: its inferred proposition with its recorded local context.
+**Inspect a definition in this statement** opens a workspace beside the original
+reading and retains the current clause and ordered context.
+
+The workspace checks the exact selected source occurrence, inspects the inferred
+type for a proof selection (or retains the selected proposition itself), and
+lists constant-headed applications from that whole retained statement. **Find an
+application** searches head names and bounded readable expressions. Each choice
+shows its actual arguments and its own surrounding binders; repeated uses of the
+same head remain distinct occurrences. Bare constants are included as
+zero-argument applications. Display and search bounds are reported explicitly.
+A listed head need not be an exposable definition: opaque or unsupported heads
+retain their actual refusal or unavailable outcome.
+
+Choosing **Inspect this occurrence** checks that exact application and its scope,
+then requests one definition-head exposure through the existing native
+continuation route. The result shows the resulting expression, its own scope and
+the individual recorded typing and conversion verdicts. Exact syntax, scope,
+operations and earlier checks remain available through **Source, operations and
+check details**. Binders introduced inside the result remain local; other
+conditions in the original clause are not promoted into lexical assumptions or
+separate assertions. A completed inspection does not mean every check accepted
+or that the reader understood the definition.
+
+**Return to reading** restores the original clause and exact guided reading step,
+including a construction step within that clause, and focuses the step selector.
+The original and inspection records remain separate. Reopening the workspace can
+reuse a matching retained statement history to choose another application.
+Source, selection or configuration changes invalidate the reading and close the
+workspace; a different or exhausted inspection history can require **Refresh**.
+The result's readable label has a display bound, with exact result and scope
+retained in the details when that label is unavailable.
+
 ## The step
 
 The worker re-elaborates the trusted current buffer and matches the exact original

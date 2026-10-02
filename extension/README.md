@@ -45,7 +45,22 @@ clean installation and upgrade/rollback qualification remain release work.
 
 The active buffer may have unsaved changes. Other unsaved Lean buffers in the same workspace must be saved and built first. **Refresh** uses the current selection when that Lean editor is visible; otherwise it uses the remembered selection. Editing or closing the analyzed document, changing the selection, or changing adapter settings clears its previous diagram and source snapshot. **Reveal** returns to the original source.
 
-Ordinary local objects are displayed as context parameters and ordinary local proof hypotheses as assumptions. Recorded `auxDecl` and `implDetail` entries receive neutral context labels. A selected proof term displays its proposition type, explicitly labeled as such. A valid statement can still be inspected when a later proof is incomplete; Lean diagnostics remain visible. Selected placeholders, unresolved metavariables, and definition expansions containing `sorry` are rejected.
+Ordinary local objects are displayed as context parameters and ordinary local proof hypotheses as assumptions. Recorded `auxDecl` and `implDetail` entries receive neutral context labels. A selected proof term displays its proposition type under **Statement of your selected proof**. A valid statement can still be inspected when a later proof is incomplete; Lean diagnostics remain visible. Selected placeholders, unresolved metavariables, and definition expansions containing `sorry` are rejected.
+
+**Inspect a definition in this statement** opens a workspace beside the original
+clause and its ordered context. Search applications from the whole retained
+statement, then choose the exact occurrence with its actual arguments and scope.
+The workspace checks that application, exposes one eligible definition head, and
+shows the result in its own scope with individual check verdicts. Opaque or
+unsupported heads report their outcome. **Return to reading** restores the exact
+guided step; reopening can reuse a matching retained history. Source or selection
+changes close the workspace. See `docs/editor-definition-exposure.md` in the
+checkout for bounds and the detailed contract.
+
+The reader uses pure white base surfaces in light mode and pure black in dark
+mode, following the VS Code body theme ahead of the system preference.
+Mathematical regions retain their semantic colors. Dense typed-map diagrams keep
+readable labels and offer keyboard-accessible horizontal scrolling.
 
 **Source data** separately retains the original selected expression and local
 declarations, prepared checker input, optional expected type, and available kernel

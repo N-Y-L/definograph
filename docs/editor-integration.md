@@ -61,6 +61,18 @@ eligible, the smallest available elaborated term can supply a raw snapshot while
 the guided reader reports that it cannot read that selection. See
 [exact source snapshots](editor-source-snapshots.md) for its separate contract.
 
+The guided reader labels a selected proof **Statement of your selected proof**
+and displays its inferred proposition with the recorded context. **Inspect a
+definition in this statement** retains the current clause and ordered context
+beside a searchable list of applications from the whole exact statement. Choose
+an occurrence with its actual arguments and scope to check it and expose one
+eligible definition head. Its result and individual check outcomes remain
+separate from the original reading. **Return to reading** restores the exact
+guided step; reopening can reuse a matching retained history. Opaque, unsupported
+or unavailable heads report their outcome. See the
+[statement inspection workflow](editor-definition-exposure.md#inspect-from-the-statement)
+for search and history bounds.
+
 **Check chosen occurrence** selects an ordinary constructor inside the prepared
 term. It reruns the buffer, compares the exact prepared parent, and retains the
 chosen dependent context and separate source, inferred-root and selected typing
@@ -83,6 +95,12 @@ Opening a view or switching its target does not run Lean. See
 The active buffer may have unsaved changes. Imported definitions come from the project's **built `.olean` dependencies**, as in Lean's normal import workflow. Save and build changed dependencies with the project's normal tools before refreshing; saved source alone is not a fresh compiled dependency. Other dirty Lean buffers in the same workspace are refused. Changes to another open Lean buffer in that workspace invalidate the view as well.
 
 Refresh uses the current selection if the original editor is visible, or the remembered selection otherwise. Reveal only targets that original document, and checks the version and request again after VS Code opens it. Editing or closing the analyzed document, changing its selection, or changing the adapter configuration cancels pending work and clears the diagram and source snapshot. No automatic re-elaboration runs on every keystroke.
+
+The reader's base surfaces are pure white in light mode and pure black in dark
+mode. The VS Code webview uses the host's light, dark or high-contrast body theme
+classes, which take precedence over the operating-system preference. The
+standalone reader follows the system preference. Mathematical regions retain
+semantic color fills in both modes.
 
 ## Installation qualification
 
