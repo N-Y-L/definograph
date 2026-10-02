@@ -1,7 +1,7 @@
 <header class="page-head">
   <h1 id="reference">Reference</h1>
   <p class="lead">How to read Definograph’s views, what its checking evidence means, and the labels the views use.</p>
-  <p>This reference describes Definograph’s views and inspection tools. Recorded figures show the application at their stated recording dates; see <a href="/install/#try-it-yourself">Try it yourself</a> for source and setup information. Labels in <strong>bold</strong> are Definograph’s own.</p>
+  <p>This reference describes Definograph’s views and inspection tools. Recorded figures identify their recording or rendering dates and any saved results they reuse; see <a href="/install/#try-it-yourself">Try it yourself</a> for source and setup information. Labels in <strong>bold</strong> are Definograph’s own.</p>
 </header>
 
 <nav class="on-page" aria-labelledby="reference-contents">
@@ -24,11 +24,15 @@
 
 <section>
   <h2 id="recorded-views">Recorded views on this site</h2>
-  <p>A figure marked <strong>Recorded Definograph output</strong> is a saved copy of what Definograph drew for the Lean source printed with it. Definograph ran on a local computer; the figure reuses Definograph’s own HTML and SVG, so its text stays text and it scales without blurring. The label gives the Lean version and the date of the recording. A figure that Definograph drew from a saved history of editor inspections, rather than in a live editor, adds <strong>from a saved history</strong>; editor figures made otherwise, such as the screenshot of the panel in lesson 5, do not. Where these figures say where their data came from, they use Definograph’s wording for saved records, such as “This saved history has an unverified origin”, instead of the live panel’s.</p>
+  <p>A figure marked <strong>Recorded Definograph output</strong> is a saved copy of what Definograph drew for the Lean source printed with it. The figure reuses Definograph’s own HTML and SVG, so its text stays text and it scales without blurring. Older figure labels give the Lean version and the recording date; that date does not separately establish when Lean ran.</p>
+  <p>Typeset mathematical labels retain accessible MathML and use bundled local fonts. These recorded figures are static HTML containing SVG and mathematical HTML; they do not require a client-side math renderer and are not portable standalone SVG files.</p>
+  <p>A figure labelled <strong>Rendered</strong> was drawn again from saved results, without rerunning Lean. Its label separates the new rendering date from the original <strong>Native capture</strong> date or date range; it says when that date is unavailable. These dates use UTC. The Lean version belongs to the saved input. <strong>From a saved history</strong> identifies editor inspection histories; other saved native results are labelled <strong>from saved results</strong>. Neither the absence of a history label nor a screenshot of the editor panel establishes a live editor session. A panel rendered outside Visual Studio Code from saved data is labelled accordingly and described in its caption.</p>
+  <p>Where figures describe the origin of saved data, they retain Definograph’s qualifications, such as “This saved history has an unverified origin”. Rendering saved data again does not give it current authority.</p>
   <p><strong>Recorded Definograph excerpt</strong> marks such a copy of only part of a panel: the top and bottom edges of its frame are dashed, and a dashed line inside it marks any place where part of the panel between the parts shown is left out. <strong>Recorded Definograph image</strong> and <strong>Recorded Definograph screenshot</strong> mark pictures of the app window rather than its HTML.</p>
-  <p>The site changes a few details of how the recorded figures are drawn, and nothing else: the outline that marks keyboard focus is dark blue; a step selector shows its whole entry instead of cutting it off; the “Whole statement” outline and the Structure view’s map are shown in full instead of in a scrolling box; and on wide screens, figures that still fit are drawn 1.125 times as large as in the app.</p>
+  <p>The site changes a few details of how the recorded figures are drawn, and nothing else: the outline that marks keyboard focus is blue; a step selector shows its whole entry instead of cutting it off; the “Whole statement” outline and the Structure view’s map are shown in full instead of in a scrolling box; and on wide screens, figures that still fit are drawn 1.125 times as large as in the app.</p>
   <p>On a narrow screen a wide diagram keeps its own size and scrolls sideways inside its frame, so that its labels stay readable. A screenshot keeps the size of the window it records in the same way. On paper nothing can scroll, so the widest diagrams are printed a little smaller, to fit the page.</p>
-  <p>This site runs no Lean and does not check any input. A recording shows what Definograph drew for that source at that time. It is not a fresh check, and a newer version of Definograph may draw the same statement differently. Controls in a recording do nothing; in the app they select objects or steps.</p>
+  <p>When a figure says <strong>Adapts to page theme</strong>, its recorded HTML uses the reader’s styles for the page’s light or dark theme. A <strong>Light theme</strong> or <strong>Dark theme</strong> label identifies a fixed figure’s recorded theme. Screenshots keep the theme in which they were rendered.</p>
+  <p>This site runs no Lean and does not check any input. A recording shows what Definograph drew from its stated input. A later rendering may use a newer version of Definograph while keeping the original captured results and source unchanged; it is not a fresh Lean check. Controls in a recording do nothing; in the app they select objects or steps.</p>
   <p>The source beside a figure is exactly what Definograph read. It is either a statement typed into the <strong>Lean expression</strong> field of Definograph’s <strong>Lean source</strong> panel, which accepts a single statement term and has Lean read it with Definograph’s fixed imports, or a complete Lean file.</p>
 </section>
 
@@ -292,7 +296,7 @@
     <dt>History</dt>
     <dd>The steps you take from a selection in the editor, each one recorded with its checks.</dd>
     <dt>Identity thread</dt>
-    <dd>In the Visual sequence, a faint dashed line that joins the places where one selected object appears. Its route means nothing.</dd>
+    <dd>In the Visual sequence, a dashed line that joins the places where one selected object appears. Its route means nothing.</dd>
     <dt>Interpretation coverage</dt>
     <dd>In the Inspect panel, the section that counts the parts of a statement Definograph could interpret, and names the definitions it left folded.</dd>
     <dt>Kernel</dt>

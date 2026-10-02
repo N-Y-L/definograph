@@ -1,0 +1,20 @@
+[
+  {
+    "name": "depends",
+    "fixture": true,
+    "responseSha256": "f89447bee681b690ad34627466bdec8a677e11c56ad5a81ded252e4c596bb15e",
+    "sourceSha256": "fd2e13b7bf32c6a7492b77ce8e3cd010d91254848a0ea91d79adf2337a9658e3",
+    "latex": "\\forall x : \\mathbb{R},\\ \\exists y : \\mathbb{R},\\ x < y",
+    "renderer": "KaTeX 0.18.7; trust:false; strict:error; htmlAndMathml",
+    "note": "Synthetic MathLabel wrapper around exact saved readableMath; a validator fixture, not recorded Product output or geometric evidence."
+  },
+  {
+    "name": "epsilon",
+    "fixture": true,
+    "responseSha256": "2befbe410ccd1f5ecd9160f3c02417de349f7df1e0a130a70c33aacf0cdb6962",
+    "sourceSha256": "83ec8fd6e229245f0184088590cc46e37b19b8fa6fa7e5db3e14b261decba3cc",
+    "latex": "\\forall c : \\text{EuclideanSpace}(\\mathbb{R}, \\mathbb{N}_{< 2}),\\ \\forall \\varepsilon : \\mathbb{R},\\ 0 < \\varepsilon \\implies \\forall P : \\text{EuclideanSpace}(\\mathbb{R}, \\mathbb{N}_{< 2}),\\ P \\in \\text{Metric.ball}(c, \\varepsilon) \\implies \\text{Dist.dist}(P, c) < \\varepsilon",
+    "renderer": "KaTeX 0.18.7; trust:false; strict:error; htmlAndMathml",
+    "note": "Synthetic MathLabel wrapper around exact saved readableMath; a validator fixture, not recorded Product output or geometric evidence."
+  }
+]

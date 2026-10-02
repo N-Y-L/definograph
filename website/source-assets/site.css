@@ -10,7 +10,7 @@
 :root {
   color-scheme: light dark;
   --bg: #ffffff;
-  --surface: #f6f8fa;
+  --surface: var(--bg);
   --text: #1b1f23;
   --muted: #57606a;
   --link: #0b57d0;
@@ -31,8 +31,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121417;
-    --surface: #1b1f24;
+    --bg: #000000;
+    --surface: var(--bg);
     --text: #e6e8eb;
     --muted: #a4adb7;
     --link: #8ab4f8;
@@ -680,9 +680,9 @@ span.filename {
   color: #1b1f23;
 }
 
-/* Recorded figures. The provenance line says what the figure is; the source is the exact
-   input; the view sits on its own light canvas (it was recorded in the reader's light
-   theme) inside a keyboard-focusable scroll region, and may be wider than the text. */
+/* Recorded figures. The provenance line identifies the input and recorded theme behavior.
+   Each view has a keyboard-focusable scroll region and may be wider than the text. Historical
+   light recordings keep their original canvas; verified adaptive recordings follow the page. */
 
 .dg-figure {
   min-width: 0;
@@ -789,6 +789,36 @@ details.dg-source > .dg-source-label {
 
 .dg-canvas[data-dg-surface="panel"] {
   background: #fffefa;
+}
+
+/* Newly recorded themes name the renderer's verified canvas palette explicitly. Historical
+   batches omit data-dg-theme and retain the family backgrounds recorded above. The fragment
+   stylesheet keeps its own renderer colors; these rules supply only the surrounding canvas. */
+.dg-canvas[data-dg-theme="light"] {
+  background: #ffffff;
+  color: #202f3e;
+  color-scheme: light;
+}
+
+.dg-canvas[data-dg-theme="dark"] {
+  background: #000000;
+  color: #e5eaf0;
+  color-scheme: dark;
+  --focus: #a8c9ff;
+}
+
+.dg-canvas[data-dg-theme="adaptive"] {
+  background: var(--bg);
+  color: #202f3e;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dg-canvas[data-dg-theme="adaptive"] {
+    color: #e5eaf0;
+    color-scheme: dark;
+    --focus: #a8c9ff;
+  }
 }
 
 /* On wide screens a view that reflows is drawn a little larger, closer to the reading size of

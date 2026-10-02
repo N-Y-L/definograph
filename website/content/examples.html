@@ -2,6 +2,7 @@
   <h1 id="examples">Examples</h1>
   <p class="lead">Each example is a statement, the view Definograph drew for it, and how to read that view: what it shows and what it leaves out.</p>
   <p>The views are recorded output. The statements are entries in Definograph’s <strong>Statement</strong> menu; Lean 4.28.0 reads them with Definograph’s pinned copy of Mathlib. To draw them yourself, you need Definograph running on your own computer (see <a href="/install/#try-it-yourself">Try it yourself</a>); then choose the statement from that menu.</p>
+  <p>For an editor-based library example, follow <a href="/examples/lebesgue-number/">Reading the Lebesgue-number lemma</a>: identify its hypotheses, compare its choices and read its whole-ball conclusion. It has its own downloadable file and Mathlib requirements.</p>
 </header>
 
 <nav class="on-page" aria-labelledby="examples-contents">
@@ -53,7 +54,7 @@
 <section class="example" id="the-outline-of-a-longer-statement">
   <h2>The outline of a longer statement</h2>
   <p class="task">In an ε–δ statement, which parts are assumed, which are required, and under which assumptions?</p>
-{{view:continuity-overview}}
+{{view:light-continuity-overview}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>The statement as nested entries: for every <code>ε</code>, given <code>0 &lt; ε</code>, there is a <code>δ</code> with all of its conditions: <code>0 &lt; δ</code>, and for every <code>x</code>, given <code>|x| &lt; δ</code>, then <code>|x · x| &lt; ε</code>. Each assumption is written before what depends on it.</dd>
@@ -65,7 +66,7 @@
 <section class="example" id="relations-and-their-roles">
   <h2>Relations and the roles of their objects</h2>
   <p class="task">In <code>∀ (A B : Set ℝ) (x : ℝ), A ⊆ B → x ∈ A → x ∈ B</code>, which relations are assumed, and which one is required?</p>
-{{view:sets-connections}}
+{{view:light-sets-connections}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>Three cards. <code>A ⊆ B</code> is a set inclusion with <code>A</code> as subset and <code>B</code> as superset; <code>x ∈ A</code> and <code>x ∈ B</code> are memberships with <code>x</code> as element. The tags say where each relation sits: the inclusion is the premise of an implication, <code>x ∈ A</code> is under one assumption, and the conclusion <code>x ∈ B</code> is under two.</dd>
@@ -77,7 +78,7 @@
 <section class="example" id="every-object-and-relation-at-once">
   <h2>Every object and relation at once</h2>
   <p class="task">In the same statement, <code>∀ (A B : Set ℝ) (x : ℝ), A ⊆ B → x ∈ A → x ∈ B</code>, which objects does each relation use, and which objects do the relations share?</p>
-{{view:sets-structure}}
+{{view:light-sets-structure}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>Nine objects and three relations. The inclusion uses <code>A</code> as subset and <code>B</code> as superset; each membership uses <code>x</code> as element and <code>A</code> or <code>B</code> as set. So <code>A</code>, <code>B</code> and <code>x</code> each connect to two relations.</dd>
@@ -101,10 +102,10 @@
 <section class="example" id="one-object-throughout-the-reading">
   <h2>One object throughout the reading</h2>
   <p class="task">Where does the same <code>x</code> appear in the reading of <code>g (f x) = h x</code>?</p>
-{{capture:paths-identity-trace}}
+{{capture:light-paths-identity-trace}}
   <dl class="example-notes">
     <dt>What it shows</dt>
-    <dd>At step 1, with <code>x</code> selected, a faint dashed line, the identity thread, joins the eight places where the same <code>x</code> appears: its entry and its small <code>x : A</code> box at this step, the same two in the full visual statement, the start of both compared routes, and the inputs of <code>f</code> and <code>h</code>.</dd>
+    <dd>At step 1, with <code>x</code> selected, a dashed line, the identity thread, joins the eight places where the same <code>x</code> appears: its entry and its small <code>x : A</code> box at this step, the same two in the full visual statement, the start of both compared routes, and the inputs of <code>f</code> and <code>h</code>.</dd>
     <dt>What it leaves out</dt>
     <dd>Any meaning in the line itself. Its route means nothing: it only links the places, and it is not a path or a movement. The thread is drawn from the positions of the page’s elements, so it is recorded as a screenshot at its own size.</dd>
   </dl>
@@ -113,7 +114,7 @@
 <section class="example" id="membership-regions">
   <h2>Membership regions of a compound set</h2>
   <p class="task">In <code>∀ (α : Type) (A B C : Set α) (x : α), x ∈ (A ∪ B) ∩ Cᶜ → x ∈ (A \ C) ∪ (B \ C)</code>, what does the assumption allow for <code>x</code>?</p>
-{{view:set-algebra-given}}
+{{view:light-set-algebra-given}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>The type <code>α</code> as a box with circles for <code>A</code>, <code>B</code> and <code>C</code>. The highlighted regions are the membership combinations the assumption allows: in <code>A</code> only, in <code>B</code> only, or in both, each outside <code>C</code>. The element must lie somewhere in the highlighted part.</dd>
@@ -125,7 +126,7 @@
 <section class="example" id="what-a-coloring-requires">
   <h2>What a coloring requires on each edge</h2>
   <p class="task">In <code>∀ (V C : Type) (G : SimpleGraph V) (c : G.Coloring C) (u v : V), G.Adj u v → c u ≠ c v</code>, what does the coloring <code>c</code> promise?</p>
-{{view:coloring-follow}}
+{{view:light-coloring-follow}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>The step applies <code>c</code> to <code>u</code>, under the assumption that <code>u</code> and <code>v</code> are adjacent. The figure shows the rule a proper coloring carries: if two endpoints are adjacent, their labels differ, for every edge. The color type <code>C</code> stays symbolic.</dd>
@@ -137,7 +138,7 @@
 <section class="example" id="a-ball-as-a-distance-condition">
   <h2>A ball as a distance condition</h2>
   <p class="task">In the statement below, what does <code>P ∈ Metric.ball c ε</code> require of <code>P</code>?</p>
-{{view:epsilon-ball}}
+{{view:light-epsilon-ball}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>The membership read as <code>dist(P, c) &lt; ε</code>, drawn as an open disc with center <code>c</code>, radius <code>ε</code> and a named point <code>P</code>. The figure notes that it uses the local assumption <code>0 &lt; ε</code> and that the boundary is excluded.</dd>
@@ -149,7 +150,7 @@
 <section class="example" id="one-numerical-sample">
   <h2>One numerical sample</h2>
   <p class="task">What does the same statement look like for particular values?</p>
-{{view:epsilon-sample}}
+{{view:light-epsilon-sample}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>One sample from <strong>Explore a sample</strong>: <code>ε = 1</code>, the center <code>c</code> at the origin and the point <code>P</code> at the center, so here <code>P</code> lies in the ball. The disc is the open ball in the Euclidean metric, boundary excluded.</dd>
@@ -161,7 +162,7 @@
 <section class="example" id="a-map-inverse-on-a-region">
   <h2>A map that is inverse only on a region</h2>
   <p class="task">In <code>∀ (A B : Type) (e : PartialEquiv A B) (x : A), x ∈ e.source → e.symm (e x) = x</code>, why is the assumption <code>x ∈ e.source</code> needed?</p>
-{{view:restricted-inverse-return}}
+{{view:light-restricted-inverse-return}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>The two carriers with the regions <code>e.source</code> and <code>e.target</code>, each marked as possibly empty; the maps <code>e</code> and its inverse between them; and the two round trips that return to their start, for every element of each region. The step follows <code>x</code> through <code>e</code> and back.</dd>
@@ -173,7 +174,7 @@
 <section class="example" id="inside-a-structure">
   <h2>Inside a structure</h2>
   <p class="task">In the same statement, what does <code>e : PartialEquiv A B</code> contain?</p>
-{{view:restricted-inverse-fields}}
+{{view:light-restricted-inverse-fields}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>The fields of <code>e</code> with their declared types: the maps <code>toFun</code> and <code>invFun</code>, the sets <code>source</code> and <code>target</code>, and the laws that link them, read in declaration order. The fields belong to this <code>e</code>, inside the statement’s quantifiers.</dd>
@@ -185,7 +186,7 @@
 <section class="example" id="opening-a-definition">
   <h2>Opening a definition</h2>
   <p class="task">In <code>∀ (α β : Type) (f : α → β), Function.Injective f → ∀ x y : α, f x = f y → x = y</code>, what does the assumption <code>Function.Injective f</code> say?</p>
-{{view:maps-expanded-overview}}
+{{view:light-maps-expanded-overview}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>The whole statement after <code>Function.Injective f</code> has been opened one step. The assumption now reads: for every <code>a₁</code>, <code>a₂</code>, given <code>f(a₁)</code> equals <code>f(a₂)</code>, then <code>a₁</code> equals <code>a₂</code>. Definograph opened it with a definition step that Lean checked for definitional equality.</dd>
@@ -197,7 +198,7 @@
 <section class="example" id="what-definograph-could-not-interpret">
   <h2>What Definograph could not interpret</h2>
   <p class="task">In <code>∀ (P : ℝ × ℝ) (ε : ℝ), P ∈ Metric.ball 0 ε → Nat.Prime 17</code>, which parts does Definograph interpret?</p>
-{{view:partial-coverage}}
+{{view:light-partial-coverage}}
   <dl class="example-notes">
     <dt>What it shows</dt>
     <dd>Definograph’s <strong>Interpretation coverage</strong>: the ball condition is interpreted (sets and membership, metric regions), <code>Nat.Prime</code> is kept as structure only, and its definition is available to look inside.</dd>

@@ -7,7 +7,7 @@
 # so set each header in at most one matching rule.
 
 /*
-  Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer
@@ -49,4 +49,7 @@
   Content-Type: text/plain; charset=utf-8
 
 /reference/contracts/reader-relations.md
+  Content-Type: text/plain; charset=utf-8
+
+/learn/examples/LebesgueNumber.lean
   Content-Type: text/plain; charset=utf-8

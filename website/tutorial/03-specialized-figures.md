@@ -18,7 +18,7 @@ This is Definograph's example **A condition on compound sets**:
 
 Step 6 of its Visual sequence reads the assumption:
 
-{{view:set-algebra-given}}
+{{view:light-set-algebra-given}}
 
 - The box stands for the type α and the three circles for A, B and C. The key names the circles by position: A upper left, B upper right, C lower.
 - The shaded part is where the assumption allows x to be: in A or in B, and outside C. "The named element must belong somewhere in the highlighted region; no particular membership combination is chosen."
@@ -27,7 +27,7 @@ Step 6 of its Visual sequence reads the assumption:
 
 Step 10 reads the conclusion:
 
-{{view:set-algebra-conclusion}}
+{{view:light-set-algebra-conclusion}}
 
 Here the key reads A upper left, C upper right, B lower. Positions can change from one figure to the next, so compare the figures by their labels.
 
@@ -45,13 +45,13 @@ This is Definograph's example **What a proper coloring requires**:
 
 Step 3 reads the assumption that u and v are adjacent:
 
-{{view:coloring-edge-condition}}
+{{view:light-coloring-edge-condition}}
 
 The figure marks u and v as the two ends of an edge of G. Its caption: "Positions encode endpoint roles, not distinctness or geometry. This condition does not specify the full graph." The figure is not a picture of G. It shows one required edge, and nothing about the rest.
 
 Step 4 follows the coloring. Its label, **Construction**, marks a step that builds an object. Here the object is c(u), and the line **Constructing part of** names the condition that c(u) belongs to, c(u) ≠ c(v). The step also says: "No concrete coloring is chosen."
 
-{{view:coloring-follow}}
+{{view:light-coloring-follow}}
 
 - The row marked **source application** is the application written in the statement: the input u goes through c to its color c(u).
 - Below it, the figure states the rule that every proper coloring satisfies: if two endpoints are adjacent, their colors differ, "different labels, for every edge". The rule is about every edge of G, not only an edge between u and v, so its two endpoints get new names, v₁ and v₂.
@@ -72,7 +72,7 @@ This is Definograph's example **A point in an ε-ball**:
 
 Step 7 reads the assumption that P lies in the ball:
 
-{{view:epsilon-ball}}
+{{view:light-epsilon-ball}}
 
 - The figure shows the open ball with its center c and radius ε, the point P inside, and the condition it stands for, dist(P, c) < ε.
 - Above the figure, **Given** lists the assumption 0 < ε, and the caption begins: "Uses the local assumption 0 < ε."
@@ -80,7 +80,7 @@ Step 7 reads the assumption that P lies in the ball:
 
 This statement can also be explored with numbers. In Definograph, choose **Explore a sample**; for this statement it opens a **Geometry** tab, **Open ball in 2D**, which draws the ball for one choice of values. It starts with c = (0, 0), ε = 1 and P = (0, 0):
 
-{{view:epsilon-sample}}
+{{view:light-epsilon-sample}}
 
 This figure is one sample, not the statement; Definograph labels it "Numerical illustration". It shows a single choice of c, ε and P, and that choice satisfies the statement's assumptions: ε = 1 is positive, and P lies in the ball because it sits at the center. The statement is about every such choice. No single sample, and no number of samples, shows that it holds for all of them, and a sample is not a proof.
 
@@ -99,7 +99,7 @@ This is Definograph's example **An inverse valid on a region**:
 
 Step 3 locates the source region:
 
-{{view:restricted-inverse-source}}
+{{view:light-restricted-inverse-source}}
 
 - The frames are the two carriers, the whole types A and B that the maps go between. Inside them are the regions e.source and e.target, each marked "possibly empty".
 - e and e⁻¹ connect the regions, "inverse on these regions".
@@ -108,7 +108,7 @@ Step 3 locates the source region:
 
 Step 6 follows the map back:
 
-{{view:restricted-inverse-return}}
+{{view:light-restricted-inverse-return}}
 
 **Apply the inverse map** takes e(x) through the inverse map to e.symm(e(x)). The figure writes e(x) as e.toFun(x): `toFun` is the name of the forward map inside `e`. The figure adds: "Its type alone does not establish membership in the valid region; the round-trip law requires that membership." In this statement that membership comes from the assumption x ∈ e.source, which appears above the figure under **Given**.
 
@@ -148,7 +148,7 @@ That argument is yours: a check of membership combinations, like a truth table. 
 
 `G.Colorable 4` says that G has a proper coloring that uses at most 4 colors. Its only condition step:
 
-{{view:colorable-requirement}}
+{{view:light-colorable-requirement}}
 
 Is the statement true? What do the labels 0, 1, 2 and 3 in the figure stand for?
 

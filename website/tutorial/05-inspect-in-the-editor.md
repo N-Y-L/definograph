@@ -30,7 +30,7 @@ example : Prop := ∀ x : Nat, ∃ y : Nat, y = x
 
 Definograph opens beside the file. This is its panel, shown on its own page outside the editor:
 
-{{capture:editor-panel}}
+{{capture:light-editor-panel}}
 
 At the top is the Definograph header, with **Guide** and **Export**. Below it, the statement bar reads **FROM YOUR LEAN EDITOR**, with the name of the file and the buttons **Refresh from editor**, **Lean source ↗**, **Source data** and **Inspect ↗**. Then comes the heading **Your selected expression**, with a note that reading a fragment does not assert a theorem. Below that are the views of Lessons 1–4: the tabs **Visual sequence** and **Explore a sample**, with **Mathematical notation** at the right.
 
@@ -49,7 +49,7 @@ Choose **Source data**. It keeps four records of your selection, one per tab:
 | **Expected type** | The type Lean expected at the selection, when Lean recorded one. |
 | **Check outcomes** | Each check that Lean ran on the selection, with its result. |
 
-{{view:editor-forallexists-source-data}}
+{{view:light-editor-forallexists-source-data}}
 
 To check something, Definograph sends one declaration to Lean's kernel, the part of Lean that has the final say on whether a term has a given type. The outcome is accepted, rejected or unknown. Each outcome also has an axiom audit: the axioms, if any, that the checked declaration depends on. An axiom is a fact that Lean assumes without proof. In your editor you can open each outcome to see the exact declaration and its audit; in the figure these rows stay closed.
 
@@ -61,7 +61,7 @@ Because the figure comes from a recorded history, it begins "Saved source snapsh
 
 In **Checker input**, the prepared expression is shown with a **Choose occurrence** button on each part that you can check. Choose the outermost part, the whole expression. Then choose **Check chosen occurrence**. Definograph runs your file again in a fresh Lean process and checks the chosen part together with the declarations around it.
 
-{{view:editor-occurrence-excerpt}}
+{{view:light-editor-occurrence-excerpt}}
 
 The result names the part, "Whole prepared term", and reports "6 kernel outcomes retained. The action completed." The six checks come in pairs of context and component, and all six are accepted. These too are checks of typing: "Typing outcomes do not assert a proposition or certify the drawing."
 
@@ -82,7 +82,7 @@ Each action runs your file again and recomputes every earlier step before adding
 
 This is the list of steps after step 4, with step 2 selected:
 
-{{view:editor-history-steps-excerpt}}
+{{view:light-editor-history-steps-excerpt}}
 
 Each row is one step and says how it was recorded. **matched** means that the step was recomputed and gave the same result as before; **new** marks the step just requested. The number of outcomes is the number of checks the step made. The words after **Check part** name where the part sits in Lean's form of the expression; you do not need them to follow this lesson.
 

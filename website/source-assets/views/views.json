@@ -830,6 +830,1276 @@
           }
         }
       ]
+    },
+    {
+      "batch": "web-light-captures-20261002",
+      "createdAt": "2026-10-02T06:39:59.598Z",
+      "renderedFromSavedData": true,
+      "recordedTheme": "light",
+      "lean": "4.28.0",
+      "stylesheet": {
+        "path": "views.css",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "keyframes": {
+        "renamed": {},
+        "dropped": []
+      },
+      "views": [
+        {
+          "id": "light-paths-identity-trace",
+          "kind": "identity-trace",
+          "title": "Identity thread for x at step 1, with the full visual statement open",
+          "nativeCapture": null,
+          "source": {
+            "path": "light-paths-identity-trace/source.lean",
+            "sha256": "690a346d0c79199d950d9567b7b43fdb6375bc10af8b9e90a617bc130fb94b01",
+            "form": "term"
+          },
+          "context": {
+            "path": "light-paths-identity-trace/context@2x.png",
+            "sha256": "ba8e45bbca6668446bb6bfc1b49c21f6de223b5b7dc047ba8d7faf8dcef853e3",
+            "width": 1728,
+            "height": 4962,
+            "alt": "The Visual sequence of g (f x) = h x at step 1, with x selected and the full visual statement open. A dashed line joins the eight places where x appears: its entry and its box at this step, the same two in the full statement, the start of both compared routes, and the inputs of f and h.",
+            "caption": "The identity thread in the <strong>Visual sequence</strong>: with <code>x</code> selected, a dashed line joins each place where the same <code>x</code> appears. Captured at twice the display density."
+          }
+        },
+        {
+          "id": "light-depends-app-context",
+          "kind": "app-context",
+          "title": "The application reading “For every x, some y” (Explore a sample, Choices)",
+          "nativeCapture": null,
+          "source": {
+            "path": "light-depends-app-context/source.lean",
+            "sha256": "61d05a349bad19c2825e1ce1cfa25e010b8ca6f01e1706a6796370a2804bbf33",
+            "form": "term"
+          },
+          "context": {
+            "path": "light-depends-app-context/context@2x.png",
+            "sha256": "15a1aad94a4ae49d3345379f900c63e7662589359bf59eb2cd7977ddcfaba50f",
+            "width": 2560,
+            "height": 2314,
+            "alt": "Definograph in a browser, reading the menu statement For every x, some y. The Statement menu, the tabs Visual sequence and Explore a sample with the Mathematical notation button, the representation tabs Choices, Condition, Relationships and Structure, and the view card Choices and dependencies.",
+            "caption": "A retained-result replay of the Definograph window with <strong>Explore a sample</strong> open for <code>∀ x : ℝ, ∃ y : ℝ, x &lt; y</code>: the representation tabs, with the <strong>Choices</strong> tab open, above the view card “Choices and dependencies”. The window is wider than this frame: scroll it sideways for its right-hand side, with the <strong>Lean source</strong> and <strong>Inspect</strong> buttons, the <strong>Mathematical notation</strong> button, <strong>Sample choices</strong> and, in the top bar, <strong>Source data</strong>. Captured at twice the display density. The replay notice states that Lean was not rerun; the displayed status remains “Connecting to Lean”."
+          }
+        }
+      ]
+    },
+    {
+      "batch": "editor-light-capture-20261002",
+      "createdAt": "2026-10-02T06:45:43.496Z",
+      "renderedFromSavedData": true,
+      "recordedTheme": "light",
+      "lean": "4.28.0",
+      "stylesheet": {
+        "path": "views.css",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "keyframes": {
+        "renamed": {},
+        "dropped": []
+      },
+      "views": [
+        {
+          "id": "light-editor-panel",
+          "kind": "editor-panel-capture",
+          "title": "The Definograph editor panel rendering a saved result",
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:41.313Z",
+            "completedAt": "2026-09-28T08:17:41.671Z"
+          },
+          "source": {
+            "path": "light-editor-panel/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          },
+          "context": {
+            "path": "light-editor-panel/context@2x.png",
+            "sha256": "a8b7dbf849eccc5c3d3db47d3b8eb9dc75681f6b48e64bd2d3452ea3d929f08f",
+            "width": 1760,
+            "height": 2050,
+            "alt": "Definograph rendering the saved QuantifierForallExists.lean result outside Visual Studio Code, with the replay notice visible. Visual sequence shows reading step 1 of 4, Auxiliary entry _example, recorded kind auxDecl, its complete qualification, and the Whole statement outline: For every x, There is y, y equals x.",
+            "caption": "Definograph’s panel rendering the saved result for QuantifierForallExists.lean. The screenshot retains the replay notice: Lean was not rerun, and the controls are not connected to a live editor."
+          }
+        }
+      ]
+    },
+    {
+      "batch": "lebesgue-editor-20261002",
+      "createdAt": "2026-10-02T06:46:56.542560+00:00",
+      "recordedTheme": "light",
+      "lean": "4.28.0",
+      "stylesheet": {
+        "path": "views.css",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "keyframes": {
+        "renamed": {},
+        "dropped": []
+      },
+      "views": [
+        {
+          "id": "lebesgue-editor-selection",
+          "kind": "editor-context",
+          "title": "Select the Lebesgue number theorem in the editor",
+          "source": {
+            "path": "lebesgue-editor-selection/source.lean",
+            "sha256": "c8e5bebd8b474e45d6cf8bd03046f83d8cbe4cc2c979806e8fd00c47ea189640",
+            "form": "file"
+          },
+          "context": {
+            "path": "lebesgue-editor-selection/context@2x.png",
+            "sha256": "a664cc57b8fd1bcf5b8ce1969023ce0076a013d988399fedf564435af68fc7b4",
+            "width": 2880,
+            "height": 1786,
+            "alt": "VS Code with LebesgueNumber.lean open and lebesgue_number_lemma_of_metric selected inside the check command.",
+            "caption": "The theorem name is selected in the editor. Definograph reads the type of this selected proof; the surrounding check command is not itself the theorem’s proof."
+          }
+        },
+        {
+          "id": "lebesgue-choices",
+          "kind": "editor-context",
+          "title": "The radius precedes the center",
+          "source": {
+            "path": "lebesgue-choices/source.lean",
+            "sha256": "c8e5bebd8b474e45d6cf8bd03046f83d8cbe4cc2c979806e8fd00c47ea189640",
+            "form": "file"
+          },
+          "context": {
+            "path": "lebesgue-choices/context@2x.png",
+            "sha256": "42ab7a53279f849e7178d4676168a7b2ffb36cd3c3467eab96a03ba3726e4424",
+            "width": 2880,
+            "height": 1786,
+            "alt": "The installed Choices view shows candidate radius delta at step 11 before arbitrary center x at step 12, followed by its 12-of-14-choices limit.",
+            "caption": "The candidate radius δ comes before the center x, and δ appears among the earlier choices available to x. The view explicitly stops after 12 of 14 choices. The later existential index i must be read in the whole statement or Visual sequence; it is not shown here."
+          }
+        },
+        {
+          "id": "lebesgue-containment",
+          "kind": "editor-context",
+          "title": "Read the inclusion condition in its scope",
+          "source": {
+            "path": "lebesgue-containment/source.lean",
+            "sha256": "c8e5bebd8b474e45d6cf8bd03046f83d8cbe4cc2c979806e8fd00c47ea189640",
+            "form": "file"
+          },
+          "context": {
+            "path": "lebesgue-containment/context@2x.png",
+            "sha256": "9ea16d31d94f552ec2e204acc1e0b59087b67e3b32b185d3601aeb3cad9c1a8d",
+            "width": 2880,
+            "height": 1786,
+            "alt": "The installed Visual sequence at the inclusion clause, with the four assumptions, positive radius and whole-ball containment.",
+            "caption": "The inclusion clause requires the whole ball Metric.ball x δ to lie inside c i. Its scope retains the theorem’s three hypotheses and x ∈ s; the positive-radius condition remains alongside the clause. The diagram states a containment requirement and supplies no numerical witness."
+          }
+        },
+        {
+          "id": "lebesgue-definition-inspection",
+          "kind": "editor-context",
+          "title": "Inspect Metric.ball while retaining the clause",
+          "source": {
+            "path": "lebesgue-definition-inspection/source.lean",
+            "sha256": "c8e5bebd8b474e45d6cf8bd03046f83d8cbe4cc2c979806e8fd00c47ea189640",
+            "form": "file"
+          },
+          "context": {
+            "path": "lebesgue-definition-inspection/context@2x.png",
+            "sha256": "b641442cfd05ff9154cfdb01022d67e794dac617b129774abd84e603ea0ce10b",
+            "width": 2880,
+            "height": 1786,
+            "alt": "The installed definition workspace keeps the original inclusion clause visible and presents the scoped result of inspecting Metric.ball, with three accepted checks.",
+            "caption": "Inspecting the selected Metric.ball application exposes {y | dist y x &lt; δ} while keeping the original clause in view. The result’s context, component and definition-head conversion are accepted. These checks concern this exposure in its scope; they do not prove the inclusion clause. Notation can hide implicit arguments, available with the exact result and scope."
+          }
+        },
+        {
+          "id": "lebesgue-return",
+          "kind": "editor-context",
+          "title": "Return to the same inclusion clause",
+          "source": {
+            "path": "lebesgue-return/source.lean",
+            "sha256": "c8e5bebd8b474e45d6cf8bd03046f83d8cbe4cc2c979806e8fd00c47ea189640",
+            "form": "file"
+          },
+          "context": {
+            "path": "lebesgue-return/context@2x.png",
+            "sha256": "d9eebc422a390158950f523b270dbcdb43b713a1354e5fe1ddeaf38f51de42eb",
+            "width": 2880,
+            "height": 1786,
+            "alt": "The installed reader after Return to reading, with the inclusion condition still selected and its scope retained.",
+            "caption": "Return to reading closes the definition workspace and restores the inclusion clause. The center, common radius and cover member can again be read with the assumptions and positivity condition. The recorded action restores the reading-step control’s focus."
+          }
+        }
+      ]
+    },
+    {
+      "batch": "editor-light-20261002",
+      "createdAt": "2026-10-02T07:11:58.016Z",
+      "renderedFromSavedData": true,
+      "recordedTheme": "light",
+      "adaptiveTheme": true,
+      "mathAssets": {
+        "engine": "katex",
+        "version": "0.18.7",
+        "fonts": [
+          {
+            "file": "assets/fonts/KaTeX_AMS-Regular.woff2",
+            "sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+            "bytes": 28076,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Caligraphic-Bold.woff2",
+            "sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+            "bytes": 6912,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Caligraphic-Regular.woff2",
+            "sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+            "bytes": 6908,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Fraktur-Bold.woff2",
+            "sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+            "bytes": 11348,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Fraktur-Regular.woff2",
+            "sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+            "bytes": 11316,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Main-Bold.woff2",
+            "sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+            "bytes": 25324,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Main-BoldItalic.woff2",
+            "sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+            "bytes": 16780,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Main-Italic.woff2",
+            "sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+            "bytes": 16988,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Main-Regular.woff2",
+            "sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+            "bytes": 26272,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Math-BoldItalic.woff2",
+            "sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+            "bytes": 16400,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Math-Italic.woff2",
+            "sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+            "bytes": 16440,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_SansSerif-Bold.woff2",
+            "sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+            "bytes": 12216,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_SansSerif-Italic.woff2",
+            "sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+            "bytes": 12028,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_SansSerif-Regular.woff2",
+            "sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+            "bytes": 10344,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Script-Regular.woff2",
+            "sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+            "bytes": 9644,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Size1-Regular.woff2",
+            "sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+            "bytes": 5468,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Size2-Regular.woff2",
+            "sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+            "bytes": 5208,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Size3-Regular.woff2",
+            "sha256": "73d591271b1604960cb10bb90fee021670af7297017e0e98480b332d11f51995",
+            "bytes": 3624,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Size4-Regular.woff2",
+            "sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+            "bytes": 4928,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Typewriter-Regular.woff2",
+            "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+            "bytes": 13568,
+            "mime": "font/woff2"
+          }
+        ],
+        "license": {
+          "file": "assets/licenses/KaTeX-LICENSE.txt",
+          "sha256": "766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3",
+          "bytes": 1107,
+          "mime": "text/plain"
+        },
+        "stylesheet": {
+          "file": "math-fonts.css",
+          "sha256": "90f9b7e2f744b47939f3991ca446c8b9f3cfc0dd26d9c5c548ea56812aad52f0",
+          "bytes": 3291,
+          "mime": "text/css"
+        }
+      },
+      "lean": "4.28.0",
+      "stylesheet": {
+        "path": "views.css",
+        "sha256": "4d16c050f93d9b0378408cc77ad870aa5913edea334e808dee292531c870926f"
+      },
+      "keyframes": {
+        "renamed": {},
+        "dropped": [
+          "spin"
+        ]
+      },
+      "views": [
+        {
+          "id": "light-editor-forallexists-source-data",
+          "kind": "editor-source-data",
+          "title": "Source data: the Check outcomes of the original selection",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:41.313Z",
+            "completedAt": "2026-09-28T08:17:41.671Z"
+          },
+          "label": "Recorded Source data of the selected statement, Check outcomes tab",
+          "caption": "The editor’s <strong>Source data</strong> for the selected statement, on its <strong>Check outcomes</strong> tab: two kernel outcomes, both accepted. They concern the prepared context and the typing of the term; they do not certify the drawing or assert the statement. The record is a saved snapshot whose origin is unverified.",
+          "fragment": {
+            "path": "light-editor-forallexists-source-data/fragment.html",
+            "sha256": "e515a40d4302d56db5867a31122a9025463daa75b9ed6270f88438d60cdd993f"
+          },
+          "source": {
+            "path": "light-editor-forallexists-source-data/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-returnmap-guided-path",
+          "kind": "editor-guided",
+          "title": "Visual reading, step 5: the round-trip map path",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:44.442Z",
+            "completedAt": "2026-09-28T08:17:44.791Z"
+          },
+          "label": "Recorded Visual sequence, step 5 of 5: the round trip",
+          "caption": "The last step of the <strong>Visual sequence</strong>, step 5 of 5: the round trip through <code>send</code> and <code>back</code> compared with <code>x</code>. The map paths are required to agree; the figure does not check that they do.",
+          "fragment": {
+            "path": "light-editor-returnmap-guided-path/fragment.html",
+            "sha256": "a3cd5bd4dbb8c271afaabff31fa1065e0827afc1c4dc440f36bec8b8670bc44d"
+          },
+          "source": {
+            "path": "light-editor-returnmap-guided-path/source.lean",
+            "sha256": "21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-occurrence-excerpt",
+          "kind": "editor-occurrence",
+          "title": "Excerpt: Chosen occurrence checks for the whole prepared term",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:41.313Z",
+            "completedAt": "2026-09-28T08:17:42.007Z"
+          },
+          "excerpt": true,
+          "label": "Recorded excerpt from Checker input: the chosen occurrence checks",
+          "caption": "Excerpt from <strong>Checker input</strong> after <strong>Check chosen occurrence</strong> on the whole term: six checks, all accepted.",
+          "fragment": {
+            "path": "light-editor-occurrence-excerpt/fragment.html",
+            "sha256": "ac68c38f2eb05bce66b59bd68c04090b1cee3704bd58b0b3a77bed95edf6e937"
+          },
+          "source": {
+            "path": "light-editor-occurrence-excerpt/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-history-steps-excerpt",
+          "kind": "editor-attempt",
+          "title": "Excerpt: the history after four steps, step 2 selected",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:41.313Z",
+            "completedAt": "2026-09-28T08:17:43.846Z"
+          },
+          "excerpt": true,
+          "label": "Recorded excerpt from the history: four steps, step 2 selected",
+          "caption": "Excerpt from the history after four steps, with step 2 selected.",
+          "fragment": {
+            "path": "light-editor-history-steps-excerpt/fragment.html",
+            "sha256": "e596231cf1f0a856a9ede0619003a863cd98b03ea8f40b1bab4ffe128abccee6"
+          },
+          "source": {
+            "path": "light-editor-history-steps-excerpt/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-hypothesis-supply-excerpt",
+          "kind": "editor-supply",
+          "title": "Excerpt: Supply reading for h in from_hypothesis",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:48.471Z",
+            "completedAt": "2026-09-28T08:17:49.482Z"
+          },
+          "excerpt": true,
+          "label": "Recorded excerpt from Supply reading for h in from_hypothesis",
+          "caption": "Excerpt from <strong>Supply reading</strong> for <code>h</code> in <code>from_hypothesis</code>: <code>h</code> read as supplying a proof of <code>P</code>, relative to three listed entries, one of them <code>h</code> itself.",
+          "fragment": {
+            "path": "light-editor-hypothesis-supply-excerpt/fragment.html",
+            "sha256": "0978e7ae42dc507f726b15d9fec7b77dc0a8ae4c2b60fd35fe78bc7fb6da03be"
+          },
+          "displayedIdentifiers": [
+            "the original selected occurrence (cbc11176)",
+            "attempt 1 (c3a0b956)"
+          ],
+          "source": {
+            "path": "light-editor-hypothesis-supply-excerpt/source.lean",
+            "sha256": "d08b151d13dc4b093abec35848290ae5f96bd79a9daeb8c18909f381bff3f9b4",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-claimed-supply-excerpt",
+          "kind": "editor-supply",
+          "title": "Excerpt: Supply reading for claimed",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:49.485Z",
+            "completedAt": "2026-09-28T08:17:50.870Z"
+          },
+          "excerpt": true,
+          "label": "Recorded excerpt from Supply reading for claimed",
+          "caption": "Excerpt from <strong>Supply reading</strong> for <code>claimed</code>: the recorded axioms include <code>sorryAx</code>, the axiom that stands for the missing proof.",
+          "fragment": {
+            "path": "light-editor-claimed-supply-excerpt/fragment.html",
+            "sha256": "b9dad807da00fc6a9223926befc5cc7d229b61ecac477e9e08f11a888b4c1ca1"
+          },
+          "displayedIdentifiers": [
+            "the original selected occurrence (7f04a1ed)",
+            "attempt 1 (59755424)"
+          ],
+          "source": {
+            "path": "light-editor-claimed-supply-excerpt/source.lean",
+            "sha256": "d08b151d13dc4b093abec35848290ae5f96bd79a9daeb8c18909f381bff3f9b4",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-provenance-excerpt",
+          "kind": "editor-attempt",
+          "title": "Excerpt: Ordered provenance through step 2",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:41.313Z",
+            "completedAt": "2026-09-28T08:17:43.846Z"
+          },
+          "excerpt": true,
+          "label": "Recorded excerpt from Ordered provenance through step 2",
+          "caption": "Excerpt from <strong>Ordered provenance</strong> with step 2 selected: two occurrences, the relation between them, and their formation lines.",
+          "fragment": {
+            "path": "light-editor-provenance-excerpt/fragment.html",
+            "sha256": "b126f3bf9e65f4686375611ec9f0d0a018ff181c69bffa22459e9920d98603a7"
+          },
+          "displayedIdentifiers": [
+            "the original selected occurrence (581d0e25)",
+            "attempt 1 (5924bbbe)",
+            "attempt 2 (f35ccc4b)",
+            "attempt 4 (6b1770c8)"
+          ],
+          "source": {
+            "path": "light-editor-provenance-excerpt/source.lean",
+            "sha256": "add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-returnmap-structure-excerpt",
+          "kind": "editor-guided",
+          "title": "Excerpt: the structure inside system (step 1)",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:44.442Z",
+            "completedAt": "2026-09-28T08:17:44.791Z"
+          },
+          "excerpt": true,
+          "label": "Recorded excerpt from step 1: the structure inside system",
+          "caption": "Excerpt from step 1 of the <strong>Visual sequence</strong>: the structure inside <code>system</code>, with its data and its law.",
+          "fragment": {
+            "path": "light-editor-returnmap-structure-excerpt/fragment.html",
+            "sha256": "8cf0b280430d81b1a9ccddf939880d40f36d9830de8b1227e8c71f09e7925db5"
+          },
+          "source": {
+            "path": "light-editor-returnmap-structure-excerpt/source.lean",
+            "sha256": "21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-returnmap-provenance-excerpt",
+          "kind": "editor-attempt",
+          "title": "Excerpt: Ordered provenance from system to the law",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:44.795Z",
+            "completedAt": "2026-09-28T08:17:48.429Z"
+          },
+          "excerpt": true,
+          "label": "Recorded excerpt from Ordered provenance: from system to the law",
+          "caption": "Excerpt from <strong>Ordered provenance</strong>: from <code>system</code> to its field <code>returns</code>, and from the field to its type, the law.",
+          "fragment": {
+            "path": "light-editor-returnmap-provenance-excerpt/fragment.html",
+            "sha256": "32e8b331c30147a2fe4b95dd3a175e13f726f2f2dc3098b45092a8c55db3f5d0"
+          },
+          "displayedIdentifiers": [
+            "the original selected occurrence (3c9d90c7)",
+            "attempt 1 (0b49be6f)",
+            "attempt 2 (8a6f7071)",
+            "attempt 3 (31895a57)",
+            "attempt 4 (44314aa1)"
+          ],
+          "source": {
+            "path": "light-editor-returnmap-provenance-excerpt/source.lean",
+            "sha256": "21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-editor-returnmap-supply-excerpt",
+          "kind": "editor-supply",
+          "title": "Excerpt: Supply reading for the field returns",
+          "savedRecord": true,
+          "nativeCapture": {
+            "startedAt": "2026-09-28T08:17:44.795Z",
+            "completedAt": "2026-09-28T08:17:48.429Z"
+          },
+          "excerpt": true,
+          "label": "Recorded excerpt from Supply reading for the field returns",
+          "caption": "Excerpt from <strong>Supply reading</strong>: the field <code>returns</code> of <code>system</code> read as supplying a proof of the law, with one frame, the projection.",
+          "fragment": {
+            "path": "light-editor-returnmap-supply-excerpt/fragment.html",
+            "sha256": "316352201e37c20c8ae8e561f69c5be473b8a455b8c1cbd25d317315c643e1d6"
+          },
+          "displayedIdentifiers": [
+            "attempt 2 (8a6f7071)",
+            "attempt 3 (31895a57)",
+            "attempt 4 (44314aa1)"
+          ],
+          "source": {
+            "path": "light-editor-returnmap-supply-excerpt/source.lean",
+            "sha256": "21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409",
+            "form": "file"
+          },
+          "sizing": {
+            "minWidthPx": 320,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        }
+      ]
+    },
+    {
+      "batch": "web-light-20261002",
+      "createdAt": "2026-10-02T07:38:03.817Z",
+      "renderedFromSavedData": true,
+      "recordedTheme": "light",
+      "adaptiveTheme": true,
+      "mathAssets": {
+        "engine": "katex",
+        "version": "0.18.7",
+        "fonts": [
+          {
+            "file": "assets/fonts/KaTeX_AMS-Regular.woff2",
+            "sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+            "bytes": 28076,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Caligraphic-Bold.woff2",
+            "sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+            "bytes": 6912,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Caligraphic-Regular.woff2",
+            "sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+            "bytes": 6908,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Fraktur-Bold.woff2",
+            "sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+            "bytes": 11348,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Fraktur-Regular.woff2",
+            "sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+            "bytes": 11316,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Main-Bold.woff2",
+            "sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+            "bytes": 25324,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Main-BoldItalic.woff2",
+            "sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+            "bytes": 16780,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Main-Italic.woff2",
+            "sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+            "bytes": 16988,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Main-Regular.woff2",
+            "sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+            "bytes": 26272,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Math-BoldItalic.woff2",
+            "sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+            "bytes": 16400,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Math-Italic.woff2",
+            "sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+            "bytes": 16440,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_SansSerif-Bold.woff2",
+            "sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+            "bytes": 12216,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_SansSerif-Italic.woff2",
+            "sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+            "bytes": 12028,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_SansSerif-Regular.woff2",
+            "sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+            "bytes": 10344,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Script-Regular.woff2",
+            "sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+            "bytes": 9644,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Size1-Regular.woff2",
+            "sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+            "bytes": 5468,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Size2-Regular.woff2",
+            "sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+            "bytes": 5208,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Size3-Regular.woff2",
+            "sha256": "73d591271b1604960cb10bb90fee021670af7297017e0e98480b332d11f51995",
+            "bytes": 3624,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Size4-Regular.woff2",
+            "sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+            "bytes": 4928,
+            "mime": "font/woff2"
+          },
+          {
+            "file": "assets/fonts/KaTeX_Typewriter-Regular.woff2",
+            "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+            "bytes": 13568,
+            "mime": "font/woff2"
+          }
+        ],
+        "license": {
+          "file": "assets/licenses/KaTeX-LICENSE.txt",
+          "sha256": "766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3",
+          "bytes": 1107,
+          "mime": "text/plain"
+        },
+        "stylesheet": {
+          "file": "math-fonts.css",
+          "sha256": "90f9b7e2f744b47939f3991ca446c8b9f3cfc0dd26d9c5c548ea56812aad52f0",
+          "bytes": 3291,
+          "mime": "text/css"
+        }
+      },
+      "lean": "4.28.0",
+      "stylesheet": {
+        "path": "views.css",
+        "sha256": "81ad88c1aadac99da7297170d8abe0cda2eea45e8ee044f529d6dc965cb13bc9"
+      },
+      "keyframes": {
+        "renamed": {},
+        "dropped": []
+      },
+      "views": [
+        {
+          "id": "light-sets-connections",
+          "kind": "relation-map",
+          "title": "Connected objects: A ⊆ B → x ∈ A → x ∈ B",
+          "nativeCapture": null,
+          "label": "Recorded Relationships view of A ⊆ B → x ∈ A → x ∈ B",
+          "caption": "Definograph’s <strong>Relationships</strong> view, tagged “Symbolic view”: one card per relation, with each object in its role and tags that say where the relation sits in the statement. A relation under an assumption is not claimed to hold.",
+          "fragment": {
+            "path": "light-sets-connections/fragment.html",
+            "sha256": "619310be95c35459ab676780c917857ff41c68365e97bc12feaec54f4bb0352b"
+          },
+          "source": {
+            "path": "light-sets-connections/source.lean",
+            "sha256": "d31c84a16b8d080424138cf77ebab164a262860489b1f538fd7e2392b1a86823",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 280,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-coloring-edge-condition",
+          "kind": "graph-constraint",
+          "title": "Read the edge condition (reading step 3 of 6)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 3 of 6 for the proper coloring statement",
+          "caption": "Step 3 of 6 of Definograph’s <strong>Visual sequence</strong>, “Read the edge condition”: the assumption that <code>u</code> and <code>v</code> are adjacent in <code>G</code>, in its logical place.",
+          "fragment": {
+            "path": "light-coloring-edge-condition/fragment.html",
+            "sha256": "9af847d11ab274938232ce6aaa8e208c5a8344817f7da679e47f820d48b6fb7b"
+          },
+          "source": {
+            "path": "light-coloring-edge-condition/source.lean",
+            "sha256": "ccee5831d142e25fe529c9eaeb51acdbec25b40437e5be1b6196e2fb31ff562b",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 690,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-coloring-follow",
+          "kind": "graph-constraint",
+          "title": "Follow the coloring (reading step 4 of 6)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 4 of 6 for the proper coloring statement",
+          "caption": "Step 4 of 6 of Definograph’s <strong>Visual sequence</strong>, “Follow the coloring”. Its stage label, Construction, means that the step builds part of the conclusion: here <code>c(u)</code>, one side of <code>c(u) ≠ c(v)</code>. The figure shows the rule the coloring <code>c</code> carries for every edge; <code>v₁</code> and <code>v₂</code> stand for the two endpoints of any edge, not for <code>u</code> and <code>v</code>.",
+          "fragment": {
+            "path": "light-coloring-follow/fragment.html",
+            "sha256": "2dff983608be0763a7d69e33a817dc540ce81224717f9975a00e4ab612ac22d8"
+          },
+          "source": {
+            "path": "light-coloring-follow/source.lean",
+            "sha256": "ccee5831d142e25fe529c9eaeb51acdbec25b40437e5be1b6196e2fb31ff562b",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 690,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-epsilon-ball",
+          "kind": "metric-statement",
+          "title": "Read the membership condition (reading step 7 of 9)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 7 of 9 for the ε-ball statement",
+          "caption": "Step 7 of 9 of the <strong>Visual sequence</strong>, “Read the membership condition”: membership in the open ball read as the distance condition, drawn schematically.",
+          "fragment": {
+            "path": "light-epsilon-ball/fragment.html",
+            "sha256": "1d6db9b4d00dd8685087deb2ec861d4d1f4ebf4faa08a4b5fb148dfc6ac11ad3"
+          },
+          "source": {
+            "path": "light-epsilon-ball/source.lean",
+            "sha256": "8960de338a33e6dc5edeecff10c2130d8590f33cd4dddcac7273225e5bf6d54e",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 686,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-restricted-inverse-source",
+          "kind": "restricted-map",
+          "title": "Locate the source region (reading step 3 of 7)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 3 of 7 for the partial equivalence statement",
+          "caption": "Step 3 of 7 of the <strong>Visual sequence</strong>, “Locate the source region”: the two carriers, the designated regions <code>e.source</code> and <code>e.target</code>, and the maps between them. The figure draws both round trips because a <code>PartialEquiv</code> contains a law for each; the statement asserts only the one that starts in the source region.",
+          "fragment": {
+            "path": "light-restricted-inverse-source/fragment.html",
+            "sha256": "e8ccf942fb42815138d752120708bde49e90e7ae3393f3b2d9770e71033ced5b"
+          },
+          "source": {
+            "path": "light-restricted-inverse-source/source.lean",
+            "sha256": "818cfb75e95161103bb93c2c6c53e2f9e1ea25d730b80dd3a732a310e2158937",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 775,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-restricted-inverse-return",
+          "kind": "restricted-map",
+          "title": "Follow the inverse map (reading step 6 of 7)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 6 of 7 for the partial equivalence statement",
+          "caption": "Step 6 of 7 of the <strong>Visual sequence</strong>, “Follow the inverse map”: from x through e and back through e.symm, on the designated source region.",
+          "fragment": {
+            "path": "light-restricted-inverse-return/fragment.html",
+            "sha256": "363a688399eb997a2d279ba9185f72ec1f9c37eb41f0b17d3aa241d625f92abc"
+          },
+          "source": {
+            "path": "light-restricted-inverse-return/source.lean",
+            "sha256": "818cfb75e95161103bb93c2c6c53e2f9e1ea25d730b80dd3a732a310e2158937",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 687,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-continuity-overview",
+          "kind": "logic-overview",
+          "title": "Whole statement: ε–δ condition at 0 for x ↦ x · x",
+          "nativeCapture": null,
+          "label": "Recorded outline of the whole ε–δ statement",
+          "caption": "Definograph’s outline of the whole statement, beside the first step of its <strong>Visual sequence</strong>. Each choice, assumption and requirement sits in its logical place; the highlighted entry is the current step. It is an outline of the statement, not a proof.",
+          "fragment": {
+            "path": "light-continuity-overview/fragment.html",
+            "sha256": "00c2fd270c3e10cdf006fd0193eff62fc5611ffe1d412b62ead0bc2f83307373"
+          },
+          "source": {
+            "path": "light-continuity-overview/source.lean",
+            "sha256": "ecfa05dc720decc0562be4faffee558b84370d57f23af12af66fc247191f7cad",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 280,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-continuity-choices",
+          "kind": "quantifier-flow",
+          "title": "Choices and dependencies: ε–δ condition",
+          "nativeCapture": null,
+          "label": "Recorded Choices view of the ε–δ statement",
+          "caption": "The <strong>Choices</strong> view of the ε–δ statement: the choices <code>ε</code>, <code>δ</code> and <code>x</code> and the two assumptions in reading order, with the earlier choices each one may depend on. The view leaves out the conditions <code>0 &lt; δ</code> and <code>|x * x| &lt; ε</code>.",
+          "fragment": {
+            "path": "light-continuity-choices/fragment.html",
+            "sha256": "4b1576131af40a2068d6568438e4d591e5bac170cb52c027d0351bacc1015c0d"
+          },
+          "source": {
+            "path": "light-continuity-choices/source.lean",
+            "sha256": "ecfa05dc720decc0562be4faffee558b84370d57f23af12af66fc247191f7cad",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 280,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-sets-inclusion",
+          "kind": "relation-figure",
+          "title": "Read the inclusion condition (reading step 3 of 5)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 3 of 5 for A ⊆ B → x ∈ A → x ∈ B",
+          "caption": "Step 3 of 5 of the <strong>Visual sequence</strong>, “Read the inclusion condition”: the assumption <code>A ⊆ B</code> drawn as one set inside the other.",
+          "fragment": {
+            "path": "light-sets-inclusion/fragment.html",
+            "sha256": "693d1ae6811c0298c12ebc1a99f2f9645bcb56ae38654ef0b1cc27ab59f02d42"
+          },
+          "source": {
+            "path": "light-sets-inclusion/source.lean",
+            "sha256": "d31c84a16b8d080424138cf77ebab164a262860489b1f538fd7e2392b1a86823",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 549,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-sets-conclusion",
+          "kind": "relation-figure",
+          "title": "Read the membership condition (reading step 5 of 5)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 5 of 5 for A ⊆ B → x ∈ A → x ∈ B",
+          "caption": "Step 5 of 5, “Read the membership condition”: the conclusion <code>x ∈ B</code>, with the two assumptions listed as in scope.",
+          "fragment": {
+            "path": "light-sets-conclusion/fragment.html",
+            "sha256": "729241c16006ed70f4aaba8dc9690ecfbc1c0fe5acd6d4b15864efe57c87e412"
+          },
+          "source": {
+            "path": "light-sets-conclusion/source.lean",
+            "sha256": "d31c84a16b8d080424138cf77ebab164a262860489b1f538fd7e2392b1a86823",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 550,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-paths-compare",
+          "kind": "relation-figure",
+          "title": "Compare the expressions with = (reading step 5 of 5)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 5 of 5 for g (f x) = h x",
+          "caption": "Step 5 of 5, “Compare the expressions with =”: the two routes from <code>x</code>, through <code>f</code> and then <code>g</code>, and through <code>h</code>, joined by the equation.",
+          "fragment": {
+            "path": "light-paths-compare/fragment.html",
+            "sha256": "41effd5a3dc7edb98c6cf3bae7aa666392690c360933d6ffe5fe66f25e3f14af"
+          },
+          "source": {
+            "path": "light-paths-compare/source.lean",
+            "sha256": "690a346d0c79199d950d9567b7b43fdb6375bc10af8b9e90a617bc130fb94b01",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 549,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-set-algebra-given",
+          "kind": "set-construction",
+          "title": "Read the membership condition (reading step 6 of 10)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 6 of 10 for the set-algebra statement",
+          "caption": "Step 6 of 10, “Read the membership condition”: the assumption <code>x ∈ (A ∪ B) ∩ Cᶜ</code> as the membership regions it allows inside the type <code>α</code>.",
+          "fragment": {
+            "path": "light-set-algebra-given/fragment.html",
+            "sha256": "7c42ff24e42e1331927256bf18b2843c7f6327d6bd1c1df6f9f05147a34a586b"
+          },
+          "source": {
+            "path": "light-set-algebra-given/source.lean",
+            "sha256": "9581e1312dba5776bda065b0184d8404c3b7fd0ac52596d91fac6c4b9ae60685",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 514,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-set-algebra-conclusion",
+          "kind": "set-construction",
+          "title": "Read the membership condition (reading step 10 of 10)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 10 of 10 for the set-algebra statement",
+          "caption": "Step 10 of 10: the conclusion <code>x ∈ (A \\ C) ∪ (B \\ C)</code> as membership regions. The key of the circles follows the operands of this set.",
+          "fragment": {
+            "path": "light-set-algebra-conclusion/fragment.html",
+            "sha256": "6de9d2ac15c4bcca7a2b46b6db14588d8232b11ad2b486444850016cde94c0e4"
+          },
+          "source": {
+            "path": "light-set-algebra-conclusion/source.lean",
+            "sha256": "9581e1312dba5776bda065b0184d8404c3b7fd0ac52596d91fac6c4b9ae60685",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 514,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-colorable-requirement",
+          "kind": "graph-constraint",
+          "title": "Read the coloring requirement (reading step 2 of 2)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 2 of 2 for G.Colorable 4",
+          "caption": "Step 2 of 2, “Read the coloring requirement”: <code>G.Colorable 4</code> read as the existence of a proper coloring with at most four available labels.",
+          "fragment": {
+            "path": "light-colorable-requirement/fragment.html",
+            "sha256": "2d4cc1c8149c83ea7579ae77bf600ca135071a8a311f76cfcfa856e726e30010"
+          },
+          "source": {
+            "path": "light-colorable-requirement/source.lean",
+            "sha256": "8f3a8c820f63bd1ed118af92036ed0a304643c2f7ec8f8f0b9d9e815ddd4a24d",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 690,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-epsilon-sample",
+          "kind": "numerical-sample",
+          "title": "Open ball in 2D: one recorded numerical sample",
+          "nativeCapture": null,
+          "label": "Recorded numerical sample for the ε-ball statement",
+          "caption": "A numerical illustration from <strong>Explore a sample</strong>: the open ball with <code>ε = 1</code> around <code>c = (0, 0)</code> and the point <code>P</code> at its center. It is one sample of values, not the statement. In the app you can move the point by clicking or dragging; in this recording nothing moves.",
+          "fragment": {
+            "path": "light-epsilon-sample/fragment.html",
+            "sha256": "038652e26b6b98d6b654dae3da46e857e7eb543636f10239b31ab2cf6c281c8f"
+          },
+          "source": {
+            "path": "light-epsilon-sample/source.lean",
+            "sha256": "8960de338a33e6dc5edeecff10c2130d8590f33cd4dddcac7273225e5bf6d54e",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 685,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-left-inverse-step-compare",
+          "kind": "relation-figure",
+          "title": "Compare the expressions with = (reading step 4 of 4, definition opened)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 4 of 4 for Function.LeftInverse g f, definition opened",
+          "caption": "With automatic inspection on, Definograph reads <code>Function.LeftInverse</code> through its checked definition. Step 4 of 4 compares <code>g (f x)</code> with <code>x</code>.",
+          "fragment": {
+            "path": "light-left-inverse-step-compare/fragment.html",
+            "sha256": "856ac65638e517aac633c8f8816c17982506ee09e2da7197be139ef24203d8fc"
+          },
+          "source": {
+            "path": "light-left-inverse-step-compare/source.lean",
+            "sha256": "0e8f44afafea0148899f51ed4d84ac83836a040ff5c22dfd01fadc2778f983a7",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 550,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-left-inverse-original",
+          "kind": "relation-figure",
+          "title": "Read the complete clause (reading step 2 of 2, inspection off)",
+          "nativeCapture": null,
+          "label": "Recorded reading step 2 of 2 for Function.LeftInverse g f, inspection off",
+          "caption": "With inspection off, the definition stays folded: the clause is shown as <code>Function.LeftInverse</code> applied to <code>g</code> and <code>f</code>, with no interpreted meaning.",
+          "fragment": {
+            "path": "light-left-inverse-original/fragment.html",
+            "sha256": "eeec1aa055fe1082fecc1cc26ad33220a0c929516236a2cdc07fbf1d30c26d96"
+          },
+          "source": {
+            "path": "light-left-inverse-original/source.lean",
+            "sha256": "0e8f44afafea0148899f51ed4d84ac83836a040ff5c22dfd01fadc2778f983a7",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 549,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-partial-coverage",
+          "kind": "coverage",
+          "title": "Interpretation coverage: a ball condition and Nat.Prime 17",
+          "nativeCapture": null,
+          "label": "Recorded interpretation coverage for a ball condition and Nat.Prime 17",
+          "caption": "The <strong>Interpretation coverage</strong> section of the Inspect panel, for a statement with a ball condition and <code>Nat.Prime 17</code>: one fragment interpreted, one kept as structure only, and <code>Nat.Prime</code> listed under meaning still folded.",
+          "fragment": {
+            "path": "light-partial-coverage/fragment.html",
+            "sha256": "9569c92c4f1f2f2d49fe7a7506a54155f5dbff432740eb78fd4be8b5675b1d98"
+          },
+          "source": {
+            "path": "light-partial-coverage/source.lean",
+            "sha256": "e7eacdd6e794f819c8705a77fdd46f596b51a025915ec7a19d9641f061664f6b",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 280,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-maps-expanded-overview",
+          "kind": "logic-overview",
+          "title": "Whole statement after opening Function.Injective",
+          "nativeCapture": null,
+          "label": "Recorded outline after opening Function.Injective",
+          "caption": "The <strong>Whole statement</strong> outline after <code>Function.Injective f</code> has been opened: the assumption now quantifies over its own two inputs. It is an outline of the statement, not a proof.",
+          "fragment": {
+            "path": "light-maps-expanded-overview/fragment.html",
+            "sha256": "3775db14557c8506a90cc987e45da6419f305be695caafe13a0f02995a3b2137"
+          },
+          "source": {
+            "path": "light-maps-expanded-overview/source.lean",
+            "sha256": "fdf7bc9a248983a53ebcc0bb6bc589bf0f243abbf132cdab8906262ddc62a08b",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 280,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-restricted-inverse-fields",
+          "kind": "structural-object",
+          "title": "Inside e: the fields and laws of a PartialEquiv (reading step 1 of 7)",
+          "nativeCapture": null,
+          "label": "Recorded structure of e : PartialEquiv A B",
+          "caption": "Step 1 of 7 opens the declared structure of <code>e</code>: four data fields and three laws, and a closing line saying that one further field is not shown.",
+          "fragment": {
+            "path": "light-restricted-inverse-fields/fragment.html",
+            "sha256": "b2da8e01aaf345968c15b4e3a8ef3f9883c3bbd8b66424d7700b408c54b05781"
+          },
+          "source": {
+            "path": "light-restricted-inverse-fields/source.lean",
+            "sha256": "818cfb75e95161103bb93c2c6c53e2f9e1ea25d730b80dd3a732a310e2158937",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 668,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        },
+        {
+          "id": "light-sets-structure",
+          "kind": "semantic-map",
+          "title": "Statement structure: A ⊆ B → x ∈ A → x ∈ B",
+          "nativeCapture": null,
+          "label": "Recorded Structure view of A ⊆ B → x ∈ A → x ∈ B",
+          "caption": "The <strong>Structure</strong> view with nothing selected: the objects on the left, the three relations on the right, and a connector for each role an object fills. Position and the curves of the connectors carry no meaning.",
+          "fragment": {
+            "path": "light-sets-structure/fragment.html",
+            "sha256": "1e54aade4c89b207c0db3cc6e5ce5a77c555a0d0a8a71b2b7fa56c4c9bb02514"
+          },
+          "source": {
+            "path": "light-sets-structure/source.lean",
+            "sha256": "d31c84a16b8d080424138cf77ebab164a262860489b1f538fd7e2392b1a86823",
+            "form": "term"
+          },
+          "sizing": {
+            "minWidthPx": 817,
+            "target": "root",
+            "from": "batch manifest minWidthPx"
+          }
+        }
+      ]
     }
   ]
 }

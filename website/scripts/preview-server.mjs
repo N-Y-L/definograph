@@ -10,6 +10,7 @@ import { headersFor, parseHeaders, parseRedirects } from './headers.mjs';
 const TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.css', 'text/css; charset=utf-8'],
+  ['.woff2', 'font/woff2'],
   ['.svg', 'image/svg+xml'],
   ['.png', 'image/png'],
   ['.txt', 'text/plain; charset=utf-8'],

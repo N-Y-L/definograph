@@ -11,6 +11,7 @@ import { pathToFileURL } from 'node:url';
 import { escapeHtml, excerptLines, inspectSvg, renderLean } from './format.mjs';
 import { DIRECTIVE, describeMarkdown, renderGuide, renderMarkdown } from './markdown.mjs';
 import { readPng } from './png.mjs';
+import { publishedMathCss, publishedMathFiles } from './math-assets.mjs';
 import {
   DIST, DOWNLOADS, FAVICON, HEADERS, ILLUSTRATIONS, IMAGES, LEAN_SOURCES, NOT_FOUND, ORIGIN, PAGES, READER_IMAGE_BATCH, ROOT, ROUTES,
   LESSON_FILE, SITE_NAME, STYLESHEET, TEMPLATE, TITLE_SUFFIX, TUTORIAL, TUTORIAL_LINKS, outputAllowlist, redirectsFile, routeOutput,
@@ -398,7 +399,9 @@ export async function build({ preview = false } = {}) {
   // pattern that would also match missing files under /assets/.
   const placeholders = headersTemplate.match(/^\{\{stylesheet\}\}$/gm) ?? [];
   if (placeholders.length !== 1) throw new Error(`${HEADERS} must contain exactly one {{stylesheet}} path line`);
-  const headers = headersTemplate.replace(/^\{\{stylesheet\}\}$/m, stylesheetHref);
+  const mathFiles = publishedMathFiles(batches);
+  const mathHeaders = mathFiles.map(({ output, mime }) => `\n/${output}\n  Content-Type: ${mime}${mime === 'text/plain' ? '; charset=utf-8' : ''}\n`).join('');
+  const headers = headersTemplate.replace(/^\{\{stylesheet\}\}$/m, stylesheetHref) + mathHeaders;
   if (headers.includes('{{')) throw new Error(`${HEADERS} contains an unknown placeholder`);
 
   await rm(STAGING, { recursive: true, force: true });
@@ -409,12 +412,13 @@ export async function build({ preview = false } = {}) {
     await writeFile(target, data, { flag: 'wx' });
   };
 
-  const usedLists = { images: [...used.images.values()], captures: [...used.captures.values()], views: [...used.views.values()], illustrations: [...used.illustrations.values()] };
+  const usedLists = { mathAssets: mathFiles, images: [...used.images.values()], captures: [...used.captures.values()], views: [...used.views.values()], illustrations: [...used.illustrations.values()] };
   const expected = outputAllowlist(stylesheet, usedLists);
   try {
     const banner = preview ? '<p class="preview-banner">Preview build with placeholders for recorded figures that are not available yet. Not for release.</p>\n' : '';
     for (const { output, page, body } of bodies) await emit(output, renderPage(template, page, `${banner}${body}`, stylesheetHref));
     await emit(`assets/${stylesheet}`, css);
+    for (const { output, bytes } of mathFiles) await emit(output, bytes);
     await emit('favicon.svg', favicon);
     for (const { output, bytes } of downloads) await emit(output, bytes);
     for (const { output, bytes } of images) await emit(output, bytes);
@@ -449,9 +453,14 @@ export async function build({ preview = false } = {}) {
 // the generated widths. The checks rebuild it with the same function and compare the bytes.
 export function publishedStylesheet(siteCss, batches, usedViews) {
   return [
+    publishedMathCss(batches),
     siteCss,
     ...batches.map((batch) => `\n/* Recorded Definograph views (${batch.name}): Definograph's own styles, for the figures of this set only. */\n${scopeViewCss(batch.css, batch.name, batch.keyframePlan)}/* Adaptations for a static page (RECORDING_ADAPTATIONS in scripts/views.mjs). */\n${adaptationRules(batch.name)}\n`),
     sizingRules(usedViews),
+    // CSS zoom re-hints embedded HTML fonts, changing their captured SVG baselines.
+    // Keep measured math batches in their original units; their minimum-width
+    // scroll frames already preserve readable labels on narrow pages.
+    ...batches.filter(batch => batch.mathAssets !== undefined).map(batch => `\n.dg-canvas[data-dg-batch="${batch.name}"] > .dg-view{zoom:1}\n`),
   ].join('');
 }
 

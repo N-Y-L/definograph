@@ -12,6 +12,10 @@ import { conflictingHeaders, headersFor, matchesPattern, parseHeaders, parseRedi
 import { hasClass, parseHtml } from './html.mjs';
 import { DESCRIPTION_COMMENT, DIRECTIVE, sameSource } from './markdown.mjs';
 import { readPng } from './png.mjs';
+import { validatePublishedMathCss } from './math-assets.mjs';
+import { runMathSelfTest } from './math-selftest.mjs';
+import { checkPageDirectives } from './page-directives.mjs';
+import { runPageDirectiveSelfTest } from './page-directives-selftest.mjs';
 import { createPreviewServer } from './preview-server.mjs';
 import { PRIVATE_PATHS, findPrivate } from './privacy.mjs';
 import {
@@ -19,6 +23,7 @@ import {
   READER_VIEWS, REDIRECTS, ROOT, ROUTES, SITE_NAME, STYLESHEET, TEMPLATE, TITLE_SUFFIX, TUTORIAL, TUTORIAL_LINKS, outputAllowlist, redirectsFile, routeOutput,
 } from './site.mjs';
 import { runViewSelfTest } from './views-selftest.mjs';
+import { runProvenanceSelfTest } from './provenance-selftest.mjs';
 import { EXCERPT_NOTE, RECORDED_HELP, SAVED_HISTORY, VIEWS_MANIFEST, surfaceOf, adaptationRules, animationNamesIn, formatDate, fragmentBody, keyframePlan, samePlan, scopeViewCss, selectorClasses, sizingRules, validateViewCss } from './views.mjs';
 
 // Reviewed statements of scope that must stay on the home page verbatim.
@@ -342,7 +347,7 @@ await group('HTML syntax and structure', async (fail) => {
         f(`${at}: stacked-table cells need data-label`);
       }
     }
-    if (/\{\{|\}\}/.test(source.replace(/<pre[\s\S]*?<\/pre>/g, ''))) f('unreplaced {{…}} placeholder');
+    checkPageDirectives(source, usedViews).forEach(f);
   }
   return `${pages.length} pages: balanced tags, valid nesting, unique ids, approved titles and descriptions, landmarks, headings, current-page marking`;
 });
@@ -493,7 +498,7 @@ await group('source bytes and listings', async (fail) => {
 
 // A figure's provenance line: the kind of recording, "from a saved history" exactly when the
 // batch says the recording was drawn from a saved record, the date and the Lean version.
-function checkProvenance(page, figure, kind, date, lean, fail, { savedRecord = false } = {}) {
+function checkProvenance(page, figure, kind, date, lean, fail, { savedRecord = false, renderedFromSavedData = false, nativeCapture, recordedTheme, adaptiveTheme = false } = {}) {
   const at = `${page.file} line ${figure.line}`;
   const first = page.children(figure)[0];
   if (!first || first.name !== 'p' || !hasClass(first, 'dg-provenance')) {
@@ -502,11 +507,25 @@ function checkProvenance(page, figure, kind, date, lean, fail, { savedRecord = f
   }
   const link = page.within(first).find((element) => element.name === 'a');
   if (!link || link.attrs.get('href') !== RECORDED_HELP || normalize(page.doc.text(link)) !== PROVENANCE[kind]) fail(`${at}: the provenance must link "${PROVENANCE[kind]}" to ${RECORDED_HELP}`);
-  const time = page.within(first).find((element) => element.name === 'time');
+  const times = page.within(first).filter((element) => element.name === 'time');
+  const time = times[0];
   if (!time || time.attrs.get('datetime') !== date || normalize(page.doc.text(time)) !== formatDate(date)) fail(`${at}: the provenance must give the recording date ${date}`);
   if (!normalize(page.doc.text(first)).includes(`Lean ${lean}`)) fail(`${at}: the provenance must give the Lean version ${lean}`);
   const saved = normalize(page.doc.text(first)).includes(`· ${SAVED_HISTORY} ·`);
   if (saved !== savedRecord) fail(`${at}: the provenance ${savedRecord ? 'must say' : 'may say only for a saved record'} "${SAVED_HISTORY}"`);
+  const text = normalize(page.doc.text(first));
+  if (renderedFromSavedData) {
+    if (!text.includes(`· Rendered ${formatDate(date)} ·`) || !text.includes(`Saved input: Lean ${lean}`) || !text.endsWith('Lean was not rerun.')) fail(`${at}: a saved-data rendering must label its rendering date, saved input's Lean version and absence of a new Lean run`);
+    if (text.includes('· from saved results ·') !== !savedRecord) fail(`${at}: ordinary saved results and saved editor histories need distinct labels`);
+    const theme = adaptiveTheme ? 'Adapts to page theme' : recordedTheme ? `${recordedTheme === 'light' ? 'Light' : 'Dark'} theme` : null;
+    for (const label of ['Adapts to page theme', 'Light theme', 'Dark theme']) if (text.includes(`· ${label} ·`) !== (label === theme)) fail(`${at}: the provenance must describe the figure's actual theme behavior`);
+    const day = (stamp) => new Date(stamp).toISOString().slice(0, 10);
+    const expectedNativeTimes = nativeCapture === null ? [] : [nativeCapture.startedAt, ...(day(nativeCapture.startedAt) === day(nativeCapture.completedAt) ? [] : [nativeCapture.completedAt])];
+    if (times.length !== expectedNativeTimes.length + 1 || expectedNativeTimes.some((stamp, index) => times[index + 1]?.attrs.get('datetime') !== stamp || normalize(page.doc.text(times[index + 1])) !== formatDate(day(stamp)))) fail(`${at}: the native capture dates must match the recorded range`);
+    if (!text.includes('· Dates in UTC ·')) fail(`${at}: saved-data dates must identify their time zone`);
+    if (text.includes('Native capture date unavailable') !== (nativeCapture === null)) fail(`${at}: an unavailable native capture date must be stated, never inferred`);
+    if (nativeCapture !== null && !text.includes('· Native capture ')) fail(`${at}: native capture dates need an explicit label`);
+  } else if (times.length !== 1 || /\bRendered\b|from saved results|Native capture|Saved input:|Lean was not rerun/.test(text)) fail(`${at}: a legacy recording must retain its original provenance wording`);
 }
 
 // A figure's own copy of its source (a recorded view's, or a screenshot's that has one) follows
@@ -550,7 +569,7 @@ await group('recorded views', async (fail) => {
           continue;
         }
         shown.views.add(view.id);
-        checkProvenance(page, figure, view.excerpt ? 'excerpt' : 'view', view.batch.date, view.batch.lean, fail, { savedRecord: view.savedRecord === true });
+        checkProvenance(page, figure, view.excerpt ? 'excerpt' : 'view', view.batch.date, view.batch.lean, fail, { savedRecord: view.savedRecord === true, renderedFromSavedData: view.batch.renderedFromSavedData === true, nativeCapture: view.nativeCapture, recordedTheme: view.batch.recordedTheme, adaptiveTheme: view.batch.adaptiveTheme === true });
         checkFigureSource(page, figure, children, view, at, fail);
         const scroll = children.find((element) => hasClass(element, 'dg-scroll'));
         // An excerpt's frame has dashed top and bottom edges (dg-figure-excerpt), and a visually
@@ -597,7 +616,7 @@ await group('recorded views', async (fail) => {
           continue;
         }
         shown.captures.add(view.id);
-        checkProvenance(page, figure, 'capture', view.batch.date, view.batch.lean, fail, { savedRecord: view.savedRecord === true });
+        checkProvenance(page, figure, 'capture', view.batch.date, view.batch.lean, fail, { savedRecord: view.savedRecord === true, renderedFromSavedData: view.batch.renderedFromSavedData === true, nativeCapture: view.nativeCapture, recordedTheme: view.batch.recordedTheme });
         if (view.sourceText !== undefined) checkFigureSource(page, figure, children, view, at, fail);
         const img = page.within(figure).filter((element) => element.name === 'img');
         if (img.length !== 1 || img[0].attrs.get('src') !== `/${view.contextOutput}` || img[0].attrs.get('width') !== String(view.context.width / 2) || img[0].attrs.get('height') !== String(view.context.height / 2)) {
@@ -669,6 +688,7 @@ await group('recorded views', async (fail) => {
       const root = page.children(canvas)[0];
       const view = usedViews.get(root?.attrs.get('data-view-id'));
       if (view && canvas.attrs.get('data-dg-batch') !== view.batch.name) fail(`${page.file} line ${canvas.line}: the canvas of ${view.id} must carry data-dg-batch="${view.batch.name}"`);
+      if (view && canvas.attrs.get('data-dg-theme') !== (view.batch.adaptiveTheme === true ? 'adaptive' : view.batch.recordedTheme)) fail(`${page.file} line ${canvas.line}: the canvas of ${view.id} must carry its explicitly recorded or adaptive theme`);
       // The canvas has the background the view's family has in the app.
       if (view && (canvas.attrs.get('data-dg-surface') ?? null) !== surfaceOf(view.kind)) fail(`${page.file} line ${canvas.line}: the canvas of ${view.id} (${view.kind}) must ${surfaceOf(view.kind) ? `carry data-dg-surface="${surfaceOf(view.kind)}"` : 'keep the page background'}`);
     }
@@ -687,6 +707,25 @@ await group('recorded-view validator self-test', async (fail) => {
   const { failures, cases } = runViewSelfTest(ROOT);
   failures.forEach(fail);
   return `the fixture batch imports, loads and renders; ${cases} broken fragments and stylesheets are each rejected for the expected reason; changed files fail their pins`;
+});
+
+await group('static math asset and fragment self-test', async (fail) => {
+  const { failures, cases } = runMathSelfTest(ROOT);
+  failures.forEach(fail);
+  for (const asset of built.used.mathAssets) if (sha256(await readFile(path.join(DIST, asset.output))) !== asset.sha256) fail(`${asset.output}: published math asset differs from its pin`);
+  return `${cases} math profile, resource and import checks; published font/license bytes pinned`;
+});
+
+await group('final-page directive self-test', async (fail) => {
+  const { failures, cases } = runPageDirectiveSelfTest(ROOT);
+  failures.forEach(fail);
+  return `${cases} exact-recording TeX exemptions and unreplaced-directive checks`;
+});
+
+await group('saved-data provenance self-test', async (fail) => {
+  const { failures, cases } = runProvenanceSelfTest(ROOT);
+  failures.forEach(fail);
+  return `${cases} metadata, date, import-field, legacy and rendering checks; no native captures created`;
 });
 
 // What a Markdown file should show once rendered, from marked's own lexer: heading and
@@ -920,7 +959,7 @@ await group('request boundary and privacy', async (fail) => {
     }
   }
   const css = await readFile(path.join(DIST, 'assets', built.stylesheet), 'utf8');
-  if (/url\(|@import/i.test(css.replace(/\/\*[\s\S]*?\*\//g, ''))) fail('the stylesheet must not request other resources');
+  validatePublishedMathCss(css, built.batches).forEach(fail);
   for (const file of ['_headers', 'robots.txt', 'sitemap.xml']) {
     if (LOOPBACK.test(await readFile(path.join(DIST, file), 'utf8'))) fail(`dist/${file}: refers to a local service`);
   }
@@ -1014,7 +1053,7 @@ await group('_headers', async (fail) => {
     }),
   );
   const expected = {
-    'default-src': "'none'", 'img-src': "'self'", 'style-src': "'self'",
+    'default-src': "'none'", 'img-src': "'self'", 'style-src': "'self'", 'font-src': "'self'",
     'base-uri': "'none'", 'form-action': "'none'", 'frame-ancestors': "'none'",
   };
   for (const [name, value] of Object.entries(expected)) {
@@ -1364,6 +1403,7 @@ await group('preview server: routing, types, statuses', async (fail) => {
     ...(await Promise.all(built.used.illustrations.map(async ({ source, output }) => ({
       path: `/${output}`, status: 200, type: 'image/svg+xml', body: await readFile(path.join(ROOT, source)), secured: true, revalidate: true,
     })))),
+    ...(await Promise.all(built.used.mathAssets.map(async ({ output, mime }) => ({ path: `/${output}`, status: 200, type: mime, body: await readFile(path.join(DIST, output)), secured: true, revalidate: true })))),
     { path: `/assets/${built.stylesheet}`, status: 200, type: 'text/css', cache: /immutable/ },
     ...(await Promise.all(built.used.images.map(({ output }) => binary(output)))),
     ...(await Promise.all(built.used.captures.map(({ contextOutput }) => binary(contextOutput)))),

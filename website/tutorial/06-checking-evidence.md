@@ -42,7 +42,7 @@ Here P is any proposition and h is an assumed proof of it; the theorem returns h
 
 In the editor, select the final `h`, run **Definograph: Visualize Selection**, open **Source data**, and in **Checker input** check the whole term with **Check chosen occurrence**. Then choose **Inspect type of original selected term**. The history now has a step that relates the term h to its type, the statement P. **Supply reading** reads it:
 
-{{view:editor-hypothesis-supply-excerpt}}
+{{view:light-editor-hypothesis-supply-excerpt}}
 
 - "Relative to the captured environment, including its axioms, and the 3 entries and 0 frames listed, occurrence 1 is read as supplying a proof of the statement at occurrence 2." The occurrences are the expressions that the history reached, numbered in order: occurrence 1 is the term h, and occurrence 2 is its type P. Frames are relations passed on the way from your selection to the term, such as taking a field of a structure. There are none here.
 - "Recorded axioms of the typing declaration: none recorded."
@@ -65,7 +65,7 @@ example : 2 + 2 = 5 := claimed
 
 In the editor, select `claimed` in the `example` line and take the same steps. The supply reading has the same form:
 
-{{view:editor-claimed-supply-excerpt}}
+{{view:light-editor-claimed-supply-excerpt}}
 
 - "Relative to the captured environment, including its axioms, and the 1 entries and 0 frames listed, occurrence 1 is read as supplying a proof of the statement at occurrence 2." The statement is 2 + 2 = 5, and the one entry is `_example`.
 - "Recorded axioms of the typing declaration: sorryAx."
@@ -126,7 +126,7 @@ The history up to the selected step is its **prefix**. **Ordered provenance** an
 
 **Ordered provenance** lists the occurrences of the prefix in order, with the relations that connect them:
 
-{{view:editor-provenance-excerpt}}
+{{view:light-editor-provenance-excerpt}}
 
 - Occurrence 1 is your original selection. Occurrence 2 is the part reached by checking the body of the universal statement. The relation between them is a **Contained part**, with the role "universal statement · body".
 - Each occurrence has a formation line: "Formation: established as a proposition" for occurrence 1, and "Formation: not established" for occurrence 2.

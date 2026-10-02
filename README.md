@@ -25,20 +25,20 @@ For example, enter this statement term:
 
 Here the choice of `y` may depend on the earlier `x`. Reversing the quantifiers asks for one `y` that works for every `x`. The reader makes this dependency visible; it does not supply a witness or a proof. See the [recorded examples](https://definograph.com/examples/) for broader views and their exact source statements.
 
-<img src="website/source-assets/views/views-6/depends-app-context/context@2x.png" width="720" alt="Definograph's Choices view lists an arbitrary x followed by a candidate y that may depend on x.">
+<img src="website/source-assets/views/web-light-captures-20261002/light-depends-app-context/context@2x.png" width="720" alt="Definograph's Choices view lists an arbitrary x followed by a candidate y that may depend on x.">
 
-*Recorded Choices view: `y` may depend on the earlier `x`; its existence remains an obligation. [Exact Lean source](website/source-assets/views/views-6/depends-app-context/source.lean).*
+*Recorded Choices view: `y` may depend on the earlier `x`; its existence remains an obligation. [Exact Lean source](website/source-assets/views/web-light-captures-20261002/light-depends-app-context/source.lean).*
 
 <details>
 <summary>Trace an object through a statement about two map paths</summary>
 
-<img src="website/source-assets/views/views-6/paths-identity-trace/context@2x.png" width="640" alt="The selected object x is linked across a reading step, typed maps and the equation g(f(x)) = h(x).">
+<img src="website/source-assets/views/web-light-captures-20261002/light-paths-identity-trace/context@2x.png" width="640" alt="The selected object x is linked across a reading step, typed maps and the equation g(f(x)) = h(x).">
 
-*The dotted thread links visible occurrences of the selected `x` across the guided step and full statement. The thread's route carries no mathematical meaning. [Exact Lean source](website/source-assets/views/views-6/paths-identity-trace/source.lean).*
+*The dotted thread links visible occurrences of the selected `x` across the guided step and full statement. The thread's route carries no mathematical meaning. [Exact Lean source](website/source-assets/views/web-light-captures-20261002/light-paths-identity-trace/source.lean).*
 
 </details>
 
-Both images were recorded from the reader on 28 September 2026 with Lean 4.28.0.
+Rendered on 2 October 2026 from retained Lean 4.28.0 results. Lean was not rerun; the original native acquisition date is unavailable.
 
 ## Run locally
 

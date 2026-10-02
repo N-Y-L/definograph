@@ -16,6 +16,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { escapeHtml, renderLean } from './format.mjs';
 import { hasClass, parseHtml } from './html.mjs';
+import { readMathAsset, verifyMathAssets } from './math-assets.mjs';
+import { validateMathFragment } from './math-fragment.mjs';
 import { readPng } from './png.mjs';
 import { FRAGMENT_PATTERNS, RECORDED_VIEW_PATTERNS, findPrivate } from './privacy.mjs';
 
@@ -31,6 +33,57 @@ const SHA256 = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}$/;
 const ISO_TIME = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
 const LEAN_VERSION = /^\d+\.\d+\.\d+$/;
+
+// Saved-data recordings distinguish the new rendering from the native captures it reuses.
+// Validate real calendar dates and compare fractional seconds without Date.parse rounding.
+function isoInstant(value) {
+  if (typeof value !== 'string') return null;
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if (!parts) return null;
+  const [, year, month, day, hour, minute, second = '00', fraction = '', zone, , zoneHour = '00', zoneMinute = '00'] = parts;
+  const leap = Number(year) % 4 === 0 && (Number(year) % 100 !== 0 || Number(year) % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (+month < 1 || +month > 12 || +day < 1 || +day > days[+month - 1]
+      || +hour > 23 || +minute > 59 || +second > 59 || +zoneHour > 23 || +zoneMinute > 59) return null;
+  const milliseconds = Date.parse(`${year}-${month}-${day}T${hour}:${minute}:${second}${zone}`);
+  return Number.isFinite(milliseconds) ? { milliseconds, fraction } : null;
+}
+
+function compareInstants(left, right) {
+  if (left.milliseconds !== right.milliseconds) return left.milliseconds - right.milliseconds;
+  const width = Math.max(left.fraction.length, right.fraction.length);
+  const a = left.fraction.padEnd(width, '0');
+  const b = right.fraction.padEnd(width, '0');
+  return a === b ? 0 : a < b ? -1 : 1;
+}
+
+export function validateBatchProvenance(batch, label = 'batch') {
+  const errors = [];
+  if (batch.renderedFromSavedData !== undefined && batch.renderedFromSavedData !== true) errors.push(`${label}: renderedFromSavedData is either true or absent`);
+  if (batch.adaptiveTheme !== undefined && batch.adaptiveTheme !== true) errors.push(`${label}: adaptiveTheme is either true or absent`);
+  if (batch.adaptiveTheme === true && batch.recordedTheme === undefined) errors.push(`${label}: adaptiveTheme requires recordedTheme`);
+  if (batch.recordedTheme !== undefined && !['light', 'dark'].includes(batch.recordedTheme)) errors.push(`${label}: recordedTheme must be light or dark`);
+  if (batch.renderedFromSavedData === true) {
+    if (!isoInstant(batch.createdAt)) errors.push(`${label}: saved-data createdAt must be a valid ISO 8601 timestamp`);
+    if (batch.recordedTheme === undefined) errors.push(`${label}: a saved-data rendering requires recordedTheme`);
+  }
+  return errors;
+}
+
+export function validateNativeCapture(nativeCapture, batch, label = 'view') {
+  if (batch.renderedFromSavedData !== true) return nativeCapture === undefined ? [] : [`${label}: nativeCapture requires renderedFromSavedData`];
+  if (nativeCapture === null) return [];
+  if (!nativeCapture || typeof nativeCapture !== 'object' || Array.isArray(nativeCapture)) return [`${label}: nativeCapture must be null or an object with startedAt and completedAt`];
+  const errors = [];
+  for (const key of Object.keys(nativeCapture)) if (!['startedAt', 'completedAt'].includes(key)) errors.push(`${label}: unexpected nativeCapture field ${key}`);
+  const start = isoInstant(nativeCapture.startedAt);
+  const end = isoInstant(nativeCapture.completedAt);
+  const rendered = isoInstant(batch.createdAt);
+  if (!start || !end) errors.push(`${label}: nativeCapture startedAt and completedAt must be valid ISO 8601 timestamps`);
+  if (start && end && compareInstants(start, end) > 0) errors.push(`${label}: nativeCapture startedAt must not be later than completedAt`);
+  if (end && rendered && compareInstants(end, rendered) > 0) errors.push(`${label}: nativeCapture must not be later than the rendering createdAt`);
+  return errors;
+}
 const MAX_FRAGMENT_BYTES = 1024 * 1024;
 const MAX_CSS_BYTES = 512 * 1024;
 
@@ -507,7 +560,7 @@ function visibleTextRanges(text, doc) {
 // "attempt 4 (eb5d6a75)", which the product derives from a fresh random UUID per capture), as
 // declared by the batch. Exactly those strings are allowed, and only in the view's visible
 // text; the same string in an attribute or a tooltip, and any other identifier, still fail.
-export function validateFragment(text, { id, kind, label = `${id}/fragment.html`, allow = [], displayed = [] }) {
+export function validateFragment(text, { id, kind, label = `${id}/fragment.html`, allow = [], displayed = [], mathAssetsVerified = false }) {
   const errors = [];
   const warnings = [];
   const report = (message) => errors.push(`${label}: ${message}`);
@@ -532,11 +585,14 @@ export function validateFragment(text, { id, kind, label = `${id}/fragment.html`
   if (Buffer.byteLength(text) > MAX_FRAGMENT_BYTES) report(`${Buffer.byteLength(text)} bytes; the limit is ${MAX_FRAGMENT_BYTES}`);
   else if (Buffer.byteLength(text) > 300 * 1024) warnings.push(`${label}: ${Math.round(Buffer.byteLength(text) / 1024)} KiB is heavy for one page`);
   for (const found of findPrivate(withoutPublicIds(scanned, allow), FRAGMENT_PATTERNS)) report(`contains a ${found}`);
-  if (/\{\{|\}\}/.test(text)) report('contains "{{" or "}}", which the site reserves for directives');
+
   if (/<!\[CDATA\[/i.test(text)) report('contains a CDATA section');
   for (const comment of text.matchAll(/<!--([\s\S]*?)-->/g)) if (comment[1].trim()) report('contains a comment; comments are not published');
 
   const doc = parseHtml(text);
+  const math = validateMathFragment(doc, text, { enabled: mathAssetsVerified });
+  for (const error of math.errors) report(error);
+  if (/\{\{|\}\}/.test(math.directiveText)) report('contains "{{" or "}}", which the site reserves for directives');
   for (const error of doc.errors) report(error);
   const roots = doc.elements.filter((element) => element.parent === null);
   const root = roots[0];
@@ -564,7 +620,7 @@ export function validateFragment(text, { id, kind, label = `${id}/fragment.html`
   for (const element of doc.elements) {
     const at = `<${element.name}> on line ${element.line}`;
     const inSvg = element.name === 'svg' || element.ancestors.some((a) => a.name === 'svg');
-    if (FORBIDDEN_ELEMENTS.has(element.name)) report(`${at} is not allowed in a recorded view`);
+    if (FORBIDDEN_ELEMENTS.has(element.name) && !math.foreignObjects.has(element)) report(`${at} is not allowed in a recorded view`);
     if (element.name === 'title' && !inSvg) report(`${at}: <title> is only allowed inside SVG`);
     for (const name of (element.attrs.get('class') ?? '').split(/\s+/).filter(Boolean)) classes.add(name);
     for (const [name, value] of element.attrs) {
@@ -677,8 +733,10 @@ export function loadViews(root) {
     }
     if (batchNames.has(batch.batch)) errors.push(`${at}: listed twice`);
     batchNames.add(batch.batch);
-    const date = ISO_TIME.exec(batch.createdAt ?? '')?.[1];
+    const date = batch.renderedFromSavedData === true && isoInstant(batch.createdAt)
+      ? new Date(batch.createdAt).toISOString().slice(0, 10) : ISO_TIME.exec(batch.createdAt ?? '')?.[1];
     if (!date) errors.push(`${at}: createdAt must be an ISO 8601 time`);
+    errors.push(...validateBatchProvenance(batch, at));
     if (!LEAN_VERSION.test(batch.lean ?? '')) errors.push(`${at}: lean must be a version such as 4.28.0`);
     if (manifest.version === 1) {
       if (!COMMIT.test(batch.product?.commit ?? '')) errors.push(`${at}: product.commit must be the full product commit`);
@@ -687,11 +745,20 @@ export function loadViews(root) {
       if (!/^READY-[\w.-]+\.json$/.test(batch.ready?.file ?? '') || typeof batch.ready?.at !== 'string') errors.push(`${at}: ready (the READY declaration the import accepted the batch under) is missing; re-import the batch`);
     } else {
       // Public build manifests retain asset integrity without private capture provenance.
-      const allowed = ['batch', 'createdAt', 'lean', 'stylesheet', 'keyframes', 'views'];
+      const allowed = ['batch', 'createdAt', 'lean', 'stylesheet', 'keyframes', 'views', 'renderedFromSavedData', 'recordedTheme', 'adaptiveTheme', 'mathAssets'];
       for (const key of Object.keys(batch)) if (!allowed.includes(key)) errors.push(`${at}: unexpected public batch field ${key}`);
     }
     const dir = `${VIEWS_DIR}/${batch.batch}`;
     const record = { name: batch.batch, dir, date, createdAt: batch.createdAt, lean: batch.lean, commit: batch.product?.commit, product: batch.product, css: null, cssPath: `${dir}/views.css`, views: [] };
+    if (batch.renderedFromSavedData === true) record.renderedFromSavedData = true;
+    if (batch.recordedTheme !== undefined) record.recordedTheme = batch.recordedTheme;
+    if (batch.adaptiveTheme === true) record.adaptiveTheme = true;
+    if (batch.mathAssets !== undefined) {
+      try {
+        record.mathFiles = verifyMathAssets(batch.mathAssets, rel => readMathAsset(path.join(root, dir), rel));
+        record.mathAssets = batch.mathAssets;
+      } catch (error) { errors.push(`${at}: ${error.message}`); }
+    }
     const sheet = pinned(batch.stylesheet, 'views.css', `${at} stylesheet`);
     if (sheet) {
       const bytes = read(record.cssPath, at);
@@ -708,6 +775,11 @@ export function loadViews(root) {
     }
     for (const view of batch.views ?? []) {
       const vat = `${at} view ${JSON.stringify(view.id)}`;
+      errors.push(...validateNativeCapture(view.nativeCapture, batch, vat));
+      if (batch.renderedFromSavedData === true) {
+        const allowed = ['id', 'kind', 'title', 'label', 'caption', 'fragment', 'source', 'context', 'sizing', 'displayedIdentifiers', 'excerpt', 'savedRecord', 'captionDraft', 'nativeCapture'];
+        for (const key of Object.keys(view)) if (!allowed.includes(key)) errors.push(`${vat}: unexpected public saved-data view field ${key}`);
+      }
       if (!NAME.test(view.id ?? '') || /^view(?:-|$)/.test(view.id)) {
         errors.push(`${vat}: view ids are lowercase letters, digits and hyphens, and do not start with "view"`);
         continue;
@@ -748,7 +820,7 @@ export function loadViews(root) {
           if (sha256(bytes) !== fragment.sha256) errors.push(`${entry.fragmentPath} does not match its pinned SHA-256`);
           entry.fragmentText = decodeUtf8(bytes, entry.fragmentPath, errors);
           if (view.displayedIdentifiers !== undefined && !Array.isArray(view.displayedIdentifiers)) errors.push(`${vat}: displayedIdentifiers must be a list`);
-          const result = validateFragment(entry.fragmentText, { id: view.id, kind: view.kind, label: entry.fragmentPath, displayed: view.displayedIdentifiers ?? [] });
+          const result = validateFragment(entry.fragmentText, { id: view.id, kind: view.kind, label: entry.fragmentPath, displayed: view.displayedIdentifiers ?? [], mathAssetsVerified: Boolean(record.mathAssets) });
           errors.push(...result.errors);
           warnings.push(...result.warnings);
           entry.classes = result.classes;
@@ -847,10 +919,20 @@ export function sizingRules(views) {
 // A figure drawn from a saved record (an editor history rendered without a live editor) adds
 // "from a saved history" after its kind.
 export const SAVED_HISTORY = 'from a saved history';
-export function provenanceLine(kind, date, lean, { savedRecord = false } = {}) {
+export function provenanceLine(kind, date, lean, { savedRecord = false, renderedFromSavedData = false, nativeCapture, recordedTheme, adaptiveTheme = false } = {}) {
+  if (renderedFromSavedData) {
+    const day = (stamp) => new Date(stamp).toISOString().slice(0, 10);
+    const nativeTime = (stamp) => `<time datetime="${escapeHtml(stamp)}">${formatDate(day(stamp))}</time>`;
+    const capture = nativeCapture === null ? 'Native capture date unavailable'
+      : `Native capture ${nativeTime(nativeCapture.startedAt)}${day(nativeCapture.startedAt) === day(nativeCapture.completedAt) ? '' : `–${nativeTime(nativeCapture.completedAt)}`}`;
+    const theme = adaptiveTheme ? 'Adapts to page theme' : recordedTheme ? `${recordedTheme === 'light' ? 'Light' : 'Dark'} theme` : null;
+    return `<p class="dg-provenance"><a class="dg-recorded" href="${RECORDED_HELP}">${kind}</a> · Rendered <time datetime="${date}">${formatDate(date)}</time> · ${savedRecord ? SAVED_HISTORY : 'from saved results'}${theme ? ` · ${theme}` : ''} · ${capture} · Dates in UTC · Saved input: Lean ${escapeHtml(lean)} · Lean was not rerun.</p>`;
+  }
   return `<p class="dg-provenance"><a class="dg-recorded" href="${RECORDED_HELP}">${kind}</a>${savedRecord ? ` · ${SAVED_HISTORY}` : ''} · Lean ${escapeHtml(lean)} · <time datetime="${date}">${formatDate(date)}</time></p>`;
 }
-const provenance = (kind, view) => provenanceLine(kind, view.batch.date, view.batch.lean, { savedRecord: view.savedRecord === true });
+const provenance = (kind, view, { adaptiveTheme = false } = {}) => provenanceLine(kind, view.batch.date, view.batch.lean, {
+  savedRecord: view.savedRecord === true, renderedFromSavedData: view.batch.renderedFromSavedData === true, nativeCapture: view.nativeCapture, recordedTheme: view.batch.recordedTheme, adaptiveTheme,
+});
 
 // The background each family of recorded views has in the app, so that a recording keeps the
 // contrast its inks were designed for. The views under Explore a sample sit in a white card
@@ -899,11 +981,11 @@ export function fragmentBody(view) {
 export function renderViewFigure(view, { downloadFor, sourceShown = false } = {}) {
   return [
     `<figure class="dg-figure${view.excerpt ? ' dg-figure-excerpt' : ''}" id="view-${view.id}">`,
-    provenance(view.excerpt ? 'Recorded Definograph excerpt' : 'Recorded Definograph output', view),
+    provenance(view.excerpt ? 'Recorded Definograph excerpt' : 'Recorded Definograph output', view, { adaptiveTheme: view.batch.adaptiveTheme === true }),
     sourceBlock(view, downloadFor, sourceShown),
     ...(view.excerpt ? [`<p class="visually-hidden">${EXCERPT_NOTE}</p>`] : []),
     `<div class="dg-scroll" role="region" tabindex="0" aria-label="${escapeHtml(view.label)}">`,
-    `<div class="dg-canvas${view.sizing ? '' : ' dg-reflows'}" data-dg-batch="${view.batch.name}"${surfaceOf(view.kind) ? ` data-dg-surface="${surfaceOf(view.kind)}"` : ''}>`,
+    `<div class="dg-canvas${view.sizing ? '' : ' dg-reflows'}" data-dg-batch="${view.batch.name}"${view.batch.recordedTheme ? ` data-dg-theme="${view.batch.adaptiveTheme === true ? 'adaptive' : view.batch.recordedTheme}"` : ''}${surfaceOf(view.kind) ? ` data-dg-surface="${surfaceOf(view.kind)}"` : ''}>`,
     fragmentBody(view),
     '</div>',
     '</div>',

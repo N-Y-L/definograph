@@ -16,7 +16,7 @@ This is Definograph's example **Look inside a left inverse**:
 
 Definograph does not stop at the name. Its Visual sequence opens the definition and reads what is inside. This is the last step:
 
-{{view:left-inverse-step-compare}}
+{{view:light-left-inverse-step-compare}}
 
 - The figure compares the route from x through f and then g with x itself. "Compare the outputs of these map paths: they are required to agree."
 - **In scope** now includes x, which comes from inside the definition. The statement's own text has no x.
@@ -29,7 +29,7 @@ A definitional-equality check means that Lean confirmed the opened statement and
 
 Definograph opens a definition automatically only when it is small and opening it leaves less of the statement uninterpreted. You can turn this off: in the **Inspect** panel, clear **Automatically inspect small definitions**. The Visual sequence then reads the statement as written:
 
-{{view:left-inverse-original}}
+{{view:light-left-inverse-original}}
 
 - The whole condition is one clause, `Function.LeftInverse g f`, labeled "Argument structure only · this predicate has no interpreted geometric meaning".
 - Definograph still shows what the definition is applied to, g and f, in that order. It does not say what the definition means.
@@ -47,7 +47,7 @@ The **Inspect** panel ends with **Interpretation coverage**. It counts the parts
 
 `ℝ × ℝ` is the plane as pairs of real numbers, and `Nat.Prime 17` says that 17 is a prime number. Its coverage panel:
 
-{{view:partial-coverage}}
+{{view:light-partial-coverage}}
 
 - The first line sets the limits: "This reports the vocabulary used in the selected fragment. It does not measure understanding or establish the statement."
 - One clause is interpreted: Definograph recognizes the membership in a ball.
@@ -67,7 +67,7 @@ Definograph recognizes `Function.Injective f` as a property of f, so it does not
 
 The outline of the opened statement:
 
-{{view:maps-expanded-overview}}
+{{view:light-maps-expanded-overview}}
 
 The assumption now reads: for every a₁ and a₂, if f(a₁) equals f(a₂), then a₁ equals a₂. The conclusion reads: for every x and y, if f(x) equals f(y), then x equals y. They are the same condition with the variables renamed. Opening the definition shows why the statement is true. Definograph did not prove it; the argument is yours, and it is short.
 
@@ -75,7 +75,7 @@ The assumption now reads: for every a₁ and a₂, if f(a₁) equals f(a₂), th
 
 Many definitions in Mathlib are structures: a bundle of data together with laws the data must satisfy. In Lesson 3 you met `PartialEquiv A B`. In Definograph, the first step of that example's Visual sequence has a collapsed section below the regions figure, **Read the underlying fields and laws**. The figure below was recorded with it open, and shows what `e` consists of:
 
-{{view:restricted-inverse-fields}}
+{{view:light-restricted-inverse-fields}}
 
 - The heading reads **Object structure**, **Inside e**, with the declared type `PartialEquiv A B` and the count "4 data fields · 3 laws".
 - "These fields belong to this object, within the statement’s current quantifiers and assumptions."

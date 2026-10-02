@@ -5,6 +5,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Lexer } from 'marked';
+import { mathAssetOutputs } from './math-assets.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DIST = path.join(ROOT, 'dist');
@@ -34,6 +35,13 @@ export const ROUTES = [
     content: 'examples.html',
     title: 'Examples · Definograph',
     description: 'Recorded Definograph views of real statements, each with its Lean source, what the view shows and what it leaves out.',
+  },
+  {
+    path: '/examples/lebesgue-number/',
+    section: '/examples/',
+    content: 'lebesgue-number.html',
+    title: 'Reading the Lebesgue-number lemma · Definograph',
+    description: 'Read the hypotheses, uniform radius and whole-ball conclusion of a Mathlib theorem, with optional Lean notation help.',
   },
   {
     path: '/reference/',
@@ -143,6 +151,7 @@ export const NOT_FOUND = {
 // `type` is the Content-Type that dist/_headers must assign.
 const TEXT = 'text/plain; charset=utf-8';
 export const DOWNLOADS = [
+  { source: 'tutorial/examples/LebesgueNumber.lean', output: 'learn/examples/LebesgueNumber.lean', type: TEXT, sha256: 'c8e5bebd8b474e45d6cf8bd03046f83d8cbe4cc2c979806e8fd00c47ea189640' },
   { source: 'tutorial/examples/Scope.lean', output: 'learn/examples/Scope.lean', type: TEXT, sha256: 'f5f6215db37213d0d82da34f464f095a4612e10618257c414772299771b09f0d' },
   { source: 'tutorial/examples/QuantifierForallExists.lean', output: 'learn/examples/QuantifierForallExists.lean', type: TEXT, sha256: 'add32a64e6e65ad28d013391230c6840731d87336df3b49c3343a98f72e2efb5' },
   { source: 'tutorial/examples/QuantifierExistsForall.lean', output: 'learn/examples/QuantifierExistsForall.lean', type: TEXT, sha256: 'b028d46387557bef029c439599d9a16fd33e4babf00b472fa7acadf889426c81' },
@@ -194,6 +203,7 @@ export const TUTORIAL_LINKS = new Map([
   ...TUTORIAL.map(({ source, path: route }) => [source, route]),
   ['content/reference.md', '/reference/'],
   ['content/examples.md', '/examples/'],
+  ['content/lebesgue-number.md', '/examples/lebesgue-number/'],
   ['content/install.md', '/install/'],
   ['content/index.md', '/'],
   ...DOWNLOADS.map(({ source, output }) => [source, `/${output}`]),
@@ -202,6 +212,12 @@ export const TUTORIAL_LINKS = new Map([
 
 // The only external destinations pages may link to.
 export const EXTERNAL_LINKS = new Set([
+  'https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Topology/MetricSpace/Pseudo/Defs.lean#L350',
+  'https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Topology/MetricSpace/Pseudo/Defs.lean#L724',
+  'https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Topology/MetricSpace/Pseudo/Lemmas.lean#L120',
+  'https://lean-lang.org/theorem_proving_in_lean4/',
+  'https://leanprover-community.github.io/mathematics_in_lean/C01_Introduction.html',
+  'https://leanprover-community.github.io/mathematics_in_lean/C03_Logic.html',
   'https://github.com/N-Y-L/definograph',
   'https://github.com/N-Y-L/definograph/issues',
 ]);
@@ -227,6 +243,7 @@ export function placedFigures() {
   const allowlist = existsSync(viewsFile) ? JSON.parse(readFileSync(viewsFile, 'utf8')) : { batches: [] };
   const batchOf = new Map(allowlist.batches.flatMap((batch) => (batch.views ?? []).filter((view) => view.context).map((view) => [view.id, batch.batch])));
   return {
+    mathAssets: mathAssetOutputs(allowlist.batches.filter(batch => (batch.views ?? []).some(view => named('view').includes(view.id)))),
     images: named('image').map((name) => IMAGES.find((image) => image.name === name)).filter(Boolean),
     captures: named('capture').filter((id) => batchOf.has(id)).map((id) => ({ id, contextOutput: `images/views/${batchOf.get(id)}/${id}-context-2x.png` })),
     illustrations: ILLUSTRATIONS.filter(({ source }) => sources.some((markdown) => markdown.includes(`figures/${path.posix.basename(source)}`))),
@@ -245,6 +262,7 @@ export function outputAllowlist(stylesheet, used = placedFigures()) {
     ...used.images.map(({ output }) => output),
     ...used.captures.map(({ contextOutput }) => contextOutput),
     ...used.illustrations.map(({ output }) => output),
+    ...(used.mathAssets ?? []).map(({ output }) => output),
     '_headers',
     '_redirects',
     'robots.txt',

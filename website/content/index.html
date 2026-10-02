@@ -2,12 +2,12 @@
 <h1 id="definograph">Definograph</h1>
 <p class="lead">Definograph draws the structure of mathematical statements written in Lean. See the order of choices, which variables may depend on which, the assumptions and requirements, and the definitions behind them. It reads the statement as Lean has understood it, with its notation resolved and every type filled in, not as printed text.</p>
 <p>Definograph is a research prototype that runs on your own computer. It does not prove statements or say whether they are true. The figures on this site are recorded output from it, and the site itself runs no Lean, so you can read everything here without installing anything. To run Definograph yourself, see <a href="/install/#try-it-yourself">Try it yourself</a>.</p>
-<p><a href="/learn/">Start the seven-lesson tutorial</a> · <a href="/examples/">Browse recorded examples</a></p>
+<p><a href="/examples/lebesgue-number/">Read a theorem in VS Code</a> · <a href="/learn/">Seven-lesson tutorial</a> · <a href="/examples/">Recorded examples</a></p>
 </header>
 
 <div class="hero-views">
 {{view:depends-choices}}
-{{view:sets-connections}}
+{{view:light-sets-connections}}
 </div>
 
 <p>Two views of two statements. The <strong>Choices</strong> view reads <code>∀ x : ℝ, ∃ y : ℝ, x &lt; y</code> from the top: <code>x</code> is chosen first, and <code>y</code> may depend on it. The <strong>Relationships</strong> view reads <code>A ⊆ B → x ∈ A → x ∈ B</code> relation by relation, with each object in its role and a note of where the relation sits.</p>
@@ -24,14 +24,14 @@
 <h3 id="tour-objects">Objects and relations</h3>
 <p>Which relations does an object take part in? The <strong>Structure</strong> view shows the displayed objects and relations in one overview. Here <code>x</code> is selected in <code>g (f x) = h x</code>, so its connections are drawn heavier than the rest.</p>
 {{view:paths-trace-x}}
-<p>Where does the same object appear? In the Visual sequence, selecting <code>x</code> draws a faint dashed thread down the page, joining each place where that <code>x</code> occurs, in the current step and in the full visual statement below it. Its route means nothing; it only links the places. More in {{lesson:02-objects-and-relations.md}}.</p>
-{{capture:paths-identity-trace}}
+<p>Where does the same object appear? In the Visual sequence, selecting <code>x</code> draws a dashed thread down the page, joining each place where that <code>x</code> occurs, in the current step and in the full visual statement below it. Its route means nothing; it only links the places. More in {{lesson:02-objects-and-relations.md}}.</p>
+{{capture:light-paths-identity-trace}}
 
 <h3 id="tour-figures">Specialized figures</h3>
 <p>What does a condition require? For notions that Definograph supports, such as sets, graph colorings, balls in a metric space and maps that are inverse on a region, the Visual sequence adds a figure. For a proper coloring, the figure shows the rule on every edge: adjacent endpoints get different labels.</p>
-{{view:coloring-follow}}
+{{view:light-coloring-follow}}
 <p>For a map that is inverse only on part of its domain, the figure shows the two carriers, the regions where the inverse laws hold, and the maps between them. More in {{lesson:03-specialized-figures.md}}.</p>
-{{view:restricted-inverse-source}}
+{{view:light-restricted-inverse-source}}
 
 <h3 id="tour-editor">In the Lean editor</h3>
 <p>In Visual Studio Code, Definograph also records what Lean checked for a selection in your project, including which axioms a proof relies on; {{lesson:06-checking-evidence.md}} shows how to read that record.</p>

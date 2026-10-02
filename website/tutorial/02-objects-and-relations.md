@@ -18,7 +18,7 @@ The statement is true: if every element of A is in B, and x is in A, then x is i
 
 ## The Relationships view
 
-{{view:sets-connections}}
+{{view:light-sets-connections}}
 
 The Relationships view gives each relation a numbered card.
 
@@ -36,7 +36,7 @@ The **Visual sequence** presents the same statement one step at a time. It is wh
 
 The small capitals above each step's title say what kind of step it is. **Objects and choices** introduces variables. **Logical structure** sets out implications and other connectives. **Condition** reads a relation such as membership or inclusion, whether it is assumed or required. **Compare** reads an equation or inequality between two expressions. **Construction** reads how an object is built, for example by applying a function. This is step 3, the inclusion condition:
 
-{{view:sets-inclusion}}
+{{view:light-sets-inclusion}}
 
 - **In scope** lists the variables available at this step: A, B and x, each introduced by ∀.
 - **Given assumption** says where the condition sits in the statement. It is assumed, not asserted.
@@ -45,7 +45,7 @@ The small capitals above each step's title say what kind of step it is. **Object
 
 Step 5 is the conclusion:
 
-{{view:sets-conclusion}}
+{{view:light-sets-conclusion}}
 
 - The path reads **Conditional conclusion** twice, once for each implication that encloses this step.
 - **2 assumptions in scope** lists `A ⊆ B` and `x ∈ A`.
@@ -72,7 +72,7 @@ So f(x) lies in B, and g(f(x)) and h(x) both lie in C: the equation compares two
 
 Here is the last step of the Visual sequence:
 
-{{view:paths-compare}}
+{{view:light-paths-compare}}
 
 The figure draws two routes that start at x. The upper route passes through f and then g and ends at g(f(x)). The lower route passes through h and ends at h(x). The = between the two ends is the condition: "Compare the outputs of these map paths: they are required to agree."
 
@@ -92,9 +92,9 @@ The **Structure** tab under **Explore a sample** draws all the objects and relat
 
 Two lines from x are highlighted. They are its roles as input 1 in the applications of f and of h. The other lines are dimmed.
 
-The Visual sequence can show the same thing. In Definograph, select x in any figure of the Visual sequence, then open **Full visual statement** and, inside it, **Inside this expression**. Selecting x also opens the **Inspect** panel for x; x stays selected when you close the panel. A faint dashed line, the identity thread, now joins every place in the Visual sequence where x appears. This screenshot of the Visual sequence was taken in that state:
+The Visual sequence can show the same thing. In Definograph, select x in any figure of the Visual sequence, then open **Full visual statement** and, inside it, **Inside this expression**. Selecting x also opens the **Inspect** panel for x; x stays selected when you close the panel. A dashed line, the identity thread, now joins every place in the Visual sequence where x appears. This screenshot of the Visual sequence was taken in that state:
 
-{{capture:paths-identity-trace}}
+{{capture:light-paths-identity-trace}}
 
 The reading is at step 1. The thread joins eight appearances of x: the entry x : A in the list of variables and the small x : A box under **Types and maps** at this step, the same two again in the full visual statement, the start of each of the two compared routes, and the inputs of f and of h inside **Inside this expression**.
 

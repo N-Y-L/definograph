@@ -28,7 +28,7 @@ The `example` takes an existing `system` and a natural number `unused`, which it
 
 With the editor set up as in Lesson 5, select the proposition in the `example`, from `∀` to the final `= x`, and run **Definograph: Visualize Selection**. The first step of the Visual sequence lists the parameters, `system` and `unused`, and opens `system` itself:
 
-{{view:editor-returnmap-structure-excerpt}}
+{{view:light-editor-returnmap-structure-excerpt}}
 
 - **Inside system** counts "4 data fields · 1 law", and says: "These fields belong to this object, within the statement’s current quantifiers and assumptions."
 - **What it contains** draws the data: the functions `send` and `back`, and the two types they go between, `system.Source` and `system.Target`, labeled "carrier type".
@@ -38,7 +38,7 @@ Definograph has no rule for `ReturnMap`. It found these fields and this law in t
 
 The last step of the main reading draws the round trip:
 
-{{view:editor-returnmap-guided-path}}
+{{view:light-editor-returnmap-guided-path}}
 
 ## Where the proof comes from
 
@@ -46,11 +46,11 @@ The editor can also show where the proof of the law comes from. Select `system.r
 
 The history now has four steps: **Inspect fields**, **Check field 5** (`returns` is the fifth field), **Inspect type** and **Read logical structure**. **Ordered provenance** shows how the law was reached from `system`:
 
-{{view:editor-returnmap-provenance-excerpt}}
+{{view:light-editor-returnmap-provenance-excerpt}}
 
 **Supply reading** reads one of these occurrences as a proof of another:
 
-{{view:editor-returnmap-supply-excerpt}}
+{{view:light-editor-returnmap-supply-excerpt}}
 
 ## Exercises
 

@@ -35,10 +35,25 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync,
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { escapeHtml } from './format.mjs';
-import { stripCssComments, keyframePlan, validateFragment, validateViewCss, VIEWS_DIR, VIEWS_MANIFEST } from './views.mjs';
+import { readMathAsset, verifyMathAssets } from './math-assets.mjs';
+import { stripCssComments, keyframePlan, validateBatchProvenance, validateNativeCapture, validateFragment, validateViewCss, VIEWS_DIR, VIEWS_MANIFEST } from './views.mjs';
 
 const NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
+
+// Copy only the public provenance contract. Native dates never come from an older export's
+// createdAt, and saved native results are not automatically an editor inspection history.
+export function importedViewProvenance(manifest, meta, label = 'view') {
+  const state = meta.recordedState;
+  const errors = [...validateBatchProvenance(manifest, 'manifest.json'), ...validateNativeCapture(state?.nativeCapture, manifest, label)];
+  if (manifest.renderedFromSavedData === true && state?.savedRecord !== undefined && typeof state.savedRecord !== 'boolean') errors.push(`${label}: recordedState.savedRecord must be a boolean when supplied`);
+  if (errors.length) throw new Error(errors.join('\n'));
+  const provenance = state?.savedRecord === true ? { savedRecord: true } : {};
+  if (manifest.renderedFromSavedData === true) provenance.nativeCapture = state.nativeCapture === null ? null : {
+    startedAt: state.nativeCapture.startedAt, completedAt: state.nativeCapture.completedAt,
+  };
+  return provenance;
+}
 
 // Statement terms are what the Lean expression field of the reader's Lean source panel accepts;
 // a file has commands.
@@ -54,8 +69,15 @@ function sourceForm(text) {
 // none when the batch manifest says the view reflows; the batch manifest's minWidthPx; a width
 // recorded by an earlier import of the same recording, or by measurement. A view with an SVG
 // and none of these is reported, so someone measures it.
-export function sizing(view, fragmentText, before, { siteWidth = null } = {}) {
+export function sizing(view, fragmentText, before, { siteWidth = null, honorMeasuredMinimum = false } = {}) {
   const layout = { ...view, ...(view.layout ?? {}) };
+  // A measured mathematical figure may reflow above a finite safe minimum.
+  // Reflow alone must not discard the font/geometry floor established by capture.
+  if (honorMeasuredMinimum) {
+    if (!Number.isInteger(layout.minWidthPx) || layout.minWidthPx <= 0) throw new Error('Measured math figure requires a positive integer minWidthPx');
+    if (typeof siteWidth?.from === 'string' && siteWidth.from.startsWith('site:') && siteWidth.minWidthPx >= layout.minWidthPx) return { size: siteWidth, kept: true };
+    return { size: { minWidthPx: layout.minWidthPx, target: 'root', from: 'batch manifest minWidthPx' } };
+  }
   if (typeof siteWidth?.from === 'string' && siteWidth.from.startsWith('site:')) return { size: siteWidth, kept: true };
   if (layout.reflows === true) return { size: null };
   if (Number.isInteger(layout.minWidthPx) && layout.minWidthPx > 0) return { size: { minWidthPx: layout.minWidthPx, target: 'root', from: 'batch manifest minWidthPx' } };
@@ -155,6 +177,7 @@ export function importBatch(batchDir, siteRoot, { dryRun = false, replaces = [],
     ['the views.css pin', cssPin.file === 'views.css' && /^[0-9a-f]{64}$/.test(cssPin.sha256 ?? '')],
     ['views', Array.isArray(manifest.views) && manifest.views.length > 0],
   ]) if (!ok) problems.push(`manifest.json: ${field} is missing or malformed`);
+  problems.push(...validateBatchProvenance(manifest, 'manifest.json'));
   if (problems.length) throw new Error(problems.join('\n'));
 
   const verified = (rel, expected, label) => {
@@ -179,7 +202,7 @@ export function importBatch(batchDir, siteRoot, { dryRun = false, replaces = [],
   const allowlist = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : { version: 1, batches: [] };
   if (![1, 2].includes(allowlist.version)) throw new Error('Unsupported recorded-view manifest version');
   for (const old of replaces) if (!allowlist.batches.some((batch) => batch.batch === old)) problems.push(`--replaces ${old}: no such batch in the allowlist`);
-  const earlier = new Map(allowlist.batches.flatMap((batch) => (batch.views ?? []).map((view) => [view.id, { ...view, fromBatch: batch.batch }])));
+  const earlier = new Map(allowlist.batches.flatMap((batch) => (batch.views ?? []).map((view) => [view.id, { ...view, fromBatch: batch.batch, fromSavedData: batch.renderedFromSavedData === true, fromRecordedTheme: batch.recordedTheme, fromAdaptiveTheme: batch.adaptiveTheme === true, fromMathAssets: batch.mathAssets }])));
   // Screenshots taken from the batches that hold them (--replaces-view). A recorded view is
   // replaced only with its whole batch: that batch's @keyframes plan depends on its fragments.
   const taken = new Map();
@@ -192,6 +215,13 @@ export function importBatch(batchDir, siteRoot, { dryRun = false, replaces = [],
   const otherIds = new Set(allowlist.batches.filter((batch) => batch.batch !== name && !replaces.includes(batch.batch)).flatMap((batch) => (batch.views ?? []).map((view) => view.id)).filter((id) => !taken.has(id)));
 
   const files = new Map([['views.css', css]]);
+  let mathAssetsVerified = false;
+  if (manifest.mathAssets !== undefined) {
+    try {
+      for (const [file, bytes] of verifyMathAssets(manifest.mathAssets, rel => readMathAsset(batchDir, rel))) files.set(file, bytes);
+      mathAssetsVerified = true;
+    } catch (error) { problems.push(error.message); }
+  }
   const entries = [];
   const notes = [];
   const fragmentClasses = [];
@@ -212,19 +242,32 @@ export function importBatch(batchDir, siteRoot, { dryRun = false, replaces = [],
     const displayed = Array.isArray(view.displayedIdentifiers) ? view.displayedIdentifiers : [];
     if (view.displayedIdentifiers !== undefined && !Array.isArray(view.displayedIdentifiers)) problems.push(`${label}: displayedIdentifiers must be a list`);
     if (fragment) {
-      const checked = validateFragment(fragment.toString('utf8'), { id: view.id, kind: view.kind, label: `${name}/${view.id}/fragment.html`, displayed });
+      const checked = validateFragment(fragment.toString('utf8'), { id: view.id, kind: view.kind, label: `${name}/${view.id}/fragment.html`, displayed, mathAssetsVerified });
       problems.push(...checked.errors);
       fragmentClasses.push(checked.classes);
     }
     // Only public metadata is read; the "private" object is dropped unread.
     const { private: _private, ...meta } = metaBytes ? JSON.parse(metaBytes.toString('utf8')) : {};
+    let provenance;
+    try {
+      provenance = importedViewProvenance(manifest, meta, label);
+    } catch (error) {
+      problems.push(error.message);
+      continue;
+    }
     // Text the site wrote for an earlier recording of the same id is kept. It stays reviewed
     // only if the recording itself is unchanged; otherwise it is marked for review again.
     const before = earlier.get(view.id);
-    const sameRecording = before && (captureOnly ? before.context?.sha256 === sha256(context) : before.fragment?.sha256 === sha256(fragment));
+    if (manifest.renderedFromSavedData === true && before?.source && (!source || before.source.sha256 !== sha256(source))) problems.push(`${label}: a saved-data rendering must preserve the original source bytes`);
+    const sameProvenance = before && before.fromSavedData === (manifest.renderedFromSavedData === true)
+      && before.fromRecordedTheme === manifest.recordedTheme
+      && before.fromAdaptiveTheme === (manifest.adaptiveTheme === true)
+      && JSON.stringify(before.fromMathAssets) === JSON.stringify(manifest.mathAssets)
+      && (before.savedRecord === true) === (provenance.savedRecord === true)
+      && JSON.stringify(before.nativeCapture) === JSON.stringify(provenance.nativeCapture);
+    const sameRecording = before && sameProvenance && (captureOnly ? before.context?.sha256 === sha256(context) : before.fragment?.sha256 === sha256(fragment));
     if (before && !sameRecording && !before.captionDraft) notes.push(`${view.id}: the recording differs from ${before.fromBatch}; its caption and label were carried over for review`);
-    const entry = { id: view.id, kind: view.kind, title: view.title };
-    if (meta.recordedState?.savedRecord === true) entry.savedRecord = true;
+    const entry = { id: view.id, kind: view.kind, title: view.title, ...provenance };
     if (!captureOnly && (meta.excerpt?.isExcerpt === true || view.excerpt === true)) entry.excerpt = true;
     if (!captureOnly) {
       entry.label = before?.label ?? `Recorded view: ${view.title}`;
@@ -239,7 +282,7 @@ export function importBatch(batchDir, siteRoot, { dryRun = false, replaces = [],
       files.set(entry.source.path, source);
     }
     if (!captureOnly) {
-      const { size, unmeasured, kept } = sizing(view, fragment.toString('utf8'), sameRecording ? before : null, { siteWidth: before?.sizing });
+      const { size, unmeasured, kept } = sizing(view, fragment.toString('utf8'), sameRecording ? before : null, { siteWidth: before?.sizing, honorMeasuredMinimum: mathAssetsVerified });
       if (size) entry.sizing = size;
       if (kept && !sameRecording) notes.push(`${view.id}: keeps the width the site recorded (${size.minWidthPx} px, ${size.from}); check that the new recording still needs it`);
       if (unmeasured) notes.push(`${view.id} draws a diagram but has no minimum width; measure it and record sizing in views.json`);
@@ -252,7 +295,7 @@ export function importBatch(batchDir, siteRoot, { dryRun = false, replaces = [],
       // marked textDraft, and the build will not publish the screenshot until someone reviews
       // them and removes the mark. A new screenshot takes the alt text and caption its batch
       // proposes (manifest entry or public metadata, as plain text), also as a draft.
-      const sameShot = before?.context?.sha256 === sha256(context);
+      const sameShot = sameProvenance && before?.context?.sha256 === sha256(context);
       const proposed = (...fields) => fields.flatMap((field) => [view[field], meta[field]]).find((value) => typeof value === 'string' && value.trim()) ?? '';
       const alt = before?.context ? before.context.alt ?? '' : proposed('alt', 'altText');
       const caption = before?.context ? before.context.caption ?? '' : escapeHtml(proposed('caption'));
@@ -286,6 +329,10 @@ export function importBatch(batchDir, siteRoot, { dryRun = false, replaces = [],
     // The READY declaration the batch was accepted under (file name and its time).
     ready: { file: ready.file, at: ready.at },
     createdAt: manifest.createdAt,
+    ...(manifest.renderedFromSavedData === true ? { renderedFromSavedData: true } : {}),
+    ...(manifest.recordedTheme !== undefined ? { recordedTheme: manifest.recordedTheme } : {}),
+    ...(manifest.adaptiveTheme === true ? { adaptiveTheme: true } : {}),
+    ...(manifest.mathAssets !== undefined ? { mathAssets: manifest.mathAssets } : {}),
     lean: manifest.lean,
     product: { commit: manifest.product.commit, ...(manifest.product.tree ? { tree: manifest.product.tree } : {}) },
     stylesheet: { path: 'views.css', sha256: sha256(css) },

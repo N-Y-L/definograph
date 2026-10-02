@@ -114,7 +114,7 @@ This rules out every candidate at once. It is stronger than trying a few values 
 
 Between two conditions, `→` means "implies" and `∧` means "and". `|x|` is the absolute value of x. Here is its Choices view:
 
-{{view:continuity-choices}}
+{{view:light-continuity-choices}}
 
 The steps marked ⇒ are the two assumptions, `0 < ε` and `|x| < δ`. They have no names in the statement, so the view labels each of them a; this a is a label, not the gray kind badge before ε, δ and x. A tag such as **Under 1 assumption** counts the assumptions in force at that step, and on an assumption's own step the count includes that assumption. Like the other Choices views, this one leaves out the conditions the choices must satisfy: `0 < δ` and `|x * x| < ε` do not appear in it. Which choices may δ depend on? May δ depend on x? What would the statement say if it could?
 

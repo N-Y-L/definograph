@@ -1,9 +1,15 @@
 <!-- description: Seven lessons on reading what Definograph draws for a Lean statement: choices, relations, figures, definitions, editor inspection and evidence. -->
 # Reading mathematics with Definograph
 
-Definograph reads a mathematical statement written in Lean and draws what it says: which objects it introduces, which choices may depend on which, how the objects are related, and which parts are only assumed. This tutorial teaches you to read those drawings.
+Definograph reads a mathematical statement written in Lean and draws what it says: which objects it introduces, which choices may depend on which, how the objects are related, and which parts are only assumed. This tutorial uses those views to read a statement’s assumptions, conclusion and dependencies.
 
 Each lesson takes one statement, shows what Definograph draws for it, explains how to read the drawing, and says what the drawing does not tell you. Then you try it yourself. Every exercise has an answer, and most have a hint. Try the question before opening either.
+
+## Choose where to start
+
+**New to Lean?** Read the worked example’s [short notation guide](../content/lebesgue-number.md#notation), then follow its reading of the Lebesgue-number lemma. The seven lessons below explain individual views when you need more practice.
+
+**Already read Lean?** Go directly to [the theorem and editor selection](../content/lebesgue-number.md#start). Use the same task to identify the hypotheses, compare the quantified choices and read the whole-ball conclusion.
 
 ## Before you begin
 
@@ -17,7 +23,7 @@ To try the statements yourself, you need Definograph running on your own compute
 
 Definograph shows a statement in several ways. The lessons use the names that appear on its buttons and tabs. This screenshot shows Definograph's window with the first statement of Lesson 1, after choosing **Explore a sample**, with the **Choices** tab open:
 
-{{capture:depends-app-context}}
+{{capture:light-depends-app-context}}
 
 | Name in Definograph | What it shows | Lesson |
 | --- | --- | --- |
