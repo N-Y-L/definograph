@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { SemanticObject } from '../semantic/types';
 import type { TypedConstruction } from '../constructions/model';
 import type { StructuralField, StructuralObjectModel } from './types';
-import { StructuralObjectFigure, startsClosed } from './StructuralObjectFigure';
+import { StructuralObjectFigure, startsClosed, layoutStructuralCarrier } from './StructuralObjectFigure';
 
 const object = (id: string, label = id, type = 'M'): SemanticObject => ({ id, label, type, kind: 'expression', expression: { kind: 'var', id, name: label, type }, scopeId: 'scope:owner', provenance: [{ nodeId: 'owner', expressionPath: id, origin: 'elaborated-expression' }] });
 const field = (name: string, kind: 'data' | 'law' = 'data', type = 'M'): StructuralField => ({ name, projection: `UnseenRecord.${name}`, object: object(`field:${name}`, `e.${name}`, type), type, typeExpression: { kind: 'const', name: type }, kind, dependsOn: [] });
@@ -119,6 +119,34 @@ describe('generic structural object rendering', () => {
     const markers = [...rendered.matchAll(/<marker id="([^"]+)"/g)].map(match => match[1]);
     expect(markers).toHaveLength(2);
     expect(new Set(markers).size).toBe(2);
+  });
+
+  it('typesets complete carrier and field labels without changing their exact identities', () => {
+    const original = mapped(), long = `field_${'escaped{value}%'.repeat(8)}δ`;
+    const model: StructuralObjectModel = { ...original, construction: { ...original.construction,
+      types: original.construction.types.map((type, i) => i ? type : { ...type, label: 'α₁', expression: { kind: 'var', id: 'carrier:M', name: 'α₁', type: 'Type' } }),
+      maps: original.construction.maps.map(map => ({ ...map, name: long })), members: original.construction.members.map(member => ({ ...member, name: 'σ₂' })),
+    } };
+    const before = JSON.stringify(model), rendered = html(model), svg = rendered.slice(rendered.indexOf('<svg'), rendered.indexOf('</svg>'));
+    expect(svg).toContain('class="katex-html"'); expect(svg).toContain('<msub>'); expect(svg).toContain('<math');
+    expect(svg).toContain(`data-diagram-source="${long}"`); expect(svg).not.toContain('…');
+    expect(svg).toContain('data-reading-object="field:pass"'); expect(svg).toContain('data-structural-region="field:area"');
+    expect(JSON.stringify(model)).toBe(before);
+  });
+
+  it('reserves disjoint rows and carrier bounds for tall notation and wide set names', () => {
+    const type = { width: 190, height: 78, ascent: 56, descent: 22 };
+    const members = [{ kind: 'set' as const, size: { width: 680, height: 66, ascent: 46, descent: 20 } },
+      { kind: 'element' as const, size: { width: 210, height: 48, ascent: 36, descent: 12 } }];
+    const layout = layoutStructuralCarrier(type, members);
+    expect(layout.width).toBeGreaterThan(members[0].size.width + 26);
+    expect(layout.typeBaseline + type.descent).toBeLessThan(layout.captionBaseline);
+    expect(layout.captionBaseline).toBeLessThan(layout.rows[0].top);
+    layout.rows.forEach((row, index) => {
+      expect(row.baseline - members[index].size.ascent).toBeGreaterThan(row.top);
+      expect(row.baseline + members[index].size.descent).toBeLessThan(row.top + row.height);
+      expect(row.top + row.height).toBeLessThan(index + 1 < layout.rows.length ? layout.rows[index + 1].top : layout.height);
+    });
   });
 });
 

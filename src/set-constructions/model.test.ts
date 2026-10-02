@@ -84,4 +84,26 @@ describe('set construction interpretation', () => {
     expect(new Set(result.steps.map(step => step.objectId)).size).toBe(result.steps.length);
     expect(result.regions).toHaveLength(2);
   });
+
+  it('typesets the exported ambient expression in a separate measured header', () => {
+    const ambient: Expr = { kind: 'var', id: 'ambient:type', name: 'α₁', type: 'Type' };
+    const expression: Expr = { kind: 'app', fn: c('Set.union'), args: [ambient, set('A'), set('B')], argumentKinds: ['type', 'value', 'value'] };
+    const result = compile(expression), before = JSON.stringify(result.document);
+    expect(result.model.ambientExpression).toEqual(ambient);
+    const markup = renderToStaticMarkup(createElement(SetConstructionFigure, result));
+    expect(markup).toContain('data-diagram-source="Type α₁"'); expect(markup).toContain('<msub>');
+    expect(markup.indexOf('data-diagram-label="ambient"')).toBeLessThan(markup.indexOf('data-set-membership-regions='));
+    expect(markup).toContain('data-membership-bits="11"');
+    expect(JSON.stringify(result.document)).toBe(before);
+  });
+
+  it('retains complete legacy ambient type text without parsing it as mathematical notation', () => {
+    const ambient = `Uninterpreted_${'long{type}'.repeat(20)}`;
+    const expression: Expr = { kind: 'app', fn: c('Set.union'), args: [set('A'), set('B')], argumentKinds: ['value', 'value'], typeDescriptor: { kind: 'set', lean: `Set ${ambient}`, element: { kind: 'unknown', lean: ambient } } };
+    const result = compile(expression);
+    expect(result.model.ambientExpression).toBeUndefined();
+    const markup = renderToStaticMarkup(createElement(SetConstructionFigure, result));
+    expect(markup).toContain(`data-diagram-source="Type ${ambient}"`);
+    expect(markup).toContain('data-math-fallback="source"');
+  });
 });

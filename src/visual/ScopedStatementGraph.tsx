@@ -76,7 +76,7 @@ export function ScopedStatementGraph({ model, document, reading, ...selection }:
   const clauses = useMemo(() => new Map(model.clauses.map(clause => [clause.node.id, clause])), [model]);
   const focusNode = clauses.get(focus)?.node;
   const selectNode = (id: string) => selection.onNodeSelect?.(id);
-  const clausePicker = <label>Clause <select aria-label="Choose graph clause" value={focusNode?.id ?? ''} onChange={event => selectNode(event.target.value)}><option value="" disabled>Choose a clause to draw</option>{model.clauses.map((clause, index) => <option key={clause.node.id} value={clause.node.id}>{index + 1}. {short(clause.node.lean, 85)}</option>)}</select></label>;
+  const clausePicker = <label>Clause <select data-reading-focus="" aria-label="Choose graph clause" value={focusNode?.id ?? ''} onChange={event => selectNode(event.target.value)}><option value="" disabled>Choose a clause to draw</option>{model.clauses.map((clause, index) => <option key={clause.node.id} value={clause.node.id}>{index + 1}. {short(clause.node.lean, 85)}</option>)}</select></label>;
   if (!focusNode) return <section className="scoped-statement-graph" aria-label="Scoped construction graph"><nav className="ssg-navigation">{clausePicker}</nav><p className="ssg-description">Choose a clause to inspect its supplied operations and logical context.</p></section>;
   const path = new Set([focusNode.id]);
   const nodes = new Map(reading.nodes.map(node => [node.id, node]));

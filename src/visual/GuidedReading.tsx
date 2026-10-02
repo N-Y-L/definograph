@@ -33,7 +33,7 @@ export function GuidedReading({ plan, cue, reading, document, onChoose, onObject
       if (event.target instanceof HTMLSelectElement) return;
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); step(event.key === 'ArrowRight' ? 1 : -1); }
     }}>
-      <div className="rg-position"><span>Reading step</span><label><span className="sr-only">Choose reading step</span><select aria-label="Choose reading step" value={cue.id} onChange={event => { const chosen = plan.cues.find(candidate => candidate.id === event.target.value); if (chosen) onChoose(chosen); }}>{plan.cues.map((candidate, ordinal) => <option key={candidate.id} value={candidate.id}>{ordinal + 1}. {candidate.title}</option>)}</select></label></div>
+      <div className="rg-position"><span>Reading step</span><label><span className="sr-only">Choose reading step</span><select data-reading-focus="" aria-label="Choose reading step" value={cue.id} onChange={event => { const chosen = plan.cues.find(candidate => candidate.id === event.target.value); if (chosen) onChoose(chosen); }}>{plan.cues.map((candidate, ordinal) => <option key={candidate.id} value={candidate.id}>{ordinal + 1}. {candidate.title}</option>)}</select></label></div>
       <div className="rg-buttons"><span className="rg-count">{index + 1} / {plan.cues.length}</span><button type="button" aria-label="Previous reading step" disabled={index <= 0} onClick={() => step(-1)}>←</button><button type="button" aria-label="Next reading step" disabled={index >= plan.cues.length - 1} onClick={() => step(1)}>Next <span aria-hidden="true">→</span></button></div>
     </nav>
     <div className="rg-progress" aria-hidden="true"><span style={{ width: `${100 * (index + 1) / plan.cues.length}%` }}/></div>

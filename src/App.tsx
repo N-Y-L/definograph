@@ -202,7 +202,7 @@ export default function App(){
     if(definitionWorkspace&&['preparing','focusing','exposing'].includes(definitionWorkspace.phase))return;
     const focus=returnFocus.current;definitionWorkflow.cancel();setExperience('read');setDrawer(null);
     if(focus){setSelected(focus.nodeId);setSelectedCue(focus.cue);}returnFocus.current=null;
-    requestAnimationFrame(()=>window.document.querySelector<HTMLElement>('.rg-navigation select')?.focus());
+    requestAnimationFrame(()=>window.document.querySelector<HTMLElement>('#statement-reading .definition-reading-layout > div > .statement-reading-view [data-reading-focus]')?.focus());
   }
   function chooseObject(id:string){setObjectId(id);setInspectorTab('objects');setDrawer('inspect');}
   function loadExample(id:string){setAutoInspect(true);const e=examples.find(x=>x.id===id)!;setExampleId(id);setMode('term');setExpandNames([]);setSource(e.source);currentKey.current=JSON.stringify([e.source,'term',[]]);void analyze(e.source,'term',[]);}

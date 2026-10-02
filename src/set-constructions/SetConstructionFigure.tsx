@@ -1,5 +1,8 @@
 import { useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { FigureScroll } from '../components/FigureScroll';
+import { useDiagramText } from '../components/use-diagram-text';
+import { MathLabel } from '../components/MathLabel';
+import { expressionMathDisplay, sourceMathDisplay, withMathProse } from '../notation/math-display';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { readingObjectColor } from '../visual/object-identity';
 import { compileSetConstruction, type SetConstructionModel, type SetTerm } from './model';
@@ -22,10 +25,17 @@ function ObjectLabel({ object, ...interaction }: Interaction & { object: Semanti
 
 function MembershipRegions({ model, ...interaction }: Interaction & { model: SetConstructionModel }) {
   const prefix = `sc-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const text = useDiagramText();
+  const ambient = model.ambientExpression ? withMathProse(expressionMathDisplay(model.ambientExpression, model.ambientType), 'Type ')
+    : sourceMathDisplay(model.ambientType ? `Type ${model.ambientType}` : 'Ambient type');
+  const ambientSize = text.size('ambient', ambient.source, 14);
+  const headerHeight = Math.ceil(ambientSize.height + 24), width = Math.ceil(Math.max(540, ambientSize.width + 50)), height = headerHeight + 330;
   const circles = model.atoms.length === 1 ? [{ x: 270, y: 160, r: 96 }] : model.atoms.length === 2 ? [{ x: 218, y: 160, r: 99 }, { x: 322, y: 160, r: 99 }] : [{ x: 218, y: 126, r: 85 }, { x: 322, y: 126, r: 85 }, { x: 270, y: 206, r: 85 }];
   const empty = model.mode === 'required-empty';
-  return <div className={`sc-regions sc-regions-${model.mode}`}><FigureScroll label="Membership regions; scroll to see all of them"><svg viewBox="0 0 540 330" role="group" aria-label={empty ? 'Membership regions required to be empty by this condition' : model.mode === 'required-witness' ? 'A distinguishing element is required in the highlighted membership regions' : 'Membership regions included in this set expression'}>
+  return <div className={`sc-regions sc-regions-${model.mode}`}><FigureScroll label="Membership regions; scroll to see all of them"><svg ref={text.ref} style={{ minWidth: width * .75, height: 'auto', aspectRatio: `${width} / ${height}` }} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={empty ? 'Membership regions required to be empty by this condition' : model.mode === 'required-witness' ? 'A distinguishing element is required in the highlighted membership regions' : 'Membership regions included in this set expression'}>
     <defs><pattern id={`${prefix}-hatch`} patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(40)"><path d="M0 0 V7" stroke="#917a66" strokeWidth="2"/></pattern>{circles.map((circle, index) => <clipPath id={`${prefix}-in-${index}`} key={index}><circle cx={circle.x} cy={circle.y} r={circle.r}/></clipPath>)}{model.regions!.filter(region => region.highlighted).map((region, index) => <mask id={`${prefix}-out-${index}`} key={index} maskUnits="userSpaceOnUse" x="25" y="22" width="490" height="287"><rect x="25" y="22" width="490" height="287" fill="white"/>{circles.map((circle, bit) => !region.bits[bit] && <circle key={bit} cx={circle.x} cy={circle.y} r={circle.r} fill="black"/>)}</mask>)}</defs>
+    <MathLabel label={ambient} labelKey="ambient" className="sc-universe-name" x={25} y={12 + ambientSize.ascent} fontSize={14} textAnchor="start"/>
+    <g data-set-membership-regions="" transform={`translate(${(width - 540) / 2} ${headerHeight})`}>
     <rect x="25" y="22" width="490" height="287" rx="5" className="sc-universe"/>
     {model.regions!.filter(region => region.highlighted).map((region, index) => {
       let regionShape: ReactNode = <rect x="25" y="22" width="490" height="287" fill={empty ? `url(#${prefix}-hatch)` : '#649b9a'} fillOpacity={empty ? .52 : .22} mask={`url(#${prefix}-out-${index})`}/>;
@@ -33,7 +43,7 @@ function MembershipRegions({ model, ...interaction }: Interaction & { model: Set
       return <g key={index} data-membership-bits={region.bits.map(bit => bit ? '1' : '0').join('')} aria-label={model.atoms.map((atom, bit) => `${region.bits[bit] ? 'in' : 'outside'} ${atom.label}`).join(', ')}>{regionShape}</g>;
     })}
     {circles.map((circle, index) => <circle key={index} cx={circle.x} cy={circle.y} r={circle.r} className="sc-set-boundary" style={{ '--sc-object': readingObjectColor(model.atoms[index].id) } as CSSProperties} fill="none" strokeWidth="1.4" strokeDasharray="5 3"/>)}
-    <text x="39" y="44" className="sc-universe-name">{model.ambientType ? `Type ${short(model.ambientType, 54)}` : 'Ambient type'}</text>
+    </g>
   </svg></FigureScroll><div className="sc-region-key">{model.atoms.map((atom, index) => <div key={atom.id}><span className="sc-set-swatch" style={{ '--sc-object': readingObjectColor(atom.id) } as CSSProperties} aria-hidden="true"/><span className="sc-region-index">{model.atoms.length === 3 ? ['upper left', 'upper right', 'lower'][index] : model.atoms.length === 2 ? ['left', 'right'][index] : 'set'}</span><ObjectLabel object={atom} {...interaction}/></div>)}</div></div>;
 }
 
