@@ -72,7 +72,8 @@ See the [reader relation table](reader-relations.md) for these bounded readings.
 | Checked definition views | Bounded type-head aliases and proposition previews, explicit bounded expansion, original names and expressions retained |
 | Compositional readings | Maps, applications, dependent signatures, relationships, logical regions, a visual sequence, and a linked overview |
 | Optional mathematical lenses | Sets, audited metric regions, graph constraints, and restricted maps within their documented contracts |
-| Readable notation | Optional pinned LeanTeX output rendered locally through KaTeX; fallback preserves the original Lean expression |
+| Optional construction graph | Existing source-scoped operations and distinct port occurrences within logical frames; guided/containment remains the default, and dense graphs scroll locally |
+| Readable notation | Optional pinned native statement notation, separately associated native Lean inspection-result text, and bounded typed frontend KaTeX plot labels; source fallbacks and identities remain available |
 | Editor package | A local VS Code controller and native context sidecar; configuration and identifiers retain the internal StatementLens name |
 | Exact editor source capture | Original/prepared raw frames, expected type, retained source typing outcomes and axiom audits; explicit unsupported and resource-limit states |
 | Exact definition-head exposure | One safe definition body at a retained term/type occurrence, with the original fold, unchanged dependent context, replayable trace and fresh result/conversion checks |
@@ -82,6 +83,18 @@ Record reflection is intentionally bounded: 16 direct fields, 120 expression
 nodes per exported field expression/type, depth 24, and a 128 KiB optional
 structure envelope. Parent subobjects remain explicit. More detail is in
 [the reflection contract](structure-reflection.md).
+
+The optional [construction graph](guided-reading.md#optional-construction-graph)
+uses the existing semantic relation groups and source logical tree. It does not
+infer missing operations, treat scope availability as necessary dependence, or
+reinterpret neutral positional components. Unknown applications remain symbolic.
+Its bounded measured layout preserves full labels and separate repeated ports;
+large opaque compositions can still be unwieldy, especially in narrow panes.
+
+Local KaTeX plot labels are typed frontend display, not new native TeX authority
+for each object. Explicit admitted-relation templates preserve the actual
+constructor and ordered operands. Unsupported display syntax retains a source
+fallback; typography never determines source identity or a check outcome.
 
 ## What remains unsolved
 
@@ -133,6 +146,9 @@ dependencies, and global toolchain settings must remain unchanged.
 | Shared applications and typed constructions | [`src/semantic/application-flow.ts`](../src/semantic/application-flow.ts), [`src/constructions/model.ts`](../src/constructions/model.ts) |
 | Reading sequence and representations | [`src/reading/compiler.ts`](../src/reading/compiler.ts), [`src/reading/types.ts`](../src/reading/types.ts), [`src/semantic/planner.ts`](../src/semantic/planner.ts) |
 | Primary reader and reflected objects | [`src/visual/GuidedReading.tsx`](../src/visual/GuidedReading.tsx), [`StatementReadingView.tsx`](../src/visual/StatementReadingView.tsx), [`StructuralObjectFigure.tsx`](../src/decomposition/StructuralObjectFigure.tsx) |
+| Optional source-scoped graph | [`src/reading/scoped-graph.ts`](../src/reading/scoped-graph.ts), [`ScopedStatementGraph.tsx`](../src/visual/ScopedStatementGraph.tsx), [`scoped-graph-layout.ts`](../src/visual/scoped-graph-layout.ts), [`scoped-graph-math.ts`](../src/visual/scoped-graph-math.ts) |
+| Typed plot labels | [`src/notation/math-display.ts`](../src/notation/math-display.ts), [`MathLabel.tsx`](../src/components/MathLabel.tsx), [`math-label-measure.ts`](../src/components/math-label-measure.ts), [`use-diagram-text.ts`](../src/components/use-diagram-text.ts) |
+| Native inspected-result notation | [`src/editor/source-presentation.ts`](../src/editor/source-presentation.ts), [`SourceResultPresentation.tsx`](../src/editor/SourceResultPresentation.tsx) |
 | Interpretation frontier | [`src/semantic/coverage.ts`](../src/semantic/coverage.ts), [`inspection.ts`](../src/semantic/inspection.ts), [`src/visual/InterpretationCoverage.tsx`](../src/visual/InterpretationCoverage.tsx) |
 | Optional lenses and sampling | [`src/set-constructions/`](../src/set-constructions/), [`src/graphs/`](../src/graphs/), [`src/restricted/`](../src/restricted/), [`src/statement-geometry/`](../src/statement-geometry/), [`src/core/scenario.ts`](../src/core/scenario.ts) |
 | Transport and cancellation | [`server/http.ts`](../server/http.ts), [`session.ts`](../server/session.ts), [`worker.ts`](../server/worker.ts), [`src/editor/host.ts`](../src/editor/host.ts) |
@@ -152,6 +168,16 @@ publication cleanup or by GitHub CI, or that the objective is complete. See
 [verification](verification.md) for suite counts, environment, browser
 observations, and explicit gaps.
 
+Recent model and static-render checks cover source-scoped graph composition, repeated ports,
+quantifier and guard controls, local binders, constructor-preserving notation,
+and measured labels. Browser checks exercise narrow scrolling, declaration
+references, passive folds, source-linked clause choice, and return to guided
+reading. These are bounded fixture checks, not a general usability qualification.
+Installed-extension checks have shown readable native inspection results for the
+Lebesgue-number and uniform-continuity cases. Return to the prior reading stage and selector focus is checked in both cases.
+These installed checks precede the final graph and plot-label integration; the
+changed display paths require their own verification.
+
 | Command | What it checks |
 | --- | --- |
 | `npm run build` | Strict TypeScript and production assets |
@@ -167,6 +193,7 @@ observations, and explicit gaps.
 | `npm run test:source-occurrence` / `test:source-occurrence-controls` | Actual follow-up extraction, dependent homes, partial outcomes, parent matching and direct state controls |
 | `npm run test:source-head-exposure` | Fresh editor selection through exact body exposure, independent replay, term/type carriers, nine check associations, explicit refusals and stale/cancel gates |
 | `npm run test:source-decomposition` | Fresh nested/renamed exposure and focus chains, exact owned/dependent contexts, newly inferred types, unsupported heads and retained backtracking |
+| `npm run test:source-presentation` | Native printing and result association for bounded inspected-result notation; distinct from frontend plot-label typesetting |
 | `npm run test:source-fields` | Direct/nested fields and law proofs, dependent carriers, inherited parents, bounded/refused catalogues, v2 roots and legacy-prefix continuation |
 | `npm run test:corpus` | Hand-reviewed interpreted and unresolved relationships, scope, identities, and native binary provenance |
 | `npm run check` | Build, unit/server tests, and all current native integration suites; requires a configured built native engine |

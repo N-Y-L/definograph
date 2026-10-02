@@ -69,9 +69,11 @@ describe('restricted map label layout', () => {
       properties: { sourceOpen: true, targetOpen: true, forwardContinuousOnSource: true, inverseContinuousOnTarget: true },
     }, selectedRegion: 'source', onObjectSelect: () => {} }));
     expect(html).toContain(`data-diagram-label="source-carrier"`);
-    expect(html).toContain(`>${carrier.label}</text>`);
-    expect(html).toContain(`>${source.label}</text>`);
-    expect(html).toContain(`>${map.label}⁻¹</text>`);
+    expect(html).toContain(`data-diagram-source="${carrier.label}"`);
+    expect(html).toContain(`data-diagram-source="${source.label}"`);
+    expect(html).toContain(`data-diagram-source="${map.label}⁻¹"`);
+    expect(html).toContain('class="katex"');
+    expect(html).toContain('<foreignObject');
     expect(html).toContain('data-reading-object="source-region"');
     expect(html).toContain(`aria-label="${source.label}"`);
     expect(html).toContain('data-region-evidence="source-expression" data-region-selected="true"');

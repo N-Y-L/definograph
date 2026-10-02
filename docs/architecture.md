@@ -23,9 +23,10 @@ Fixed-environment input       Trusted Lean editor selection
                   │
         visual/StatementReadingView.tsx
         generic constructions + specialized figures
+        optional scoped construction graph
 ```
 
-The optional numerical path passes through `src/core/scenes.ts`, `src/semantic/planner.ts`, and `src/SceneView.tsx`. It is separate from the default statement reading but still shares types and compilation with it. There is no independent general-purpose decomposition service or graph yet.
+The optional numerical path passes through `src/core/scenes.ts`, `src/semantic/planner.ts`, and `src/SceneView.tsx`. It is separate from the default statement reading but still shares types and compilation with it. There is no independent general-purpose decomposition service. The optional construction graph composes relations already supplied by the semantic reading; it does not discover or interpret new operations.
 
 Saved composition packets use a separate exact input boundary:
 `packets/packet.ts` validates bytes and attachment consistency,
@@ -81,6 +82,22 @@ legacy interpreted-expression compiler; general automatic decomposition and
 explanatory usefulness are not established. See [reader relations](reader-relations.md)
 and the [continuation contract](editor-definition-exposure.md#continue-inside-a-result).
 
+The optional clause graph in `reading/scoped-graph.ts` consumes existing reading
+relation groups. The source tree and presentation grouping provide its logical
+frames; relation occurrences provide scope and ports. Globally shared object IDs
+do not move an occurrence into the object's first-recorded scope. Measured layered
+layout reserves node and port dimensions, with separate routes for explicit
+arguments and results. `StatementReadingView` retains the existing clause-cue
+authority and keeps guided reading as the default. See [the reading guide](guided-reading.md).
+
+Plot-label notation is a separate frontend layer. `notation/math-display.ts`
+converts bounded typed display nodes, exact supported expression constructors, and
+explicit admitted-relation templates to TeX; `components/MathLabel.tsx` renders
+local KaTeX HTML/MathML and participates in glyph measurement. Unsupported forms
+retain source-label fallbacks. Typography supplies neither semantic identity nor
+per-object native printing authority. Native Lean notation for inspected results
+is separately associated with its captured result by `editor/source-presentation.ts`.
+
 ## Code map
 
 | Responsibility | Implementation | Important boundary |
@@ -99,6 +116,9 @@ and the [continuation contract](editor-definition-exposure.md#continue-inside-a-
 | Direct-record decomposition | `src/decomposition/reflection.ts`, `compiler.ts` | Checked field projections; supplementary laws are separate semantic documents with inherited identities |
 | Definition inspection | `src/semantic/inspection.ts` | Chooses at most one of a few native proposition previews; not a recursive engine |
 | Reading order and logical context | `src/reading/` | Binder roles, premises, branches, negation, expression dependencies, and guided cues |
+| Scoped construction graph | `src/reading/scoped-graph.ts`, `src/visual/ScopedStatementGraph.tsx`, `scoped-graph-layout.ts`, `scoped-graph-math.ts` | Optional source-scoped operation graph; preserves existing ports and logical frames without new extraction or interpretation |
+| Typed plot-label presentation | `src/notation/math-display.ts`, `src/components/MathLabel.tsx`, `math-label-measure.ts`, `use-diagram-text.ts` | Local bounded KaTeX and measured glyphs; exact source identities and source fallbacks remain separate |
+| Native inspected-result presentation | `src/editor/source-presentation.ts`, `SourceResultPresentation.tsx`, `SourceSnapshot.lean` | Bounded native Lean notation associated with the recorded result; optional display text is not an additional check |
 | Abstract rendering | `src/visual/StatementReadingView.tsx`, `src/constructions/`, `src/decomposition/` | Typed maps, families, fields, and laws; dispatch and composition also contain specialized cases |
 | Optional mathematical lenses | `src/set-constructions/`, `src/graphs/`, `src/restricted/`, `src/statement-geometry/` | Audited contracts for selected operations; no theorem-title dispatch |
 | Numerical models | `src/core/geometry.ts`, `scenario.ts`, `scenes.ts`, `src/SceneView.tsx` | Audited operations and metrics; finite samples do not establish quantified statements |
@@ -124,6 +144,6 @@ Editor extraction accepts trusted project source that may execute elaborators or
 
 ## Reuse
 
-Lean and mathlib supply the formal environment. LeanTeX supplies the isolated expression-to-LaTeX printer; KaTeX renders it. React and CodeMirror provide interface infrastructure. [NOTICE](../NOTICE) and [the LeanTeX record](leantex-integration.md) track attribution. 3Blue1Brown/Manim and Penrose are design references, not bundled visualization engines or copied scenes.
+Lean and mathlib supply the formal environment. LeanTeX supplies the isolated expression-to-LaTeX printer; KaTeX renders it. React and CodeMirror provide interface infrastructure. [NOTICE](../NOTICE) and [the LeanTeX record](leantex-integration.md) track attribution. 3Blue1Brown/Manim and Penrose are design references, not bundled visualization engines or copied scenes. The optional graph uses a local measured layered layout; [ELK Layered](https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-layered.html) and its [explicit hierarchy/port model](https://eclipse.dev/elk/documentation/tooldevelopers/graphdatastructure.html) are design references, with no ELK implementation or package reused.
 
 Rocq support is not implemented. The existing semantic document is independent of React, but still imports Lean-shaped expressions and includes domain-specific variants. A genuinely prover-neutral contract is proposed, not complete.

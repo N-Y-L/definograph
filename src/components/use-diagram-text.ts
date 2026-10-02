@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { DiagramTextSize } from './map-diagram-layout';
+import { measureMathLabel } from './math-label-measure';
 
 interface MeasuredText extends DiagramTextSize { text: string }
 
@@ -15,8 +16,12 @@ export function useDiagramText() {
     const next: Record<string, MeasuredText> = {};
     for (const text of ref.current.querySelectorAll<SVGTextElement>('text[data-diagram-label]')) {
       const box = text.getBBox(), baseline = Number(text.getAttribute('y'));
-      next[text.getAttribute('data-diagram-label')!] = { text: text.textContent ?? '', width: box.width, height: box.height,
+      next[text.getAttribute('data-diagram-label')!] = { text: text.getAttribute('data-diagram-source') ?? text.textContent ?? '', width: box.width, height: box.height,
         ascent: baseline - box.y, descent: box.y + box.height - baseline };
+    }
+    for (const group of ref.current.querySelectorAll<SVGGElement>('g[data-diagram-label][data-math-label]')) {
+      const size = measureMathLabel(group);
+      if (size) next[group.getAttribute('data-diagram-label')!] = { text: group.getAttribute('data-diagram-source') ?? '', ...size };
     }
     const previous = measured.current, keys = Object.keys(next);
     // Engines can vary subpixel glyph bounds slightly as the SVG resizes.
@@ -31,10 +36,12 @@ export function useDiagramText() {
   }
   useLayoutEffect(measure);
   useLayoutEffect(() => {
+    let alive = true;
     const observer = new ResizeObserver(measure);
-    observer.observe(ref.current!);
+    if (ref.current) observer.observe(ref.current);
+    void document.fonts.ready.then(() => { if (alive) measure(); });
     document.fonts.addEventListener('loadingdone', measure);
-    return () => { observer.disconnect(); document.fonts.removeEventListener('loadingdone', measure); };
+    return () => { alive = false; observer.disconnect(); document.fonts.removeEventListener('loadingdone', measure); };
   }, []);
   const size = (key: string, text: string, fontSize: number): DiagramTextSize => sizes[key]?.text === text ? sizes[key]
     : { width: [...text].length * fontSize, height: fontSize * 1.4, ascent: fontSize, descent: fontSize * .4 };

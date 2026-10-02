@@ -62,13 +62,15 @@ describe('metric interval label layout', () => {
     for (const [boundary, relation] of [['open', '&lt;'], ['closed', '≤'], ['sphere', '=']] as const) {
       const html = renderToStaticMarkup(createElement(MetricStatementFigure, { scene: { ...scene, boundary } }));
       for (const [key, text] of [['left', 'referenceConfiguration − admissibleRadius'], ['right', 'referenceConfiguration + admissibleRadius'], ['center', 'center referenceConfiguration'], ['point', `perturbedConfiguration${boundary === 'sphere' ? ' (either endpoint)' : ''}`]]) {
-        expect(html).toMatch(new RegExp(`data-diagram-label="${key}"[^>]*>${text.replace(/[+()]/g, '\\$&')}<`));
+        expect(html).toContain(`data-diagram-label="${key}" data-diagram-source="${text}"`);
       }
       expect(html).toContain(`dist(perturbedConfiguration, referenceConfiguration) ${relation} admissibleRadius`);
       expect(html).toContain(`class="metric-endpoint ${boundary}"`);
       expect(html.includes('class="metric-interval"')).toBe(boundary !== 'sphere');
       expect(html).toContain('Schematic positions; no coordinates chosen. Named points may coincide.');
       expect(html).not.toContain('…');
+      expect(html).toContain('class="katex"');
+      expect(html).toContain('<foreignObject');
     }
   });
 });

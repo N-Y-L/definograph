@@ -164,8 +164,9 @@ describe('typed construction grammar', () => {
     const paths = [...html.matchAll(/class="tc-map-arrow" d="([^"]+)"/g)].map(match => match[1]);
     expect(paths).toHaveLength(3);
     model.maps.forEach(map => expect(html).toContain(`data-diagram-label="map:${map.objectId}"`));
-    const labels = [...html.matchAll(/class="tc-map-name" x="([^"]+)" y="([^"]+)"/g)];
-    expect(new Set(labels.map(match => match[2])).size).toBe(3);
+    const labels = [...html.matchAll(/class="diagram-math-label tc-map-name"[^>]*data-math-baseline-y="([^"]+)"/g)];
+    expect(new Set(labels.map(match => match[1])).size).toBe(3);
+    expect(labels).toHaveLength(3); expect(html).toContain('class="katex-html"');
     expect(html).toContain('class="figure-scroll tc-map-graph"');
   });
 });

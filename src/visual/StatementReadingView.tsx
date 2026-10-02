@@ -13,6 +13,9 @@ import { compileSetConstruction, SetConstructionFigure } from '../set-constructi
 import { compactLabel } from './layout';
 import { FigureScroll, useFrameOverflow } from '../components/FigureScroll';
 import { useDiagramText } from '../components/use-diagram-text';
+import { MathLabel } from '../components/MathLabel';
+import { expressionMathDisplay, mathDisplay, sourceMathDisplay, type MathDisplay } from '../notation/math-display';
+import { numericOperator } from '../core/expression';
 import { layoutContainedRelation, layoutRelationComparison } from './relation-diagram-layout';
 import { applicationFlow } from '../semantic/application-flow';
 import { formatExpression } from '../semantic/expression';
@@ -22,6 +25,8 @@ import { GuidedReading } from './GuidedReading';
 import { contextEntryTitle } from '../core/context-entry';
 import { counted } from '../core/counted';
 import { createReadingCueSelection, notifyReadingCueSelection, resolveReadingCue, type ReadingCueSelection } from './reading-cue-selection';
+import { compileScopedStatementGraph } from '../reading/scoped-graph';
+import { ScopedStatementGraph } from './ScopedStatementGraph';
 export type { ReadingCueSelection } from './reading-cue-selection';
 
 export interface StatementReadingViewProps {
@@ -132,16 +137,22 @@ function MeasuredRelationFigure({ relation, ctx }: { relation: SemanticRelation;
   const nested = relation.kind === 'subset', comparison = relation.kind === 'equality' || relation.kind === 'inequality';
   const first = port(relation, comparison ? 'left' : nested ? 'superset' : 'set');
   const second = port(relation, comparison ? 'right' : nested ? 'subset' : 'element');
-  const firstLabel = compactLabel(first ? ctx.objects.get(first)?.label ?? 'unspecified' : 'unspecified', 24);
-  const secondLabel = compactLabel(second ? ctx.objects.get(second)?.label ?? 'unspecified' : 'unspecified', 24);
-  const firstSize = text.size('first', firstLabel, 18), secondSize = text.size('second', secondLabel, 18);
-  const name = (key: string, label: string, x: number, y: number) => <text data-diagram-label={key} className="sr-object-label" x={x} y={y} textAnchor="middle">{label}</text>;
+  const objectLabel = (id: string | undefined) => {
+    const object = id ? ctx.objects.get(id) : undefined;
+    return object ? expressionMathDisplay(object.expression, object.label) : sourceMathDisplay('unspecified');
+  };
+  const firstLabel = objectLabel(first), secondLabel = objectLabel(second);
+  const firstSize = text.size('first', firstLabel.source, 18), secondSize = text.size('second', secondLabel.source, 18);
+  const name = (key: string, label: MathDisplay, x: number, y: number) => <MathLabel label={label} labelKey={key} className="sr-object-label" x={x} y={y} fontSize={18}/>;
   let body: ReactNode, width: number, height: number;
   if (comparison) {
-    const layout = layoutRelationComparison(firstSize, secondSize, text.size('symbol', relation.label, 27));
+    const operator = numericOperator(relation.expression);
+    const symbol = operator === 'eq' || operator === 'ne' || operator === 'lt' || operator === 'le'
+      ? mathDisplay({ kind: 'symbol', symbol: operator }, relation.label) : sourceMathDisplay(relation.label);
+    const layout = layoutRelationComparison(firstSize, secondSize, text.size('symbol', symbol.source, 27));
     ({ width, height } = layout);
-    const box = (id: string | undefined, label: string, key: string, slot: typeof layout.left) => <FigureObject id={id} ctx={ctx}><rect x={slot.x} y={slot.y} width={slot.width} height={slot.height} rx="23" className="sr-expression-box"/>{name(key, label, slot.labelX, slot.labelY)}</FigureObject>;
-    body = <>{box(first, firstLabel, 'first', layout.left)}<text data-diagram-label="symbol" x={layout.symbolX} y={layout.symbolY} textAnchor="middle" className="sr-comparison-symbol">{relation.label}</text>{box(second, secondLabel, 'second', layout.right)}</>;
+    const box = (id: string | undefined, label: MathDisplay, key: string, slot: typeof layout.left) => <FigureObject id={id} ctx={ctx}><rect x={slot.x} y={slot.y} width={slot.width} height={slot.height} rx="23" className="sr-expression-box"/>{name(key, label, slot.labelX, slot.labelY)}</FigureObject>;
+    body = <>{box(first, firstLabel, 'first', layout.left)}<MathLabel label={symbol} labelKey="symbol" x={layout.symbolX} y={layout.symbolY} fontSize={27} className="sr-comparison-symbol"/>{box(second, secondLabel, 'second', layout.right)}</>;
   } else {
     const layout = layoutContainedRelation(firstSize, secondSize, nested);
     ({ width, height } = layout);
@@ -396,12 +407,14 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   const surface = useRef<HTMLDivElement>(null);
   const complete = useRef<HTMLDetailsElement>(null);
   const [guideChoice, setGuideChoice] = useState<ReadingCueSelection | null>(null);
+  const [readingMode, setReadingMode] = useState<'graph' | 'guided'>('guided');
   const [nodeLimit, setNodeLimit] = useState(100);
   const previousSelection = useRef(reading.selection.nodeId);
   const [traces, setTraces] = useState<{ id: string; path: string }[]>([]);
   const maps = useMemo<Maps>(() => ({ objects: new Map(semantic.objects.map(object => [object.id, object])), relations: new Map(semantic.relations.map(relation => [relation.id, relation])), panels: new Map(reading.panels.map(panel => [panel.id, panel])) }), [semantic, reading]);
   const presentation = useMemo(() => planReadingPresentation(reading, { boundaryNodeIds: componentMode(semantic) && semantic.presentation?.targetNodeId ? [semantic.presentation.targetNodeId] : [] }), [reading, semantic]);
   const cuePlan = useMemo(() => compileReadingCues(reading, semantic), [reading, semantic]);
+  const scopedGraph = useMemo(() => cuePlan.truncated ? undefined : compileScopedStatementGraph(semantic, reading), [semantic, reading, cuePlan]);
   const activeCue = resolveReadingCue({ plan: cuePlan, document: semantic, selectedNodeId: reading.selection.nodeId,
     rootNodeId: reading.root.id, selectedRelationId, selection: props.selectedCue === undefined ? guideChoice : props.selectedCue });
   function chooseCue(cue: ReadingCue) {
@@ -417,6 +430,12 @@ export function StatementReadingView(props: StatementReadingViewProps) {
     if (!cue && complete.current) complete.current.open = true;
     props.onNodeSelect?.(id);
     props.onCueChange?.(selection);
+  }
+  const graphNodeId = activeCue && scopedGraph?.clauses.some(clause => clause.node.id === activeCue.nodeId) ? activeCue.nodeId : undefined;
+  const showGraph = readingMode === 'graph' && Boolean(scopedGraph);
+  function chooseGraphClause(id: string) {
+    const cue = cuePlan.cues.find(cue => cue.nodeId === id && cue.stage.kind === 'clause');
+    if (cue) { setReadingMode('graph'); chooseCue(cue); }
   }
   useLayoutEffect(() => {
     const root = surface.current;
@@ -446,5 +465,12 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   }, [reading.selection.nodeId, presentation, activeCue]);
   const visibleNodes = visibleReadingNodes(reading, nodeLimit);
   const ctx: RenderContext = { ...props, ...maps, onNodeSelect: chooseNode, visibleNodes, presentation };
-  return <div className="statement-reading-view"><div className="sr-atlas-layout"><div className="sr-atlas-main"><div className="sr-reading-intro"><span className="sr-reading-label">Visual reading</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div ref={surface} className="sr-reading-surface">{activeCue && <GuidedReading plan={cuePlan} cue={activeCue} reading={reading} document={semantic} onChoose={chooseCue} onObjectSelect={props.onObjectSelect}><CueFigure cue={activeCue} ctx={ctx}/></GuidedReading>}<details ref={complete} className="sr-complete-reading"><summary>{componentMode(semantic) ? 'Full visual reading' : 'Full visual statement'}</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ stroke: readingObjectColor(selectedObjectId) }}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label={componentMode(semantic) ? 'Ordered visual reading of the expression' : 'Ordered visual reading of the statement'}><AtlasRegion region={presentation.root} ctx={ctx}/></div></details></div>{reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {counted(reading.nodes.length, componentMode(semantic) ? 'expression node' : 'logical node')}, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {counted(Math.min(100, reading.nodes.length - visibleNodes.size), 'node')}</button></div>}<p className="sr-reading-note">{componentMode(semantic) ? 'Schematics follow expression structure and its context. Shapes and spacing carry no additional meaning.' : 'Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.'}</p></div><Overview name={componentMode(semantic) ? 'Expression and context' : 'Whole statement'}><div className="sr-overview-heading">{componentMode(semantic) ? 'Expression and context' : 'Whole statement'}</div><LogicOverview region={presentation.root} ctx={ctx}/></Overview></div></div>;
+  const guided = activeCue && <GuidedReading plan={cuePlan} cue={activeCue} reading={reading} document={semantic} onChoose={chooseCue} onObjectSelect={props.onObjectSelect}><CueFigure cue={activeCue} ctx={ctx}/></GuidedReading>;
+  const graphical = showGraph && scopedGraph && <ScopedStatementGraph model={scopedGraph} document={semantic} reading={reading} focusedNodeId={graphNodeId} selectedObjectId={selectedObjectId} selectedRelationId={selectedRelationId}
+    onObjectSelect={props.onObjectSelect} onNodeSelect={chooseGraphClause} onSourceSelect={props.onSourceSelect} onRelationSelect={id => {
+      const cue = cuePlan.cues.find(candidate => candidate.stage.relationId === id);
+      if (cue) chooseCue(cue);
+      else { const relation = maps.relations.get(id); if (relation) { chooseNode(relation.nodeId); props.onSourceSelect?.(id); } }
+    }}/>;
+  return <div className="statement-reading-view"><div className="sr-atlas-layout"><div className="sr-atlas-main"><div className="sr-reading-intro"><span className="sr-reading-label">Visual reading</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div ref={surface} className="sr-reading-surface">{scopedGraph && <nav className="ssg-mode" aria-label="Reading presentation"><button type="button" aria-pressed={showGraph} onClick={() => setReadingMode('graph')}>Construction graph</button><button type="button" aria-pressed={!showGraph} onClick={() => setReadingMode('guided')}>Guided reading</button></nav>}{showGraph ? graphical : guided}<details ref={complete} className="sr-complete-reading"><summary>{componentMode(semantic) ? 'Full visual reading' : 'Full visual statement'}</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ '--trace-color': readingObjectColor(selectedObjectId) } as CSSProperties}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label={componentMode(semantic) ? 'Ordered visual reading of the expression' : 'Ordered visual reading of the statement'}><AtlasRegion region={presentation.root} ctx={ctx}/></div></details></div>{reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {counted(reading.nodes.length, componentMode(semantic) ? 'expression node' : 'logical node')}, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {counted(Math.min(100, reading.nodes.length - visibleNodes.size), 'node')}</button></div>}<p className="sr-reading-note">{componentMode(semantic) ? 'Schematics follow expression structure and its context. Shapes and spacing carry no additional meaning.' : 'Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.'}</p></div><Overview name={componentMode(semantic) ? 'Expression and context' : 'Whole statement'}><div className="sr-overview-heading">{componentMode(semantic) ? 'Expression and context' : 'Whole statement'}</div><LogicOverview region={presentation.root} ctx={ctx}/></Overview></div></div>;
 }

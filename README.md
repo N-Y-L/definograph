@@ -13,7 +13,9 @@ Definograph is an experimental research implementation. It does not yet explain 
 - **Inspect structure.** Read direct record fields and laws. In VS Code, [inspect a definition](docs/editor-definition-exposure.md#inspect-from-the-statement) with its actual arguments and scope, then return to the same reading step. Bounded histories retain the recorded checks.
 - **Explore supported examples.** View selected set, graph, restricted-map and metric relations. Numerical samples remain separate from the statement's assertions.
 
-The reader uses pure white base surfaces in light mode and pure black in dark mode. The standalone reader follows the system theme; the VS Code companion follows the editor theme. Mathematical regions keep their semantic colors, and dense map diagrams scroll while preserving readable labels.
+The reader uses pure white base surfaces in light mode and pure black in dark mode. The standalone reader follows the system theme; the VS Code companion follows the editor theme. Mathematical regions keep their semantic colors, and dense diagrams scroll while preserving readable labels.
+
+Where available, **Construction graph** shows a clause’s supplied operations and ports within its logical frames. Guided reading and containment remain the default. Supported math labels use local KaTeX; their source identities stay separate. See the [reading guide](docs/guided-reading.md).
 
 For example, enter this statement term:
 

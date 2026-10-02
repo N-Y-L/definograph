@@ -1,6 +1,8 @@
 import { useId, useMemo, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { FigureScroll } from '../components/FigureScroll';
 import { useDiagramText } from '../components/use-diagram-text';
+import { MathLabel } from '../components/MathLabel';
+import { expressionDisplayNode, expressionMathDisplay, mathDisplay, sourceMathDisplay, type MathDisplay } from '../notation/math-display';
 import { layoutRestrictedMap, type RestrictedLabelBox, type RestrictedRegionLayout } from './restricted-map-layout';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { readingObjectColor } from '../visual/object-identity';
@@ -37,20 +39,22 @@ function SvgIdentity({ object, children, ...interaction }: Interaction & { objec
   </g>;
 }
 
-function DiagramLabel({ label, box, name, className }: { label: string; box: RestrictedLabelBox; name: string; className: string }) {
-  return <text className={className} data-diagram-label={name} x={box.x + box.width / 2} y={box.baseline} textAnchor="middle">{label}</text>;
+function DiagramLabel({ label, box, name, className, fontSize = 14 }: { label: string | MathDisplay; box: RestrictedLabelBox; name: string; className: string; fontSize?: number }) {
+  return typeof label === 'string'
+    ? <text className={className} data-diagram-label={name} x={box.x + box.width / 2} y={box.baseline} textAnchor="middle">{label}</text>
+    : <MathLabel label={label} labelKey={name} x={box.x + box.width / 2} y={box.baseline} fontSize={fontSize} textAnchor="middle" className={className}/>;
 }
 
 const regionLabels = (region: RestrictedRegion, carrier: SemanticObject, open: boolean) => ({
-  carrier: carrier.label, carrierRole: `${region.role} carrier`, role: `${open ? 'open ' : ''}${region.role} region`,
-  name: region.empty ? '∅' : region.label, note: region.empty ? 'empty set' : 'possibly empty',
+  carrier: expressionMathDisplay(carrier.expression, carrier.label), carrierRole: `${region.role} carrier`, role: `${open ? 'open ' : ''}${region.role} region`,
+  name: region.empty ? mathDisplay({ kind: 'symbol', symbol: 'empty' }) : region.object ? expressionMathDisplay(region.object.expression, region.label) : sourceMathDisplay(region.label), note: region.empty ? 'empty set' : 'possibly empty',
 });
 
 function Region({ region, carrier, layout, labels, selected, ...interaction }: Interaction & {
   region: RestrictedRegion; carrier: SemanticObject; layout: RestrictedRegionLayout;
   labels: ReturnType<typeof regionLabels>; selected: boolean;
 }) {
-  const label = (key: keyof typeof labels, className: string) => <DiagramLabel label={labels[key]} box={layout.labels[key]} name={`${region.role}-${key}`} className={className}/>;
+  const label = (key: keyof typeof labels, className: string) => <DiagramLabel label={labels[key]} box={layout.labels[key]} name={`${region.role}-${key}`} className={className} fontSize={key === 'carrier' ? 20 : key === 'name' ? 17 : 14}/>;
   return <g data-restricted-region={region.role} data-region-evidence={region.object ? 'source-expression' : 'schematic'} data-region-selected={selected || undefined}>
     <SvgIdentity object={carrier} {...interaction}>
       <rect className="rm-carrier" {...layout.carrier} rx="11"/>
@@ -81,12 +85,14 @@ export function RestrictedRegionDiagram({ structure: model, selectedRegion, appl
   const sourceLabels = regionLabels(model.source, model.sourceCarrier, model.properties.sourceOpen);
   const targetLabels = regionLabels(model.target, model.targetCarrier, model.properties.targetOpen);
   const sizes = (role: string, labels: ReturnType<typeof regionLabels>) => ({
-    carrier: text.size(`${role}-carrier`, labels.carrier, 20), carrierRole: text.size(`${role}-carrierRole`, labels.carrierRole, 10.5),
-    role: text.size(`${role}-role`, labels.role, 11), name: text.size(`${role}-name`, labels.name, 17), note: text.size(`${role}-note`, labels.note, 10.5),
+    carrier: text.size(`${role}-carrier`, labels.carrier.source, 20), carrierRole: text.size(`${role}-carrierRole`, labels.carrierRole, 10.5),
+    role: text.size(`${role}-role`, labels.role, 11), name: text.size(`${role}-name`, labels.name.source, 17), note: text.size(`${role}-note`, labels.note, 10.5),
   });
-  const forward = model.map.label, inverse = `${model.map.label}⁻¹`;
+  const forward = expressionMathDisplay(model.map.expression, model.map.label), mapNode = expressionDisplayNode(model.map.expression);
+  const inverseSource = `${model.map.label}⁻¹`;
+  const inverse = mapNode ? mathDisplay({ kind: 'script', base: mapNode, superscript: { kind: 'literal', value: -1 } }, inverseSource) : sourceMathDisplay(inverseSource);
   const layout = layoutRestrictedMap(sizes('source', sourceLabels), sizes('target', targetLabels),
-    text.size('forward', forward, 17), text.size('inverse', inverse, 17), text.size('continuity', continuity, 10.5), text.size('note', note, 10.5));
+    text.size('forward', forward.source, 17), text.size('inverse', inverse.source, 17), text.size('continuity', continuity, 10.5), text.size('note', note, 10.5));
   const arrow = (direction: 'forward' | 'inverse') => {
     const { from, to } = layout.arrows[direction];
     return <path data-restricted-arrow={direction} className={`rm-map-arrow${applicationDirection === direction ? ' rm-arrow-focused' : ''}`}
@@ -98,8 +104,8 @@ export function RestrictedRegionDiagram({ structure: model, selectedRegion, appl
     <Region region={model.source} carrier={model.sourceCarrier} layout={layout.source} labels={sourceLabels} selected={selectedRegion === 'source'} {...interaction}/>
     <Region region={model.target} carrier={model.targetCarrier} layout={layout.target} labels={targetLabels} selected={selectedRegion === 'target'} {...interaction}/>
     <SvgIdentity object={model.map} {...interaction}>
-      {arrow('forward')}<DiagramLabel label={forward} box={layout.forward} name="forward" className="rm-map-name"/>
-      {arrow('inverse')}<DiagramLabel label={inverse} box={layout.inverse} name="inverse" className="rm-map-name"/>
+      {arrow('forward')}<DiagramLabel label={forward} box={layout.forward} name="forward" className="rm-map-name" fontSize={17}/>
+      {arrow('inverse')}<DiagramLabel label={inverse} box={layout.inverse} name="inverse" className="rm-map-name" fontSize={17}/>
     </SvgIdentity>
     <DiagramLabel label={continuity} box={layout.continuity} name="continuity" className="rm-annotation"/>
     <DiagramLabel label={note} box={layout.note} name="note" className="rm-annotation"/>

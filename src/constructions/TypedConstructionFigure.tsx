@@ -2,6 +2,8 @@ import { useId, useMemo, type KeyboardEvent, type ReactNode, type CSSProperties 
 import { FigureScroll } from '../components/FigureScroll';
 import { layoutMapDiagram } from '../components/map-diagram-layout';
 import { useDiagramText } from '../components/use-diagram-text';
+import { MathLabel } from '../components/MathLabel';
+import { expressionMathDisplay, identifierMathDisplay } from '../notation/math-display';
 import type { ReadingBinder } from '../reading/types';
 import type { SemanticDocument } from '../semantic/types';
 import { compileTypedConstruction, isUsefulConstruction, type ConstructionMap, type ConstructionSignature, type ConstructionType, type TypedConstruction } from './model';
@@ -50,17 +52,21 @@ function MemberLabels({ type, model, component, ...interaction }: Presentation &
 function MapGraph({ model, component, ...interaction }: Presentation & { model: TypedConstruction }) {
   const marker = `tc-arrow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const text = useDiagramText();
-  const layout = layoutMapDiagram(model.types.map(type => ({ id: type.id, width: Math.max(68, text.size(`type:${type.id}`, short(type.label, 8), 21).width + 24), height: 40 })),
-    model.maps.map(map => ({ id: map.objectId, from: map.domainId, to: map.codomainId, label: text.size(`map:${map.objectId}`, short(map.name, 16), 18) })));
+  const typeLabels = model.types.map(type => expressionMathDisplay(type.expression, type.label));
+  const mapLabels = model.maps.map(map => identifierMathDisplay(map.name));
+  const layout = layoutMapDiagram(model.types.map((type, index) => {
+    const label = text.size(`type:${type.id}`, typeLabels[index].source, 21);
+    return { id: type.id, width: Math.max(68, label.width + 24), height: Math.max(40, label.height + 24) };
+  }), model.maps.map((map, index) => ({ id: map.objectId, from: map.domainId, to: map.codomainId, label: text.size(`map:${map.objectId}`, mapLabels[index].source, 18) })));
   const minimumWidth = Math.ceil(layout.width * 10 / 18);
   return <FigureScroll className="tc-map-graph" label="Types and maps diagram; scroll to see all of it"><svg ref={text.ref} style={{ minWidth: minimumWidth }} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={component ? 'Arrows between declared annotations' : 'Maps between the declared types'}><defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L7 4 L1 7"/></marker></defs>
     {model.maps.map((map, index) => {
       const route = layout.edges[index];
-      return <SvgObject key={map.objectId} id={map.objectId} label={annotationLabel(map.role, map.name, map.type, component)} {...interaction}><path className="tc-map-arrow" d={route.path} markerEnd={`url(#${marker})`}/><text data-diagram-label={`map:${map.objectId}`} className="tc-map-name" x={route.labelX} y={route.labelY} textAnchor="middle">{short(map.name, 16)}</text></SvgObject>;
+      return <SvgObject key={map.objectId} id={map.objectId} label={annotationLabel(map.role, map.name, map.type, component)} {...interaction}><path className="tc-map-arrow" d={route.path} markerEnd={`url(#${marker})`}/><MathLabel label={mapLabels[index]} labelKey={`map:${map.objectId}`} className="tc-map-name" x={route.labelX} y={route.labelY} fontSize={18}/></SvgObject>;
     })}
     {model.types.map((type, index) => {
-      const node = layout.nodes[index], label = text.size(`type:${type.id}`, short(type.label, 8), 21);
-      return <SvgObject key={type.id} id={type.objectId} label={`${typeLabel(type.label, component)}${type.introduced ? ', introduced here' : ', in scope'}`} {...interaction}><rect className="tc-type-node" x={node.x - node.width / 2} y={node.y} width={node.width} height={node.height} rx="9"/><text data-diagram-label={`type:${type.id}`} className="tc-type-name" x={node.x} y={node.y + (node.height - label.height) / 2 + label.ascent} textAnchor="middle">{short(type.label, 8)}</text></SvgObject>;
+      const node = layout.nodes[index], label = text.size(`type:${type.id}`, typeLabels[index].source, 21);
+      return <SvgObject key={type.id} id={type.objectId} label={`${typeLabel(type.label, component)}${type.introduced ? ', introduced here' : ', in scope'}`} {...interaction}><rect className="tc-type-node" x={node.x - node.width / 2} y={node.y} width={node.width} height={node.height} rx="9"/><MathLabel label={typeLabels[index]} labelKey={`type:${type.id}`} className="tc-type-name" x={node.x} y={node.y + (node.height - label.height) / 2 + label.ascent} fontSize={21}/></SvgObject>;
     })}
   </svg><div className="tc-graph-members" style={{ minWidth: minimumWidth, columnGap: 0, gridTemplateColumns: `repeat(${model.types.length}, minmax(0, 1fr))` }}>{model.types.map(type => <MemberLabels key={type.id} type={type} model={model} component={component} {...interaction}/>)}</div></FigureScroll>;
 }

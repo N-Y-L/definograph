@@ -1,0 +1,14 @@
+.diagram-math-label { color: var(--ink, light-dark(#111, #eee)); }
+.diagram-math-label foreignObject { overflow: visible; color: inherit; pointer-events: none; }
+.diagram-math-content { display: block; width: max-content; max-width: none; white-space: nowrap; line-height: 1.2; color: inherit; font-weight: normal; font-style: normal; }
+.diagram-math-measure { display: inline-block; white-space: nowrap; }
+.diagram-math-label .katex { font-size: 1em; }
+.diagram-math-label .katex-html { display: inline-block; }
+/* Accessibility notation has no geometric footprint. Only the HTML glyphs and
+   ordinary prose take part in the natural-width/baseline measurement. */
+.diagram-math-label .katex-mathml { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
+.diagram-math-baseline { display: inline-block; width: 0; height: 0; padding: 0; margin: 0; border: 0; vertical-align: baseline; }
+.diagram-math-prose { font-family: var(--font-body, sans-serif); font-size: .85em; }
+.diagram-math-label.sr-object-label { color: light-dark(var(--object-color,#4c6374), color-mix(in srgb,var(--object-color,#4c6374) 60%,#fff)); }
+.diagram-math-label.sr-comparison-symbol { color: light-dark(#465d78, #909eae); }
+.diagram-math-label.tc-type-name, .diagram-math-label.tc-map-name { color: light-dark(var(--object-color,#24364b), color-mix(in srgb,var(--object-color,#24364b) 60%,#fff)); }

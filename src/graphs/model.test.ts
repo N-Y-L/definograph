@@ -190,7 +190,7 @@ describe('graph constraint model', () => {
   });
 
   it.each(['weightedColoringMap', '隣接頂点の許容彩色写像', 'a_long_and_exact_graph_map_name'])('retains complete measured application labels for %s', name => {
-    const map = object('map-id', variable('map-id'), name);
+    const map = object('map-id', { kind: 'var', id: 'map-id', name, type: 'abstract type' }, name);
     for (const result of [
       fixture('graph-coloring', [['graph', object('G')], ['coloring', map], ['colors', object('C', fin(literal(4)))]]),
       fixture('graph-map', [['source graph', object('G')], ['target graph', object('H')], ['map', map]], { graphMapKind: 'embedding' }),
