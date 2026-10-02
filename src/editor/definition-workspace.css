@@ -7,7 +7,7 @@
 .definition-workspace h2 { font-size: 1.15rem; margin: 5px 0 12px; }
 .definition-workspace h3 { font-size: .95rem; margin: 0 0 10px; }
 .definition-workspace p { line-height: 1.55; }
-.definition-workspace code { display: block; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; font-size: .86rem; }
+.definition-workspace code { color: var(--ink); background: transparent; padding: 0; display: block; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; font-size: .86rem; }
 .definition-original, .definition-comparison { padding: 16px; margin: 16px 0; background:var(--surface); border-left:3px solid light-dark(#517e71, #97b2aa); border-radius:4px; }
 .definition-workspace .field-label { display: grid; gap: 8px; }
 .definition-workspace input { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px; font: inherit; }

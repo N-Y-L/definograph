@@ -188,4 +188,21 @@ describe('graph constraint model', () => {
     expect(rendered).not.toContain('type="range"');
     expect(rendered).not.toContain('type="number"');
   });
+
+  it.each(['weightedColoringMap', '隣接頂点の許容彩色写像', 'a_long_and_exact_graph_map_name'])('retains complete measured application labels for %s', name => {
+    const map = object('map-id', variable('map-id'), name);
+    for (const result of [
+      fixture('graph-coloring', [['graph', object('G')], ['coloring', map], ['colors', object('C', fin(literal(4)))]]),
+      fixture('graph-map', [['source graph', object('G')], ['target graph', object('H')], ['map', map]], { graphMapKind: 'embedding' }),
+    ]) {
+      const rendered = html(result);
+      expect(rendered).toContain(`${name}(v₁)`);
+      expect(rendered).toContain(`${name}(v₂)`);
+      expect(rendered).toContain(`data-reading-object="${map.id}"`);
+      expect((rendered.match(/data-graph-endpoint=/g) ?? []).length).toBe(2);
+      expect(rendered).not.toMatch(/data-reading-object="slot:/);
+      expect(rendered).toContain('data-diagram-label="output:0"');
+      expect(rendered).toContain('data-diagram-label="output:1"');
+    }
+  });
 });

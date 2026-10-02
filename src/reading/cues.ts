@@ -161,6 +161,9 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
   const label = (id: string | undefined): string => id ? objects.get(id)?.label ?? 'expression' : 'expression';
   const port = (relation: SemanticRelation, role: string) => relation.ports.find(port => port.role === role)?.objectId;
   const relationText = (relation: SemanticRelation): [ReadingCueIntent, string, string] => {
+    // Structural applications can produce values, types, or propositions.
+    // Their fallback representation does not classify their mathematical role.
+    if (relation.fidelity === 'structural') return ['inspect', `Inspect ${short(relation.label, 85)}`, 'Read this expression and its ordered arguments in their surrounding scope. Its mathematical role has not been interpreted.'];
     if (component && relation.kind !== 'application' && !(relation.nodeId === document.presentation?.logicalRootNodeId && relation.provenance.expressionPath === 'expression')) return ['inspect', `Inspect ${short(relation.label, 85)}`, 'Read the displayed arguments and their positions in this expression.'];
     switch (relation.kind) {
       case 'application': return ['apply', `Follow ${short(label(port(relation, 'function')), 60)}`, `Follow the ordered inputs of ${short(label(port(relation, 'function')), 50)} to the expression ${short(label(port(relation, 'output')), 90)}.`];

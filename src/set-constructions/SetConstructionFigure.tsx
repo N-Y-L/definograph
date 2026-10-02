@@ -32,7 +32,7 @@ function MembershipRegions({ model, ...interaction }: Interaction & { model: Set
       region.bits.forEach((inside, bit) => { if (inside) regionShape = <g clipPath={`url(#${prefix}-in-${bit})`}>{regionShape}</g>; });
       return <g key={index} data-membership-bits={region.bits.map(bit => bit ? '1' : '0').join('')} aria-label={model.atoms.map((atom, bit) => `${region.bits[bit] ? 'in' : 'outside'} ${atom.label}`).join(', ')}>{regionShape}</g>;
     })}
-    {circles.map((circle, index) => <circle key={index} cx={circle.x} cy={circle.y} r={circle.r} fill="none" stroke={readingObjectColor(model.atoms[index].id)} strokeWidth="1.4" strokeDasharray="5 3"/>)}
+    {circles.map((circle, index) => <circle key={index} cx={circle.x} cy={circle.y} r={circle.r} className="sc-set-boundary" style={{ '--sc-object': readingObjectColor(model.atoms[index].id) } as CSSProperties} fill="none" strokeWidth="1.4" strokeDasharray="5 3"/>)}
     <text x="39" y="44" className="sc-universe-name">{model.ambientType ? `Type ${short(model.ambientType, 54)}` : 'Ambient type'}</text>
   </svg></FigureScroll><div className="sc-region-key">{model.atoms.map((atom, index) => <div key={atom.id}><span className="sc-set-swatch" style={{ '--sc-object': readingObjectColor(atom.id) } as CSSProperties} aria-hidden="true"/><span className="sc-region-index">{model.atoms.length === 3 ? ['upper left', 'upper right', 'lower'][index] : model.atoms.length === 2 ? ['left', 'right'][index] : 'set'}</span><ObjectLabel object={atom} {...interaction}/></div>)}</div></div>;
 }

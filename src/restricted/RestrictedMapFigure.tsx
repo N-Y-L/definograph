@@ -1,5 +1,7 @@
 import { useId, useMemo, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { FigureScroll } from '../components/FigureScroll';
+import { useDiagramText } from '../components/use-diagram-text';
+import { layoutRestrictedMap, type RestrictedLabelBox, type RestrictedRegionLayout } from './restricted-map-layout';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { readingObjectColor } from '../visual/object-identity';
 import { compileRestrictedMap, type RestrictedMapStructure, type RestrictedRegion } from './model';
@@ -35,18 +37,29 @@ function SvgIdentity({ object, children, ...interaction }: Interaction & { objec
   </g>;
 }
 
-function Region({ region, carrier, x, open, selected, ...interaction }: Interaction & { region: RestrictedRegion; carrier: SemanticObject; x: number; open: boolean; selected: boolean }) {
+function DiagramLabel({ label, box, name, className }: { label: string; box: RestrictedLabelBox; name: string; className: string }) {
+  return <text className={className} data-diagram-label={name} x={box.x + box.width / 2} y={box.baseline} textAnchor="middle">{label}</text>;
+}
+
+const regionLabels = (region: RestrictedRegion, carrier: SemanticObject, open: boolean) => ({
+  carrier: carrier.label, carrierRole: `${region.role} carrier`, role: `${open ? 'open ' : ''}${region.role} region`,
+  name: region.empty ? '∅' : region.label, note: region.empty ? 'empty set' : 'possibly empty',
+});
+
+function Region({ region, carrier, layout, labels, selected, ...interaction }: Interaction & {
+  region: RestrictedRegion; carrier: SemanticObject; layout: RestrictedRegionLayout;
+  labels: ReturnType<typeof regionLabels>; selected: boolean;
+}) {
+  const label = (key: keyof typeof labels, className: string) => <DiagramLabel label={labels[key]} box={layout.labels[key]} name={`${region.role}-${key}`} className={className}/>;
   return <g data-restricted-region={region.role} data-region-evidence={region.object ? 'source-expression' : 'schematic'} data-region-selected={selected || undefined}>
     <SvgIdentity object={carrier} {...interaction}>
-      <rect className="rm-carrier" x={x} y="26" width="204" height="215" rx="11"/>
-      <text className="rm-carrier-label" x={x + 102} y="58" textAnchor="middle">{short(carrier.label, 19)}</text>
-      <text className="rm-annotation" x={x + 102} y="79" textAnchor="middle">{region.role === 'source' ? 'source' : 'target'} carrier</text>
+      <rect className="rm-carrier" {...layout.carrier} rx="11"/>
+      {label('carrier', 'rm-carrier-label')}{label('carrierRole', 'rm-annotation')}
     </SvgIdentity>
     <SvgIdentity object={region.object} {...interaction}>
-      <rect className={`rm-region${selected ? ' rm-region-focused' : ''}`} x={x + 18} y="104" width="168" height="111" rx="6"/>
-      <text className="rm-region-role" x={x + 102} y="129" textAnchor="middle">{open ? 'open ' : ''}{region.role} region</text>
-      <text className="rm-region-name" x={x + 102} y="161" textAnchor="middle"><title>{region.label}</title>{region.empty ? '∅' : short(region.label, 18)}</text>
-      <text className="rm-annotation" x={x + 102} y="188" textAnchor="middle">{region.empty ? 'empty set' : 'possibly empty'}</text>
+      {!region.object && <title>{region.label}</title>}
+      <rect className={`rm-region${selected ? ' rm-region-focused' : ''}`} {...layout.region} rx="6"/>
+      {label('role', 'rm-region-role')}{label('name', 'rm-region-name')}{label('note', 'rm-annotation')}
     </SvgIdentity>
   </g>;
 }
@@ -60,21 +73,36 @@ export interface RestrictedRegionDiagramProps extends Interaction {
 /** A reusable diagram composed from containment, maps, and guarded inverse laws. */
 export function RestrictedRegionDiagram({ structure: model, selectedRegion, applicationDirection, ...interaction }: RestrictedRegionDiagramProps) {
   const marker = `rm-arrow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const text = useDiagramText();
   const continuity = model.properties.forwardContinuousOnSource && model.properties.inverseContinuousOnTarget ? 'continuous on these regions'
     : model.properties.forwardContinuousOnSource ? 'forward continuous on source'
       : model.properties.inverseContinuousOnTarget ? 'inverse continuous on target' : 'inverse on these regions';
-  return <FigureScroll className="rm-scroll" label="Restricted map diagram; scroll to see all of it"><svg className="rm-diagram" viewBox="0 0 680 270" role="group" aria-label="Two abstract carrier spaces with valid source and target regions, linked by mutually inverse restricted maps">
+  const note = model.sameCarrier ? 'Two roles of the same carrier; the regions may overlap.' : 'Abstract containers; no geometry or coordinates are specified.';
+  const sourceLabels = regionLabels(model.source, model.sourceCarrier, model.properties.sourceOpen);
+  const targetLabels = regionLabels(model.target, model.targetCarrier, model.properties.targetOpen);
+  const sizes = (role: string, labels: ReturnType<typeof regionLabels>) => ({
+    carrier: text.size(`${role}-carrier`, labels.carrier, 20), carrierRole: text.size(`${role}-carrierRole`, labels.carrierRole, 10.5),
+    role: text.size(`${role}-role`, labels.role, 11), name: text.size(`${role}-name`, labels.name, 17), note: text.size(`${role}-note`, labels.note, 10.5),
+  });
+  const forward = model.map.label, inverse = `${model.map.label}⁻¹`;
+  const layout = layoutRestrictedMap(sizes('source', sourceLabels), sizes('target', targetLabels),
+    text.size('forward', forward, 17), text.size('inverse', inverse, 17), text.size('continuity', continuity, 10.5), text.size('note', note, 10.5));
+  const arrow = (direction: 'forward' | 'inverse') => {
+    const { from, to } = layout.arrows[direction];
+    return <path data-restricted-arrow={direction} className={`rm-map-arrow${applicationDirection === direction ? ' rm-arrow-focused' : ''}`}
+      d={`M${from.x} ${from.y} H${to.x}`} markerEnd={`url(#${marker})`}/>;
+  };
+  return <FigureScroll className="rm-scroll" label="Restricted map diagram; scroll to see all of it"><svg ref={text.ref} className="rm-diagram"
+    style={{ minWidth: Math.ceil(layout.width * 10 / 10.5) }} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label="Two abstract carrier spaces with valid source and target regions, linked by mutually inverse restricted maps">
     <defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L7 4 L1 7"/></marker></defs>
-    <Region region={model.source} carrier={model.sourceCarrier} x={10} open={model.properties.sourceOpen} selected={selectedRegion === 'source'} {...interaction}/>
-    <Region region={model.target} carrier={model.targetCarrier} x={466} open={model.properties.targetOpen} selected={selectedRegion === 'target'} {...interaction}/>
+    <Region region={model.source} carrier={model.sourceCarrier} layout={layout.source} labels={sourceLabels} selected={selectedRegion === 'source'} {...interaction}/>
+    <Region region={model.target} carrier={model.targetCarrier} layout={layout.target} labels={targetLabels} selected={selectedRegion === 'target'} {...interaction}/>
     <SvgIdentity object={model.map} {...interaction}>
-      <path data-restricted-arrow="forward" className={`rm-map-arrow${applicationDirection === 'forward' ? ' rm-arrow-focused' : ''}`} d="M202 139 H474" markerEnd={`url(#${marker})`}/>
-      <text className="rm-map-name" x="340" y="119" textAnchor="middle"><title>{model.map.label}</title>{short(model.map.label, 19)}</text>
-      <path data-restricted-arrow="inverse" className={`rm-map-arrow${applicationDirection === 'inverse' ? ' rm-arrow-focused' : ''}`} d="M478 183 H206" markerEnd={`url(#${marker})`}/>
-      <text className="rm-map-name" x="340" y="209" textAnchor="middle"><title>{`${model.map.label}⁻¹`}</title>{short(model.map.label, 18)}⁻¹</text>
+      {arrow('forward')}<DiagramLabel label={forward} box={layout.forward} name="forward" className="rm-map-name"/>
+      {arrow('inverse')}<DiagramLabel label={inverse} box={layout.inverse} name="inverse" className="rm-map-name"/>
     </SvgIdentity>
-    <text className="rm-annotation" x="340" y="163" textAnchor="middle">{continuity}</text>
-    <text className="rm-annotation" x="340" y="262" textAnchor="middle">{model.sameCarrier ? 'Two roles of the same carrier; the regions may overlap.' : 'Abstract containers; no geometry or coordinates are specified.'}</text>
+    <DiagramLabel label={continuity} box={layout.continuity} name="continuity" className="rm-annotation"/>
+    <DiagramLabel label={note} box={layout.note} name="note" className="rm-annotation"/>
   </svg></FigureScroll>;
 }
 
