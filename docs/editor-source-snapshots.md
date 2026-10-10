@@ -80,7 +80,7 @@ fresh captures separately, with unverified provenance and no live action.
 
 ## Build and verification
 
-Normal `npm run setup:lean` verifies the [25-module source dependency](../vendor/DefinographCapture/README.md), compiles it with Lean 4.28.0 and links it only into the project-context executable. All `StatementLens` compiled modules share one module search root; the foundation modules use a separate build directory. Runtime elaboration still receives only the project's library paths. The standalone reader's imports and protocol remain separate.
+Normal `npm run setup:lean` verifies the [26-module source dependency](../vendor/DefinographCapture/README.md), compiles it with Lean 4.28.0 and links it only into the project-context executable. All `StatementLens` compiled modules share one module search root; the foundation modules use a separate build directory. Runtime elaboration still receives only the project's library paths. The standalone reader's imports and protocol remain separate.
 
 ```sh
 npm run test:source-dependency
