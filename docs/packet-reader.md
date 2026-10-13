@@ -57,7 +57,7 @@ from a false mathematical statement.
 | `packets/semantic.ts` | Per-record, scoped presentation with source associations; no legacy expression interning or mathematical checking |
 | `packets/structure.ts` | Constructor drawing, explicit declaration homes and an independent reader reconstructing exact source from emitted fields and child roles |
 | `packets/StructuralReading.tsx` | Visible ordered connections, binder regions, declaration references, recoverable folds and attached exact fields |
-| `reading/` and `visual/` | Existing sequence, overview and diagrams; presentation does not add evidence |
+| `reading/` and `visual/` | Existing skeleton, sequence and diagrams; presentation does not add evidence |
 
 Packet-backed presentation identities preserve exact constructors and lexical
 bindings. Repeated spelling is not identity. Retained and derived supplier

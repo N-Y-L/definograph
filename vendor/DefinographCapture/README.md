@@ -1,8 +1,10 @@
 # Definograph source capture dependency
 
 This is the exact `SourceCapture` import closure from source commit
-`e5527ba39f998b0a0babdf8734e0ef56626e418c` of the separately maintained
-Definograph foundation. That source repository remains authoritative.
+`e5527ba39f998b0a0babdf8734e0ef56626e418c` of the Definograph foundation, a
+separately maintained repository that is not public. That commit cannot be
+fetched; this directory, with the hashes in `UPSTREAM.json`, is the only
+published copy. The foundation repository remains authoritative for changes.
 `UPSTREAM.json` records its `deps.json` identity, original source paths,
 SHA-256 hashes, direct imports, and dependency order. The 26 files retain their
 original module names and bytes. Fixture and packet-worker modules are excluded.
@@ -13,7 +15,8 @@ fresh isolated build directory, and generates `.olean` and C outputs. Those C
 outputs are linked into the editor context sidecar; the standalone worker and
 the formal project's runtime import paths do not acquire this dependency.
 
-To refresh, select a reviewed upstream commit and read its pinned `deps.json`.
+To refresh (this needs access to the foundation repository), select a reviewed
+upstream commit and read its pinned `deps.json`.
 Verify every source against that inventory, compute the transitive import closure
 rooted at `SourceCapture`, and copy the exact bytes in upstream dependency order.
 Update the source commit and manifest together, including the expected commit

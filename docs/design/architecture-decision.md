@@ -241,7 +241,7 @@ G1 restores the comparison with the typeset statement that `docs/roadmap.md:31` 
 - **Recursion** folds at its first recursive head; quotients and `HEq` fold.
 - **Index arithmetic** needs a ninth, coordinate former; spectral sequences are out of scope, though not impossible.
 - **Instance diamonds** stay unfused.
-- **Short statements:** the formula may simply be faster. The formal statement stays beside every diagram (`AGENTS.md:11-12` already makes the default "a visual sequence with its logical overview alongside"), and G1 decides where the diagram earns its place.
+- **Short statements:** the formula may simply be faster. The formal statement stays beside every diagram (when this decision was written, `AGENTS.md` made the default "a visual sequence with its logical overview alongside"; it is now the statement's skeleton followed by the sequence), and G1 decides where the diagram earns its place.
 
 ## 9. Research risk versus engineering work
 

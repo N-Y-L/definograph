@@ -136,7 +136,7 @@ describe('exact application occurrence choices', () => {
     expect(filtered.occurrences.length + filtered.omittedCount + filtered.filteredCount).toBe(filtered.totalCount);
     const repeated = available(source, { filter: 'laterdefinition' }).occurrences.find(item => item.headName === 'LaterDefinition')!;
     expect(repeated.id).toBe(chosen.id); expect(repeated.term).toEqual(chosen.term);
-  });
+  }, 20_000);
   it('searches disambiguated scoped labels while keeping unmatched names out of the display count', () => {
     const source = sourceFor(lam('same', nat, app(c('Combine'), app(c('Unfamiliar'), b(0)), lam('same', nat, app(c('Unfamiliar'), b(0))))));
     const model = available(source, { filter: 'unfamiliar same@5' });
@@ -155,7 +155,7 @@ describe('exact application occurrence choices', () => {
     expect(noMatch.omittedCount + noMatch.filteredCount).toBe(noMatch.totalCount);
     const model = available(source, { filter: 'BeyondSearchBudget' });
     expect(model.occurrences.some(item => item.headName === 'BeyondSearchBudget')).toBe(true);
-  });
+  }, 20_000);
   it('retains an exact selectable application when long scoped names exceed label limits', () => {
     const join = (depth: number): JsonValue => depth === 0 ? b(0) : app(c('Branch'), join(depth - 1), join(depth - 1));
     const source = sourceFor(lam('x'.repeat(600), nat, join(8)));

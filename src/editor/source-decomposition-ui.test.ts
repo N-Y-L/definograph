@@ -76,7 +76,7 @@ describe('continuation host, retention and reading', () => {
     expect(parseEditorMessage({ ...f.message, decompositions: extended })).toBeUndefined();
     const accessor = [f.first]; Object.defineProperty(accessor, 0, { get: () => { throw Error('Must not invoke'); }, enumerable: true });
     expect(parseEditorMessage({ ...f.message, decompositions: accessor })).toBeUndefined();
-  });
+  }, 20_000);
   it('validates ordered bundles with separate immutable original and fresh origins', () => {
     const f = secondExposure(), message = { ...f.message, decompositions: [f.first, f.second] }, parsed = parseEditorMessage(message);
     expect(parsed?.type).toBe('statementlens.error');

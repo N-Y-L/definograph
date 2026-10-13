@@ -105,7 +105,7 @@ With the pinned native worker configured, `npm run check` adds the native integr
 
 ## License and credits
 
-The application is available under [Apache License 2.0](LICENSE); reused dependencies retain their own terms in [NOTICE](NOTICE). The separately maintained [source-capture snapshot](vendor/DefinographCapture/README.md) records its exact upstream provenance. No upstream license file was present at that pin, and this repository does not add a license to that snapshot.
+The application is available under [Apache License 2.0](LICENSE); reused dependencies retain their own terms in [NOTICE](NOTICE). The [source-capture snapshot](vendor/DefinographCapture/README.md) is a pinned copy of this project's own foundation, a separate repository that is not public; its manifest records the commit and file hashes it was copied from. That repository had no license file at the pinned commit, and this repository does not add a license to the snapshot.
 
 The 0.7 prototype was developed by Codex. The architecture decision and further development are by Claude. Both worked under the supervision of Neil Yuanting Li.
 

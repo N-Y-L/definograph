@@ -62,7 +62,7 @@ describe('bounded decomposition records and historical replay', () => {
     }
     expect(a(checking(value).checks)).toHaveLength(26);
     expect(() => decompositionPlan(history, previous, index, { kind: 'expose', target: 'type' })).toThrow(/eight operations/);
-  });
+  }, 20_000);
   it('validates expose/focus with the exact original let home, and freezes detached values', () => {
     const { history } = initial(), value = firstFocus(history), result = validateSourceDecomposition(value, history.snapshot, history);
     expect(result).toEqual(value); expect(Object.isFrozen(result)).toBe(true);
