@@ -1,7 +1,20 @@
 <!-- description: What a check by Lean establishes: a well-formed statement, a proof from a hypothesis and an unfinished proof, and how Definograph reports each. -->
 # 6. Checking evidence
 
-Every reading in this tutorial came with checks by Lean. This lesson says what those checks establish and what they do not. It first names the kinds of evidence that Definograph keeps apart. Then it compares a statement that is only well formed, a proof that depends on a hypothesis, and an unfinished proof. The last section reads the history panels of Lesson 5 in more detail.
+Every reading in this tutorial came with checks by Lean. This lesson says what those checks establish and what they do not. It starts from a statement that is only well formed, names the kinds of evidence that Definograph keeps apart, and then compares a proof that depends on a hypothesis with an unfinished proof. The last section reads the history panels of Lesson 5 in more detail.
+
+## Well formed is not proved
+
+In Lesson 1, Definograph drew two statements, and one of them is false. Lean checked both all the same: it checked that each is a well-formed proposition. Definograph marks its readings as type checked by Lean, and says that a diagram of a statement is not a proof.
+
+The same holds in a Lean file. These two lines are from [Scope.lean](examples/Scope.lean):
+
+```lean
+example : Prop := ∀ x : Nat, ∃ y : Nat, y = x
+example : Prop := ∃ y : Nat, ∀ x : Nat, y = x
+```
+
+Each line asks Lean only to accept the expression as a proposition. Lean accepts both. The second is false: no natural number equals every natural number. [QuantifierProofs.lean](examples/QuantifierProofs.lean) proves the first statement and disproves the second.
 
 ## Kinds of evidence
 
@@ -15,19 +28,6 @@ Every reading in this tutorial came with checks by Lean. This lesson says what t
 | Diagnostic | A warning or error that Lean reported while it read the file, such as the warning about `sorry` below. It is separate from any check outcome. |
 
 Keep these apart. An accepted check outcome is not a proof of the statement, and an empty axiom audit does not remove a hypothesis.
-
-## Well formed is not proved
-
-In Lesson 1, Definograph drew two statements, and one of them is false. Lean checked both all the same. What Lean checked is that each statement is a well-formed proposition. Definograph marks its readings as type checked by Lean, and says that a diagram of a statement is not a proof.
-
-The same holds in a Lean file. These two lines are from [Scope.lean](examples/Scope.lean):
-
-```lean
-example : Prop := ∀ x : Nat, ∃ y : Nat, y = x
-example : Prop := ∃ y : Nat, ∀ x : Nat, y = x
-```
-
-Each line asks Lean only to accept the expression as a proposition. Lean accepts both. The second is false: no natural number equals every natural number. [QuantifierProofs.lean](examples/QuantifierProofs.lean) proves the first statement and disproves the second, if you want to see the proofs.
 
 ## A proof that depends on a hypothesis
 
@@ -61,7 +61,7 @@ example : 2 + 2 = 5 := claimed
 #print axioms claimed
 ```
 
-`sorry` is a placeholder for a missing proof. Lean accepts the file with a warning that the declaration uses `sorry`, and `#print axioms claimed` reports `sorryAx`, the axiom that stands for the missing proof. The second line uses `claimed`, and so depends on `sorryAx` too.
+`sorry` is a placeholder for a missing proof. Lean accepts the file with a warning that the declaration uses `sorry`. `#print axioms claimed` reports `sorryAx`, the axiom that stands for the missing proof. The second line uses `claimed`, and so depends on `sorryAx` too.
 
 In the editor, select `claimed` in the `example` line and take the same steps. The supply reading has the same form:
 
@@ -70,12 +70,12 @@ In the editor, select `claimed` in the `example` line and take the same steps. T
 - "Relative to the captured environment, including its axioms, and the 1 entries and 0 frames listed, occurrence 1 is read as supplying a proof of the statement at occurrence 2." The statement is 2 + 2 = 5, and the one entry is `_example`.
 - "Recorded axioms of the typing declaration: sorryAx."
 
-This is why the supply reading always names the environment "including its axioms" and lists them beside it. Here the listed axiom is the missing proof. The reading does not claim that 2 + 2 = 5; it says what the term supplies given everything it rests on, and one of those things is `sorryAx`.
+This is why the supply reading always names the environment "including its axioms" and lists them beside it. Here the listed axiom is the missing proof. The reading does not claim that 2 + 2 = 5. It says what the term supplies given everything it rests on, and one of those things is `sorryAx`.
 
 ## What the checks do not tell you
 
 - **That a statement is true.** An accepted check says that an expression has a type. A false proposition has a type too.
-- **That a saved record is current.** A saved record keeps all of these kinds of evidence as they were recorded. **Save source snapshot** writes one to a file, with its origin marked as unverified, and a saved record cannot restart a live session. Figures made from saved records are labelled **from a saved history**. The live editor panel screenshot in lesson 5 is not one of them.
+- **That a saved record is current.** A saved record keeps all of these kinds of evidence as they were recorded. **Save source snapshot** writes one to a file, with its origin marked as unverified. A saved record cannot restart a live session. Figures made from saved records are labelled **from a saved history**.
 - **That a drawing is right.** A check of a statement is not a check of its drawing. That Definograph's views are right for every valid Lean statement is the project's goal, not an established result; see the [Reference](../content/reference.md).
 
 ## Exercises
@@ -122,7 +122,7 @@ Accepted outcomes are about typing, not truth. The audit that matters is the one
 
 This section reads the history of Lesson 5 closely, with step 2 selected. You can skip it until you need it.
 
-The history up to the selected step is its **prefix**. **Ordered provenance** and **Supply reading** read the prefix only. **Attempt outcomes** lists every check of the attempt, numbered, including checks made after the selected step, and says which of them lie outside the prefix.
+The history up to the selected step is its **prefix**. **Ordered provenance** and **Supply reading** read the prefix only. **Attempt outcomes** lists every check of the attempt, numbered, including checks made after the selected step. It says which of them lie outside the prefix.
 
 **Ordered provenance** lists the occurrences of the prefix in order, with the relations that connect them:
 
@@ -133,14 +133,14 @@ The history up to the selected step is its **prefix**. **Ordered provenance** an
 - Each occurrence also says where it first appeared, and which recorded outcomes concern it. Definograph labels each attempt with a short random identifier, which you see in brackets.
 - The list ends by saying that steps 3 and 4 are outside this prefix and are not read.
 
-**Supply reading** reads a term as a proof only when the prefix has a step that relates a term to its type, like the steps that **Inspect type of original selected term** added in the two examples above. This prefix has none, so the section says that no supply reading is made.
+**Supply reading** reads a term as a proof only when the prefix has a step that relates a term to its type. **Inspect type of original selected term** added such a step in each of the two examples above. This prefix has none, so the section says that no supply reading is made.
 
 **Exercise 6.4.** In the history of Lesson 5, step 4 checked `y = x`. Does the prefix through step 2 include that check? Does the check prove `y = x`?
 
 <details>
 <summary>Answer</summary>
 
-No to both. The provenance list ends by saying that steps 3 and 4 are outside this prefix. **Attempt outcomes** lists the check with the other checks of the attempt, labeled with its step, and says that outcomes of steps after step 2 are outside the selected prefix. And it is a typing check of `y = x` in a context where x and y are available. It establishes nothing about whether y equals x; that depends on the existential, which asks for a suitable y.
+No to both. The provenance list ends by saying that steps 3 and 4 are outside this prefix. **Attempt outcomes** lists the check with the other checks of the attempt, labeled with its step. It says that outcomes of steps after step 2 are outside the selected prefix. And the check is a typing check of `y = x` in a context where x and y are available. It establishes nothing about whether y equals x; that depends on the existential, which asks for a suitable y.
 
 </details>
 

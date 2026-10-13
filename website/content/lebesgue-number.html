@@ -1,42 +1,51 @@
 <header class="page-head">
   <h1 id="lebesgue-number">Reading the Lebesgue-number lemma</h1>
-  <p>Read a theorem closely enough to explain when it applies, which choices must work uniformly, and exactly what its conclusion covers.</p>
-  <p><strong>New to Lean?</strong> Read the short <a href="#notation">notation guide</a>, then start with the same theorem below. You need some familiarity with compact sets, open covers and metric balls.</p>
-  <p><strong>Already read Lean?</strong> Go directly to <a href="#start">the source and editor selection</a>. The questions ask you to connect the statement’s scope with its mathematical meaning.</p>
+  <p>Read one theorem closely enough to say when it applies, which choices must work uniformly, and exactly what its conclusion covers.</p>
+  <p>This page has no figures. You can read it in two ways: follow its steps with Definograph open in Visual Studio Code, or skip the steps and read the theorem, the questions and their answers. What the page says about each view was recorded from Definograph in Visual Studio Code on 2 October 2026, with Lean 4.28.0.</p>
+  <p><strong>New to Lean?</strong> Read the short <a href="#notation">notation guide</a>, then read the theorem below. You should know what compact sets, open covers and metric balls are.</p>
+  <p><strong>Already read Lean?</strong> Go to <a href="#applicability">the theorem’s statement</a>, or to <a href="#start">the source and editor selection</a> if you have Definograph open. The questions connect the statement’s scope with its mathematical meaning.</p>
 </header>
 
 <section aria-labelledby="notation-heading">
   <h2 id="notation-heading">A little Lean notation</h2>
   <details id="notation">
     <summary>Notation used in this example</summary>
-    <p><code>s : Set α</code> says that <code>s</code> is a set of elements of type <code>α</code>. A family <code>c : ι → Set α</code> assigns a set <code>c i</code> to each index <code>i</code>. Function application is written with a space.</p>
+    <p><code>s : Set α</code> says <code>s</code> is a set of elements of type <code>α</code>. A family <code>c : ι → Set α</code> assigns a set <code>c i</code> to each index <code>i</code>. Function application is written with a space.</p>
     <ul>
       <li><code>∃ r &gt; 0, P r</code> means there is an <code>r</code> with both <code>0 &lt; r</code> and <code>P r</code>.</li>
-      <li><code>∀ z ∈ s, P z</code> means that every <code>z</code> satisfying <code>z ∈ s</code> satisfies <code>P z</code>.</li>
+      <li><code>∀ z ∈ s, P z</code> means every <code>z</code> with <code>z ∈ s</code> satisfies <code>P z</code>.</li>
       <li><code>A ⊆ B</code> means every element of <code>A</code> belongs to <code>B</code>. <code>⋃ i, c i</code> is the union of all sets in the family.</li>
-      <li>Braces such as <code>{s : Set α}</code> introduce implicit parameters. Square brackets such as <code>[PseudoMetricSpace α]</code> request a mathematical structure that Lean supplies through its typeclass mechanism.</li>
+      <li>Braces, as in <code>{s : Set α}</code>, introduce implicit parameters. Square brackets, as in <code>[PseudoMetricSpace α]</code>, request a mathematical structure that Lean supplies through its typeclass mechanism.</li>
     </ul>
-    <p>A pseudometric has the usual metric properties but may assign distance zero to distinct points. No coordinates or dimension are assumed here.</p>
-    <p>For a broader introduction, use <a href="https://leanprover-community.github.io/mathematics_in_lean/C01_Introduction.html">Mathematics in Lean</a>; its <a href="https://leanprover-community.github.io/mathematics_in_lean/C03_Logic.html">Logic chapter</a> explains quantifiers and implications. <a href="https://lean-lang.org/theorem_proving_in_lean4/">Theorem Proving in Lean</a> covers Lean’s language in more depth. The lesson below uses only the notation needed for this statement.</p>
+    <p>A pseudometric has the usual metric properties but may give distance zero to distinct points. No coordinates or dimension are assumed here.</p>
+    <p>For a broader introduction, use <a href="https://leanprover-community.github.io/mathematics_in_lean/C01_Introduction.html">Mathematics in Lean</a>; its <a href="https://leanprover-community.github.io/mathematics_in_lean/C03_Logic.html">Logic chapter</a> explains quantifiers and implications. <a href="https://lean-lang.org/theorem_proving_in_lean4/">Theorem Proving in Lean</a> covers Lean’s language in more depth. This page uses only the notation its statement needs.</p>
   </details>
 </section>
 
 <section aria-labelledby="start">
   <h2 id="start">Start with the library theorem</h2>
-  <p>Use a trusted project with Lean 4.28.0 and Mathlib revision <code>8f9d9cff6bd728b17a24e163c9402775d9e6a365</code>, with the import built. This example needs Mathlib, unlike the standard-library files in Lessons 5–7. See <a href="/install/">Setup</a> for the reader and extension.</p>
-  <p>Download <a href="/learn/examples/LebesgueNumber.lean" download>LebesgueNumber.lean</a>. Its complete source accompanies the recording below.</p>
+  <p>This section is for reading with Definograph open; without it, go on to <a href="#applicability">section 1</a>.</p>
+  <p>Use a trusted project with Lean 4.28.0 and Mathlib revision <code>8f9d9cff6bd728b17a24e163c9402775d9e6a365</code>, with the import built. Unlike the standard-library files in Lessons 5–7, this example needs Mathlib. See <a href="/install/">Setup</a> for the reader and extension.</p>
+  <p>Download <a href="/learn/examples/LebesgueNumber.lean" download>LebesgueNumber.lean</a>. This is its complete source:</p>
+{{source:LebesgueNumber.lean}}
   <ol>
     <li>Open the file in the project and let Lean check it.</li>
     <li>Select only <code>lebesgue_number_lemma_of_metric</code> after <code>#check</code>.</li>
     <li>Run <strong>Definograph: Visualize Selection</strong> from the command palette.</li>
   </ol>
-  <p>The selected theorem constant is a proof term. The main reading presents its proposition type: the statement the theorem proves. <code>#check</code> asks Lean for the constant’s type; it does not construct a radius or a cover index.</p>
-{{capture:lebesgue-editor-selection}}
-  <p>You can also read the <a href="https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Topology/MetricSpace/Pseudo/Lemmas.lean#L120">original theorem in Mathlib</a>. Its background consists of a pseudometric space <code>α</code>, a set <code>s</code>, an index sort <code>ι</code> and a family of sets <code>c : ι → Set α</code>. These are the objects and structure in which the theorem is stated.</p>
+  <p>The selected theorem constant is a proof term. Definograph reads its type: the proposition the theorem proves. <code>#check</code> asks Lean for the constant’s type; it is not the theorem’s proof, and it does not construct a radius or a cover index.</p>
 </section>
 
 <section aria-labelledby="applicability">
   <h2 id="applicability">1. Separate the hypotheses from the conclusion</h2>
+  <p>This is the theorem’s statement <a href="https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Topology/MetricSpace/Pseudo/Lemmas.lean#L120">in Mathlib</a>, with line breaks added:</p>
+  <pre class="source" tabindex="0" role="group" aria-label="The theorem’s statement in Mathlib"><code>theorem lebesgue_number_lemma_of_metric
+    {s : Set α} {ι : Sort*} {c : ι → Set α}
+    (hs : IsCompact s)
+    (hc₁ : ∀ i, IsOpen (c i))
+    (hc₂ : s ⊆ ⋃ i, c i) :
+    ∃ δ &gt; 0, ∀ x ∈ s, ∃ i, ball x δ ⊆ c i</code></pre>
+  <p>Its background is a pseudometric space <code>α</code>, a set <code>s</code>, an index sort <code>ι</code> and a family of sets <code>c : ι → Set α</code>: the objects and structure in which the theorem is stated. Mathlib’s file declares <code>α</code> and its pseudometric before the theorem, and writes <code>ball</code> for <code>Metric.ball</code>.</p>
   <p>The theorem has three named hypotheses:</p>
   <dl>
     <dt><code>hs : IsCompact s</code></dt>
@@ -48,64 +57,60 @@
   </dl>
   <p>Under these hypotheses, the conclusion is:</p>
   <pre class="source" tabindex="0" role="group" aria-label="The theorem’s conclusion"><code>∃ δ &gt; 0, ∀ x ∈ s, ∃ i, Metric.ball x δ ⊆ c i</code></pre>
-  <p><strong>Question.</strong> Is knowing that one point lies in one open member enough to apply this theorem? Locate the missing requirements in the whole statement.</p>
+  <p><strong>Question.</strong> Is knowing that one point lies in one open member enough to apply this theorem? Find the missing requirements in the whole statement.</p>
   <details>
     <summary>Answer: what must be known</summary>
-    <p>No. The theorem requires compactness of <code>s</code>, openness of every family member and coverage of all of <code>s</code>, in the stated pseudometric space. Coverage of one point alone does not provide these hypotheses.</p>
-    <p>The space, set and family are background data. Do not count them as extra propositional hypotheses alongside <code>hs</code>, <code>hc₁</code> and <code>hc₂</code>.</p>
+    <p>No. The theorem requires <code>s</code> to be compact, every family member to be open and all of <code>s</code> to be covered, in the stated pseudometric space. Covering one point alone does not provide these hypotheses.</p>
+    <p>The space, set and family are background data. Do not count them as propositional hypotheses alongside <code>hs</code>, <code>hc₁</code> and <code>hc₂</code>.</p>
   </details>
 </section>
 
 <section aria-labelledby="choices">
   <h2 id="choices">2. Read the choices in order</h2>
   <p><strong>Question.</strong> May the radius <code>δ</code> change after choosing <code>x</code>? Must the same index <code>i</code> work for every <code>x</code>?</p>
-  <p>Select <strong>Explore a sample</strong>, then <strong>Choices</strong>. The recorded view shows the candidate radius <code>δ</code> before the arbitrary center <code>x</code>; <code>δ</code> appears among the earlier choices available to <code>x</code>. This view displays 12 of the statement’s 14 choices, so the final existential index <code>i</code> is beyond its display limit. Read that choice in the whole statement or the <strong>Visual sequence</strong>, and keep the conditions in view. A list of choices alone does not show every condition.</p>
-{{capture:lebesgue-choices}}
+  <p>Select <strong>Explore a sample</strong>, then <strong>Choices</strong>. The view lists the candidate radius <code>δ</code> at step 11, before the arbitrary center <code>x</code> at step 12; <code>δ</code> is among the earlier choices available to <code>x</code>. The view shows 12 of the statement’s 14 choices, so the final existential index <code>i</code> is beyond its display limit. Read that choice in the whole statement or the <strong>Visual sequence</strong>, and keep the conditions in view: a list of choices alone does not show every condition.</p>
   <details>
     <summary>Answer: one radius, a possibly varying index</summary>
-    <p>A single positive <code>δ</code> is chosen before <code>x</code> and must work for every <code>x ∈ s</code>. Its choice may use the fixed space, set and cover. It cannot be chosen afresh for each later point.</p>
-    <p>The index <code>i</code> comes after <code>x</code> and its membership condition. It may vary with <code>x</code>; the theorem neither requires variation nor supplies a procedure for choosing the index.</p>
-    <p><code>δ &gt; 0</code> is part of what the conclusion guarantees about its radius. It is joined to the remaining conclusion under <code>∃ δ</code>, rather than being an extra hypothesis required before applying the theorem.</p>
+    <p>One positive <code>δ</code> is chosen before <code>x</code> and must work for every <code>x ∈ s</code>. Its choice may use the fixed space, set and cover. It cannot be chosen again for each later point.</p>
+    <p>The index <code>i</code> comes after <code>x</code> and its membership condition. It may vary with <code>x</code>; the theorem neither requires it to vary nor gives a procedure for choosing it.</p>
+    <p><code>δ &gt; 0</code> is part of what the conclusion guarantees about its radius. It is joined to the rest of the conclusion under <code>∃ δ</code>; it is not an extra hypothesis required before applying the theorem.</p>
   </details>
 </section>
 
 <section aria-labelledby="whole-ball">
   <h2 id="whole-ball">3. Read the whole-ball requirement</h2>
-  <p>Select <strong>Visual sequence</strong>, then use <strong>Choose reading step</strong> to select <strong>20. Read the inclusion condition</strong>. Read <code>Metric.ball x δ ⊆ c i</code> with its enclosing scope.</p>
-  <p>Open <strong>4 assumptions in scope</strong>: the theorem’s three hypotheses and the local condition <code>x ∈ s</code>. Open <strong>Alongside this clause</strong> to retain <code>δ &gt; 0</code> at its position in the conclusion.</p>
+  <p>Select <strong>Visual sequence</strong>, then use <strong>Choose reading step</strong> to select <strong>20. Read the inclusion condition</strong>. Read <code>Metric.ball x δ ⊆ c i</code> with its enclosing scope. In Definograph, the figure at this step states a containment requirement; it supplies no numerical witness.</p>
+  <p>Open <strong>4 assumptions in scope</strong>: the theorem’s three hypotheses and the local condition <code>x ∈ s</code>. Open <strong>Alongside this clause</strong> to keep <code>δ &gt; 0</code> at its place in the conclusion.</p>
   <p><strong>Question.</strong> Does the conclusion cover only the center <code>x</code>, only the part of the ball inside <code>s</code>, or the whole ball?</p>
-{{capture:lebesgue-containment}}
   <details>
     <summary>Answer: which points are covered</summary>
     <p>Every point of the whole ball belongs to <code>c i</code>, for the index chosen for this center. Only the center <code>x</code> is restricted to <code>s</code>. The theorem does not say that the ball is contained in <code>s</code>.</p>
-    <p>Replacing the conclusion by <code>x ∈ c i</code> would lose the neighborhood guarantee. Replacing the ball by its intersection with <code>s</code> would also weaken what is stated.</p>
+    <p>Replacing the conclusion by <code>x ∈ c i</code> would lose the neighborhood guarantee. Replacing the ball by its intersection with <code>s</code> would also weaken the statement.</p>
   </details>
   <h3 id="inspect-ball">Inspect the ball’s definition</h3>
-  <p>Keep the inclusion clause selected while inspecting the expression <code>Metric.ball x δ</code>:</p>
+  <p>Keep the inclusion clause selected and inspect <code>Metric.ball x δ</code>:</p>
   <ol>
     <li>Select <strong>Inspect a definition in this statement</strong>.</li>
-    <li>Enter <code>Metric.ball</code> in <strong>Find an application</strong>. Applications come from the whole selected statement, so check the occurrence’s arguments and scope. Choose the occurrence with center <code>x</code> and radius <code>δ</code> using <strong>Inspect this occurrence →</strong>.</li>
-    <li>In <strong>Keep the clause in view</strong>, check that <strong>Original clause</strong> still shows <code>Metric.ball x δ ⊆ c i</code>. Wait for the inspection to complete, then read its result and check outcomes.</li>
+    <li>Enter <code>Metric.ball</code> in <strong>Find an application</strong>. Applications come from the whole selected statement, so check each occurrence’s arguments and scope. Choose the one with center <code>x</code> and radius <code>δ</code> using <strong>Inspect this occurrence →</strong>.</li>
+    <li>In <strong>Keep the clause in view</strong>, check that <strong>Original clause</strong> still shows <code>Metric.ball x δ ⊆ c i</code>. Wait for the inspection to finish, then read its result and check outcomes.</li>
   </ol>
-{{capture:lebesgue-definition-inspection}}
   <p>The recorded result of inspecting <code>Metric.ball</code> is:</p>
   <pre class="source" tabindex="0" role="group" aria-label="Recorded Lean result of inspecting Metric.ball"><code>{y | dist y x &lt; δ}</code></pre>
-  <p>Notation may hide implicit arguments. Use <strong>Exact result and surrounding scope</strong> for the exact arguments and scope. The result retains the chosen application’s surrounding scope; the variable <code>y</code> is local to the set description, not a replacement for the center <code>x</code>.</p>
-  <p>In this recording, <strong>Result context</strong>, <strong>Result component</strong> and <strong>Definition-head conversion</strong> are all marked <strong>accepted</strong>. These checks concern this definition exposure in its scope; they do not prove the containment clause.</p>
-  <p>The bound is strict. Combining the definition with the containment clause says that every <code>y</code> satisfying <code>dist y x &lt; δ</code> belongs to the same <code>c i</code>. The <a href="https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Topology/MetricSpace/Pseudo/Defs.lean#L350">pinned library definition of Metric.ball</a> provides a source reference.</p>
+  <p>Notation may hide implicit arguments. Use <strong>Exact result and surrounding scope</strong> for the exact arguments and scope. The result keeps the surrounding scope of the chosen application. The variable <code>y</code> is local to the set description; it does not replace the center <code>x</code>.</p>
+  <p>In the recorded session, <strong>Result context</strong>, <strong>Result component</strong> and <strong>Definition-head conversion</strong> are all marked <strong>accepted</strong>. These checks concern this exposure of the definition in its scope; they do not prove the containment clause.</p>
+  <p>The bound is strict. Together, the definition and the containment clause say that every <code>y</code> with <code>dist y x &lt; δ</code> belongs to the same <code>c i</code>. For the source, see the <a href="https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Topology/MetricSpace/Pseudo/Defs.lean#L350">pinned library definition of Metric.ball</a>.</p>
 </section>
 
 <section aria-labelledby="return">
   <h2 id="return">4. Put the conclusion back together</h2>
   <p>Select <strong>Return to reading</strong>. The definition workspace closes and focus returns to <strong>Choose reading step</strong>, still on <strong>20. Read the inclusion condition</strong>. Check the center, radius and cover member against the original statement, with the four assumptions and <code>δ &gt; 0</code> still in view.</p>
-  <p><strong>Question.</strong> Explain the conclusion in one sentence, including what is fixed and what may vary.</p>
-{{capture:lebesgue-return}}
+  <p><strong>Question.</strong> State the conclusion in one sentence. Say what is fixed and what may vary.</p>
   <details>
     <summary>One complete reading</summary>
     <p>For the fixed compact set and open cover, there is one positive radius such that, for every center in the set, the entire ball of that radius lies in some cover member, whose index may depend on the center.</p>
     <p>This describes the theorem’s statement. The view does not explain the proof or compute the radius and indices. If <code>s</code> is empty, there are no center-specific obligations; do not infer a selected point or a nonempty index family from the diagram.</p>
   </details>
-  <p><strong>Check your reading.</strong> Compare these conclusion forms for arbitrary sets and families, before using the theorem’s three hypotheses. Classify each change as equivalent, weaker, or stronger than the original conclusion:</p>
+  <p><strong>Check your reading.</strong> Compare these forms of the conclusion for arbitrary sets and families, before using the theorem’s three hypotheses. Classify each change as equivalent to the original conclusion, weaker or stronger:</p>
   <ol>
     <li>Choose a new positive radius after each center <code>x ∈ s</code>.</li>
     <li>Choose one cover member before all centers and require it to contain every ball.</li>
@@ -113,7 +118,7 @@
   </ol>
   <details>
     <summary>Answer: the changed statements</summary>
-    <p>The first weakens the requirement: it loses the uniform radius. The second strengthens it by demanding one member for every center; the theorem does not guarantee this. The third also strengthens it, extending the requirement to arbitrary centers in the space. These conclusion forms are not equivalent in general, and a weaker statement should not simply be labelled false.</p>
+    <p>The first is weaker: it loses the uniform radius. The second is stronger: it demands one member for every center, which the theorem does not guarantee. The third is also stronger: it extends the requirement to arbitrary centers in the space. In general these forms are not equivalent, and a weaker statement should not simply be labelled false.</p>
   </details>
 </section>
 
@@ -126,8 +131,8 @@
   <p>Does the theorem assert that this particular <code>f</code> is uniformly continuous? What may <code>δ</code> depend on? Are both points restricted to <code>s</code>?</p>
   <details>
     <summary>Answer: follow the equivalence and the quantifiers</summary>
-    <p>The theorem equates two conditions; it does not establish either one for an arbitrary <code>f</code>. For each positive <code>ε</code>, the right-hand side requires one positive <code>δ</code> that works for all later <code>x,y ∈ s</code>. The radius may depend on <code>ε</code> and the fixed data, but not on those later points.</p>
-    <p>Both points must lie in <code>s</code>, and <code>dist x y &lt; δ</code> is an antecedent of the distance conclusion. Reading <code>↔</code> as only one implication would lose the converse.</p>
+    <p>The theorem equates two conditions; it establishes neither for an arbitrary <code>f</code>. For each positive <code>ε</code>, the right-hand side requires one positive <code>δ</code> that works for all later <code>x,y ∈ s</code>. That <code>δ</code> may depend on <code>ε</code> and the fixed data, but not on those later points.</p>
+    <p>Both points must lie in <code>s</code>, and <code>dist x y &lt; δ</code> is a premise of the distance conclusion. Reading <code>↔</code> as only one implication would lose the converse.</p>
     <p>The epsilon–delta expression comes from a proved equivalence theorem. It is not the definition body of <code>UniformContinuousOn</code>.</p>
   </details>
   <p>For more practice, use <a href="/learn/follow-the-scope/">Lesson 1: the order of choices</a>. <a href="/learn/inside-definitions/">Lesson 4</a> explains definition inspection, and <a href="/learn/follow-an-inspection/">Lesson 5</a> explains source checks in the editor.</p>

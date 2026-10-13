@@ -35,7 +35,9 @@ const HOME_SCOPE = [
 const MARKED_VERSION = '17.0.5';
 // Primary navigation labels, in route order; the site name links home.
 const PRIMARY_LABELS = ['Tutorial', 'Examples', 'Reference', 'Setup'];
-// What a figure's provenance link may say, by figure kind.
+// What a figure's provenance link may say, by figure kind. Only "view" and "excerpt" occur on
+// the published site, which is vector only (see the vector-only group below); the image and
+// capture wording is kept for the build's screenshot figures, which that group refuses.
 const PROVENANCE = { view: 'Recorded Definograph output', excerpt: 'Recorded Definograph excerpt', image: 'Recorded Definograph image', capture: 'Recorded Definograph screenshot' };
 // A teaching illustration must be followed by a sentence saying it is not reader output.
 const NOT_READER_OUTPUT = /not (?:a )?(?:captured|recorded) Definograph (?:view|output)|not output from the Definograph reader|not Definograph output/i;
@@ -694,13 +696,47 @@ await group('recorded views', async (fail) => {
     }
   }
   for (const batch of built.batches) if (sha256(batch.cssBytes) !== JSON.parse(await readFile(path.join(ROOT, VIEWS_MANIFEST), 'utf8')).batches.find((b) => b.batch === batch.name)?.stylesheet?.sha256) fail(`${batch.cssPath} no longer matches its pin`);
-  // Views in the allowlist that no page uses are reported, not failed.
+  // Views in the allowlist that no page uses are reported, not failed. A screenshot-only entry
+  // is unused by design (the site is vector only), so it is counted by the vector-only group
+  // instead of being reported here on every run.
   for (const view of built.views.views.values()) {
+    if (view.captureOnly) continue;
     if (!usedViews.has(view.id) && !usedCaptures.has(view.id)) warnings.push(`recorded ${view.captureOnly ? 'screenshot' : 'view'} ${view.id} (${view.batch.name}) is allowlisted but no page uses it`);
   }
   // Reader images that no page places are not published.
   for (const image of IMAGES) if (!usedImages.has(image.name)) warnings.push(`reader image ${image.name} is not placed on any page and is not published`);
   return `${viewCount} recorded views, ${imageCount} reader images and ${captureCount} captures, each with provenance, date, Lean version, exact source and caption; fragments published unchanged in named scroll regions; stylesheet = site.css + ${built.batches.length} batch stylesheet(s)`;
+});
+
+// The published site is vector only: every figure is the reader's own HTML and SVG, inline in
+// its page, so its text stays text and it scales without blurring. The site used to place eight
+// PNG screenshots ({{capture:…}}); the owner asked for vector figures only, so each was replaced
+// by the recorded view of the same state or removed, and nothing here expects a screenshot any
+// more. The recordings under source-assets/views/ keep their pinned context captures, unpublished,
+// and the build keeps its {{capture:…}} and {{image:…}} figures (the self-tests render them), but a
+// page that places one fails here, as does any pixel file in dist/ or any URL that points at one.
+// The favicon and the teaching graphics are SVG files.
+const PIXEL_IMAGE = /\.(?:png|jpe?g|webp|gif|avif|bmp|ico|tiff?)$/i;
+await group('vector-only figures', async (fail) => {
+  for (const file of files) if (PIXEL_IMAGE.test(file)) fail(`dist/${file} is a pixel image; the site publishes vector figures only`);
+  for (const view of built.used.captures) fail(`{{capture:${view.id}}} places a screenshot; use a recorded view ({{view:…}}) or describe the state in words`);
+  for (const image of built.used.images) fail(`{{image:${image.name}}} places a PNG; use a recorded view ({{view:…}}) or describe the state in words`);
+  let figures = 0;
+  for (const page of pages) {
+    for (const element of page.doc.elements) {
+      for (const [attr, value] of urlsOf(element)) {
+        if (PIXEL_IMAGE.test(value.split(/[?#]/)[0])) fail(`${page.file} line ${element.line}: ${attr}="${value}" points at a pixel image`);
+      }
+    }
+    for (const figure of page.figures) {
+      figures += 1;
+      const id = figure.attrs.get('id') ?? '';
+      if (!id.startsWith('view-')) fail(`${page.file} line ${figure.line}: figure "${id}" is not a recorded HTML/SVG view`);
+      if (page.within(figure).some((element) => element.name === 'img')) fail(`${page.file} line ${figure.line}: a recorded figure holds its view inline, never an <img>`);
+    }
+  }
+  const unpublished = [...built.views.views.values()].filter((view) => view.captureOnly).length;
+  return `${figures} figures, each an inline HTML/SVG recorded view; no pixel image in dist/ and no URL points at one; ${unpublished} screenshot-only recordings stay unpublished in source-assets/`;
 });
 
 await group('recorded-view validator self-test', async (fail) => {
@@ -1294,7 +1330,10 @@ await group('stylesheet', async (fail) => {
 
   // Every class used in the pages should be styled or deliberately structural. The reader's
   // own classes inside recorded views are styled by its stylesheet.
-  const STRUCTURAL = new Set(['route-list', 'source', 'language-lean', 'language-sh', 'dg-view', 'dg-figure-image', 'dg-figure-capture']);
+  // "example" marks a gallery entry for the content invariants below; its spacing comes from its
+  // heading, so it needs no rule of its own. The site is vector only, so the screenshot figure
+  // classes (dg-figure-image, dg-figure-capture) no longer occur and have no styles.
+  const STRUCTURAL = new Set(['route-list', 'source', 'language-lean', 'language-sh', 'dg-view', 'example']);
   const used = new Set(pages.flatMap((page) => page.doc.elements.filter((element) => !page.inView(element)).flatMap((element) => (element.attrs.get('class') ?? '').split(/\s+/).filter(Boolean))));
   for (const name of used) if (!STRUCTURAL.has(name) && !new RegExp(`\\.${name}(?![\\w-])`).test(css)) fail(`class "${name}" is used but not styled`);
   return `self-contained; text ≥ 14px, body ≥ 16px; no fixed widths above 320px; no shadows or gradients; light only, with print rules; ${guarded} guarded rules keep site styles out of recorded views; no class shared with the reader's markup`;

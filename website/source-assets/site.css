@@ -43,7 +43,7 @@ html {
 
 body {
   max-width: 51.25rem;
-  margin: 1.75rem auto;
+  margin: 1.25rem auto 1.5rem;
   padding: 0 1.625rem;
   color: var(--text);
   font-family: var(--serif);
@@ -113,8 +113,8 @@ main:focus {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.4375rem 1.5rem;
-  padding-bottom: 0.875rem;
+  gap: 0.25rem 1.5rem;
+  padding-bottom: 0.625rem;
   border-bottom: 1px solid var(--rule);
   font-family: var(--sans);
   font-size: 1rem;
@@ -124,7 +124,7 @@ main:focus {
 .primary-nav ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4375rem 1.5rem;
+  gap: 0.25rem 1.5rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -153,18 +153,18 @@ main:focus {
 
 .page-toc,
 .on-page {
-  margin: 1.375rem 0 2.125rem;
-  padding: 0.875rem 0 0;
+  margin: 1rem 0 1.25rem;
+  padding: 0.5rem 0 0;
   border-top: 1px solid var(--rule);
   font-family: var(--sans);
   font-size: 0.9375rem;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .toc-title,
 .on-page-title,
 .sidebar-title {
-  margin: 0 0 0.375rem;
+  margin: 0 0 0.125rem;
   color: var(--muted);
   font-size: 0.875rem;
 }
@@ -173,7 +173,7 @@ main:focus {
 .on-page ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4375rem 1.375rem;
+  gap: 0.25rem 1.25rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -188,12 +188,12 @@ main:focus {
    under its title, so the nested copy stays hidden. */
 
 .doc-sidebar {
-  margin-top: 2.5rem;
-  padding-top: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 0.625rem;
   border-top: 1px solid var(--rule);
   font-family: var(--sans);
   font-size: 0.9375rem;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .sidebar-pages {
@@ -204,7 +204,7 @@ main:focus {
 
 .sidebar-pages > li {
   margin: 0;
-  padding: 0.1875rem 0;
+  padding: 0.125rem 0;
 }
 
 .sidebar-pages a[aria-current="page"] {
@@ -219,12 +219,13 @@ main:focus {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 0.75rem 1.5rem;
-  margin-top: 2.5rem;
-  padding-top: 1rem;
+  gap: 0.5rem 1.5rem;
+  margin-top: 1.5rem;
+  padding-top: 0.625rem;
   border-top: 1px solid var(--rule);
   font-family: var(--sans);
   font-size: 1rem;
+  line-height: 1.45;
 }
 
 .pager a {
@@ -255,33 +256,33 @@ main:focus {
 }
 
 :where(h1):where(:not(.dg-view *)) {
-  margin: 2.5rem 0 1.5625rem;
+  margin: 1.5rem 0 1rem;
   font-size: 2.3125rem;
   font-weight: normal;
   line-height: 1.18;
 }
 
 :where(h2):where(:not(.dg-view *)) {
-  margin: 4rem 0 1.375rem;
+  margin: 2.25rem 0 0.75rem;
   font-size: 1.75rem;
   font-weight: normal;
   line-height: 1.28;
 }
 
 :where(h3):where(:not(.dg-view *)) {
-  margin: 2.25rem 0 0.75rem;
+  margin: 1.5rem 0 0.5rem;
   font-size: 1.375rem;
   line-height: 1.35;
 }
 
 :where(h4):where(:not(.dg-view *)) {
-  margin: 1.75rem 0 0.5rem;
+  margin: 1.25rem 0 0.375rem;
   font-size: 1.1875rem;
   line-height: 1.35;
 }
 
 :where(p, ul, ol, dl):where(:not(.dg-view *)) {
-  margin: 1.0625rem 0;
+  margin: 0.875rem 0;
 }
 
 :where(ul, ol):where(:not(.dg-view *)) {
@@ -289,7 +290,7 @@ main:focus {
 }
 
 :where(li):where(:not(.dg-view *)) {
-  margin: 0.5rem 0;
+  margin: 0.3125rem 0;
 }
 
 :where(dt):where(:not(.dg-view *)) {
@@ -297,11 +298,11 @@ main:focus {
 }
 
 :where(dd):where(:not(.dg-view *)) {
-  margin: 0.125rem 0 0.75rem;
+  margin: 0 0 0.5rem;
 }
 
 :where(blockquote):where(:not(.dg-view *)) {
-  margin: 1.0625rem 0;
+  margin: 0.875rem 0;
   padding-left: 1rem;
   border-left: 3px solid var(--rule);
 }
@@ -316,17 +317,17 @@ main:focus {
 }
 
 .page-head {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 /* Code */
 
 :where(pre):where(:not(.dg-view *)) {
-  margin: 1.0625rem 0;
+  margin: 0.875rem 0;
   overflow-x: auto;
   font-family: var(--mono);
   font-size: 0.9375rem;
-  line-height: 1.5;
+  line-height: 1.45;
   tab-size: 2;
 }
 
@@ -354,7 +355,7 @@ main:focus {
 
 .source-file {
   min-width: 0;
-  margin: 1.0625rem 0 1.25rem;
+  margin: 0.875rem 0;
 }
 
 .source-file figcaption {
@@ -369,7 +370,7 @@ main:focus {
 }
 
 .source-file pre {
-  margin: 0.25rem 0 0;
+  margin: 0.125rem 0 0;
 }
 
 .filename {
@@ -381,20 +382,20 @@ main:focus {
 
 :where(table):where(:not(.dg-view *)) {
   width: 100%;
-  margin: 1.125rem 0;
+  margin: 0.875rem 0;
   border-collapse: collapse;
   font-size: 0.9375rem;
 }
 
 :where(caption):where(:not(.dg-view *)) {
-  padding-bottom: 0.375rem;
+  padding-bottom: 0.125rem;
   color: var(--muted);
   font-size: 0.9375rem;
   text-align: left;
 }
 
 :where(th, td):where(:not(.dg-view *)) {
-  padding: 0.5625rem 0.75rem;
+  padding: 0.375rem 0.75rem;
   border-bottom: 1px solid var(--rule);
   font-weight: normal;
   text-align: left;
@@ -403,6 +404,13 @@ main:focus {
 
 :where(thead th):where(:not(.dg-view *)) {
   border-bottom-color: var(--rule-strong);
+}
+
+/* While a table has columns, a Lean file name in its first column stays on one line. */
+@media (min-width: 44.0625em) {
+  .stack-table th[scope="row"] > a[href$=".lean"] {
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 44em) {
@@ -425,13 +433,13 @@ main:focus {
   }
 
   .stack-table tbody tr {
-    padding: 0.5rem 0;
+    padding: 0.375rem 0;
     border-bottom: 1px solid var(--rule);
   }
 
   .stack-table th,
   .stack-table td {
-    padding: 0.1875rem 0;
+    padding: 0.0625rem 0;
     border: 0;
   }
 
@@ -446,7 +454,7 @@ main:focus {
 /* Hints and worked answers */
 
 :where(details):where(:not(.dg-view *)) {
-  margin: 1.5rem 0;
+  margin: 0.625rem 0;
 }
 
 :where(summary):where(:not(.dg-view *)) {
@@ -465,24 +473,22 @@ main:focus {
   color: #1b1f23;
 }
 
-/* Recorded figures: a rule above and below, the provenance line, the exact source, the
-   recording in a frame, and the caption. Each view has a keyboard-focusable scroll region and
-   may be wider than the text. */
+/* Recorded figures, the same everywhere: the provenance line and the exact source, compact,
+   above; the recording in one frame, a keyboard-focusable scroll region; the caption directly
+   below. The frame is the figure's only rule. Every figure is the reader's own HTML and SVG:
+   the site publishes no screenshots or other pixel images. */
 
 .dg-figure {
   min-width: 0;
-  margin: 2rem 0;
-  padding: 0.875rem 0;
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
+  margin: 1.125rem 0;
 }
 
 .dg-provenance {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.125rem;
   color: var(--muted);
   font-family: var(--sans);
   font-size: 0.875rem;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .dg-recorded {
@@ -490,14 +496,21 @@ main:focus {
 }
 
 .dg-source {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.375rem;
 }
 
 .dg-source-label {
-  margin: 0 0 0.25rem;
+  margin: 0;
   color: var(--muted);
   font-family: var(--sans);
   font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.dg-source > summary {
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  line-height: 1.4;
 }
 
 .dg-source pre {
@@ -510,13 +523,23 @@ main:focus {
   border: 1px solid var(--rule);
 }
 
-/* On a wide screen the frame is wider than the text, so that the widest recorded diagrams
-   (820 px) are shown whole. */
+/* A frame stays inside the reading column. Where a recorded diagram does not fit the column
+   (dg-figure-wide, set by the build: frameClass and WIDE_VIEWS in scripts/views.mjs), the frame
+   extends past the column on a wide screen, so that the widest recorded diagrams (820 px) are
+   shown whole. */
 @media (min-width: 62em) {
-  .dg-figure > .dg-scroll {
+  .dg-figure-wide > .dg-scroll {
     margin-right: -3.75rem;
     margin-left: -3.75rem;
   }
+}
+
+/* A view that is a narrow column in the app (the "Whole statement" outline) would leave most of
+   a column-wide frame empty. Its frame takes the view's own recorded minimum width and hugs it
+   (dg-figure-narrow, also set by the build). */
+.dg-figure-narrow > .dg-scroll {
+  width: fit-content;
+  max-width: 100%;
 }
 
 /* An excerpt shows only part of a panel: its frame's top and bottom edges are dashed, where the
@@ -609,36 +632,24 @@ main:focus {
   cursor: auto !important;
 }
 
-.dg-image a {
-  display: block;
-}
-
-.dg-image img {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  border: 1px solid var(--rule);
-  background: #ffffff;
-  color: #1b1f23;
-}
-
-/* A screenshot of the whole application keeps its CSS size, so its text is not shrunk; its
-   frame scrolls sideways where the column is narrower. It is shown at its full height, so
-   nothing in it is hidden below the frame. */
-.dg-figure-capture .dg-image img {
-  max-width: none;
-  border: 0;
-}
-
 .dg-caption {
-  margin-top: 0.5rem;
+  margin-top: 0.3125rem;
   font-size: 1rem;
-  line-height: 1.5;
+  line-height: 1.45;
+}
+
+/* Where the reading column is narrower than its full width, the canvas has a little less
+   padding. A view with a 690 px minimum then fits a 768 px tablet, and a view with a 320 px
+   minimum fits a 375 px phone, instead of scrolling sideways by a few pixels. */
+@media (max-width: 51.25em) {
+  .dg-canvas {
+    padding: 0.75rem;
+  }
 }
 
 @media (max-width: 30em) {
   .dg-canvas {
-    padding: 0.625rem;
+    padding: 0.5rem;
   }
 }
 
@@ -653,22 +664,19 @@ main:focus {
 }
 
 .dg-placeholder {
-  border-style: dashed;
-  border-color: var(--sorry);
+  padding: 0.5rem 0;
+  border-top: 1px dashed var(--sorry);
+  border-bottom: 1px dashed var(--sorry);
 }
 
 .dg-placeholder-text {
-  margin: 1.5rem 0 0;
+  margin: 0.5rem 0 0;
 }
 
 /* Home, examples and reference */
 
 .hero-views {
   min-width: 0;
-}
-
-.example {
-  margin-top: 2.5rem;
 }
 
 .task {
@@ -680,7 +688,7 @@ main:focus {
 }
 
 .glossary dt {
-  margin-top: 0.875rem;
+  margin-top: 0.5rem;
 }
 
 .glossary dd {
@@ -688,7 +696,7 @@ main:focus {
 }
 
 .source-with-note {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.875rem;
 }
 
 .note {
@@ -706,7 +714,7 @@ main:focus {
 }
 
 .note-title {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
   font-weight: bold;
 }
 
@@ -717,10 +725,11 @@ main:focus {
 /* Footer */
 
 .site-footer {
-  margin-top: 3.125rem;
-  padding: 1.125rem 0;
+  margin-top: 1.5rem;
+  padding: 0.625rem 0 0;
   border-top: 1px solid var(--rule-strong);
   font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .site-footer p {
@@ -729,18 +738,18 @@ main:focus {
 
 @media (max-width: 37.5em) {
   body {
-    margin: 1.125rem auto;
+    margin: 0.75rem auto 1.25rem;
     padding: 0 1.125rem;
     font-size: 1.0625rem;
   }
 
   :where(h1):where(:not(.dg-view *)) {
-    margin-top: 1.75rem;
+    margin-top: 1.125rem;
     font-size: 1.8125rem;
   }
 
   :where(h2):where(:not(.dg-view *)) {
-    margin-top: 2.875rem;
+    margin-top: 2rem;
     font-size: 1.5625rem;
   }
 }
@@ -781,16 +790,9 @@ main:focus {
     overflow: visible;
   }
 
-  .dg-figure > .dg-scroll {
+  .dg-figure-wide > .dg-scroll {
     margin-right: 0;
     margin-left: 0;
-  }
-
-  /* On paper a screenshot fits the page: the image scales down to the page width instead of
-     running over what follows. */
-  .dg-figure-capture .dg-image img {
-    max-width: 100%;
-    height: auto;
   }
 
   /* The widest recorded views keep their minimum width on paper; the narrower canvas padding

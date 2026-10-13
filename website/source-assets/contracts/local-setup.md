@@ -1,10 +1,10 @@
 # Local setup and installation qualification
 
-This guide preserves the manual assembly sequence and release qualifications from `docs/editor-integration.md` and `docs/lean-contract.md`. It assumes a trusted source checkout with matching reader, native engine and controller revisions. Source is available in the Definograph repository; a qualified installer or Marketplace release is not provided. Consult the documentation in your checkout when using a newer revision.
+This guide gives the manual assembly steps from `docs/editor-integration.md` and `docs/lean-contract.md`, and says what has and has not been checked. It assumes a trusted source checkout with matching reader, native engine and controller revisions. Source is available in the Definograph repository; a qualified installer or Marketplace release is not provided. Consult the documentation in your checkout when using a newer revision.
 
 ## Prerequisites
 
-Use Lean **4.28.0**, Node.js **22.12+**, and Git. Editor use additionally requires VS Code **1.95+**, the official Lean extension (`leanprover.lean4`), and a trusted project with built imports. The declared minima are distinct from the exercised versions described below.
+Use Lean **4.28.0**, Node.js **22.12+**, and Git. Editor use additionally requires VS Code **1.95+**, the official Lean extension (`leanprover.lean4`), and a trusted project with built imports. These are the declared minimum versions; the checks described below used other versions.
 
 Supply an existing Lean 4.28.0 executable. Setup does not install Lean or change the global Elan default. The native build targets macOS and Linux; native Windows linking is not implemented. The standalone setup requires the pinned mathlib revision `8f9d9cff6bd728b17a24e163c9402775d9e6a365` and matching transitive dependencies.
 
@@ -41,9 +41,9 @@ For the local browser application, `npm run dev` serves a development build of D
 
 ## Installation qualification
 
-Retained local checks used macOS arm64, Node.js 24.18.1/npm 11.16.0 and VS Code 1.138. The npm installation/build preflight, native setup and isolated editor journeys have separate evidence scopes; they do not qualify every combination of these components. Linux, WSL, remote hosts, other architectures and the declared minimum Node.js/VS Code versions have not been qualified.
+The local checks on record used macOS arm64, Node.js 24.18.1/npm 11.16.0 and VS Code 1.138. The npm installation and build check, the native setup and the isolated editor runs were each checked on their own; together they do not show that every combination of these components works. Linux, WSL, remote hosts, other architectures and the declared minimum Node.js/VS Code versions have not been checked.
 
-Dependency installation uses `--ignore-scripts`, matching the exercised npm preflight. Later explicit build/setup/package commands still execute code; this option does not provide a sandbox. Use the committed lockfiles.
+Dependency installation uses `--ignore-scripts`, as in the npm check above. Later explicit build/setup/package commands still execute code; this option does not provide a sandbox. Use the committed lockfiles.
 
 A complete public release still needs a matched source/browser/controller/native distribution, canonical download origin and publisher, and clean installation, upgrade, rollback and uninstall checks on each advertised platform. The VSIX alone is not that distribution. `.local/config.json` contains installation-specific absolute paths and must be generated for the destination, not copied from another machine. Existing local and historical checks do not establish those release claims.
 

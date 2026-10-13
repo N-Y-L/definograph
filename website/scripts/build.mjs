@@ -16,7 +16,7 @@ import {
   DIST, DOWNLOADS, FAVICON, HEADERS, ILLUSTRATIONS, IMAGES, LEAN_SOURCES, NOT_FOUND, ORIGIN, PAGES, READER_IMAGE_BATCH, ROOT, ROUTES,
   LESSON_FILE, SITE_NAME, STYLESHEET, TEMPLATE, TITLE_SUFFIX, TUTORIAL, TUTORIAL_LINKS, outputAllowlist, redirectsFile, routeOutput,
 } from './site.mjs';
-import { adaptationRules, loadViews, provenanceLine, renderCaptureFigure, renderViewFigure, scopeViewCss, sizingRules } from './views.mjs';
+import { adaptationRules, hasMathLabels, loadViews, provenanceLine, renderCaptureFigure, renderViewFigure, scopeViewCss, sizingRules } from './views.mjs';
 
 // A preview build (`--preview`) renders a visible placeholder wherever a recorded figure is not
 // available yet, so lessons can be read before every view is exported. It writes to
@@ -457,10 +457,12 @@ export function publishedStylesheet(siteCss, batches, usedViews) {
     siteCss,
     ...batches.map((batch) => `\n/* Recorded Definograph views (${batch.name}): Definograph's own styles, for the figures of this set only. */\n${scopeViewCss(batch.css, batch.name, batch.keyframePlan)}/* Adaptations for a static page (RECORDING_ADAPTATIONS in scripts/views.mjs). */\n${adaptationRules(batch.name)}\n`),
     sizingRules(usedViews),
-    // CSS zoom re-hints embedded HTML fonts, changing their captured SVG baselines.
-    // Keep measured math batches in their original units; their minimum-width
-    // scroll frames already preserve readable labels on narrow pages.
-    ...batches.filter(batch => batch.mathAssets !== undefined).map(batch => `\n.dg-canvas[data-dg-batch="${batch.name}"] > .dg-view{zoom:1}\n`),
+    // CSS zoom re-hints embedded HTML fonts, changing their captured SVG baselines. A view
+    // with typeset mathematical labels (hasMathLabels) stays in its original units, whatever
+    // other rule would zoom it; its minimum width and scroll frame already keep its labels
+    // readable on narrow pages. The exemption is per view: a view of the same batch without
+    // such labels is zoomed like any other.
+    ...usedViews.filter(hasMathLabels).map((view) => `\n.dg-canvas > .dg-view[data-view-id="${view.id}"]{zoom:1}\n`),
   ].join('');
 }
 

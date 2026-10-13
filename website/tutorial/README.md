@@ -3,27 +3,25 @@
 
 Definograph reads a mathematical statement written in Lean and draws what it says: which objects it introduces, which choices may depend on which, how the objects are related, and which parts are only assumed. This tutorial uses those views to read a statement’s assumptions, conclusion and dependencies.
 
-Each lesson takes one statement, shows what Definograph draws for it, explains how to read the drawing, and says what the drawing does not tell you. Then you try it yourself. Every exercise has an answer, and most have a hint. Try the question before opening either.
+Each lesson shows what Definograph draws for a statement, how to read the drawing, and what the drawing does not tell you. Exercises follow. Each has an answer and most have a hint; try the question before opening either.
 
-## Choose where to start
+## Where to start
 
-**New to Lean?** Read the worked example’s [short notation guide](../content/lebesgue-number.md#notation), then follow its reading of the Lebesgue-number lemma. The seven lessons below explain individual views when you need more practice.
+Start with [Lesson 1](01-order-of-choices.md). It has the first figures, and each lesson explains the Lean notation it uses.
 
-**Already read Lean?** Go directly to [the theorem and editor selection](../content/lebesgue-number.md#start). Use the same task to identify the hypotheses, compare the quantified choices and read the whole-ball conclusion.
+The worked example, [Reading the Lebesgue-number lemma](../content/lebesgue-number.md), reads a theorem from Mathlib in the same way: its hypotheses, its quantified choices and its whole-ball conclusion. That page has no figures. If you are new to Lean, read its [short notation guide](../content/lebesgue-number.md#notation) first.
 
 ## Before you begin
 
-You should be comfortable with ∀, ∃, sets and functions. You do not need to know Lean. Each lesson explains the few pieces of Lean notation its statement uses, where they first appear. Other terms are explained where they first appear too, and the [Reference](../content/reference.md#glossary) collects them in a glossary.
+You should be comfortable with ∀, ∃, sets and functions. You do not need to know Lean: each lesson explains the Lean notation and the other terms it uses where they first appear. The [Reference](../content/reference.md#glossary) collects the terms in a glossary.
 
-The figures in the lessons are recorded output of Definograph, with Lean 4.28.0. Each figure says that it is recorded, gives the date it was recorded, and shows the exact source it was made from. A recorded figure is a copy: its buttons do nothing and nothing in it is recomputed. This website does not run Lean or Definograph.
+The figures are recorded output of Definograph, with Lean 4.28.0. Each one says that it is recorded, gives the date, and shows the exact source it was made from. A recorded figure is a copy: its buttons do nothing and nothing in it is recomputed. This website does not run Lean or Definograph.
 
-To try the statements yourself, you need Definograph running on your own computer. [Try it yourself](../content/install.md#try-it-yourself), in Setup, says what that takes and what is available today. Lessons 1–4 use statements from Definograph's own **Statement** menu, which it checks against its pinned copy of Mathlib, Lean's mathematics library. Lessons 5–7 use the Visual Studio Code extension with small Lean files that you can download. Those files need only Lean 4.28.0.
+To try the statements yourself, you need Definograph running on your own computer. [Try it yourself](../content/install.md#try-it-yourself), in Setup, says what that takes and what is available today. Lessons 1–4 use statements from Definograph's own **Statement** menu, which it checks against its pinned copy of Mathlib, Lean's mathematics library. Lessons 5–7 use the Visual Studio Code extension with small Lean files that you can download; those files need only Lean 4.28.0.
 
 ## Where the views appear
 
-Definograph shows a statement in several ways. The lessons use the names that appear on its buttons and tabs. This screenshot shows Definograph's window with the first statement of Lesson 1, after choosing **Explore a sample**, with the **Choices** tab open:
-
-{{capture:light-depends-app-context}}
+Definograph shows a statement in several ways. The lessons use the names on its buttons and tabs:
 
 | Name in Definograph | What it shows | Lesson |
 | --- | --- | --- |
@@ -35,7 +33,7 @@ Definograph shows a statement in several ways. The lessons use the names that ap
 | **Inspect** | Definitions opened for reading, the objects, and what Definograph could not interpret. | 4 |
 | **Source data** | In the editor: the selected expression, its context and the checks Lean ran. | 5, 6 |
 
-**Explore a sample** holds the other representations of the statement as tabs: **Choices**, **Relationships** and **Structure**, and, for some statements, numerical ones such as **Condition** or **Geometry**. The **Mathematical notation** button shows the statement in ordinary mathematical notation. The **Lean source** panel has a tab also called **Structure**; it lists the statement's logical parts and is a different thing.
+**Explore a sample** holds the other representations of the statement as tabs: **Choices**, **Relationships** and **Structure**, and, for some statements, numerical ones such as **Condition** or **Geometry**. The **Mathematical notation** button shows the statement in ordinary mathematical notation. The **Lean source** panel also has a tab called **Structure**. That tab is a different thing: it lists the statement's logical parts.
 
 ## Lessons
 

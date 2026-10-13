@@ -1,6 +1,6 @@
 # Definograph website
 
-The tutorial, examples and reference at [definograph.com](https://definograph.com). The site builds to static HTML and CSS. Its diagrams are recorded output from the real reader, with the exact Lean source beside each figure. It runs no Lean and ships no JavaScript to the browser.
+The tutorial, examples and reference at [definograph.com](https://definograph.com). The site builds to static HTML and CSS. Its diagrams are recorded output from the real reader, with the exact Lean source beside each figure. Every figure is the reader's own HTML and SVG, inline in its page: the site publishes no screenshots or other pixel images. It runs no Lean and ships no JavaScript to the browser.
 
 For the reader itself, use the [project README](https://github.com/N-Y-L/definograph#readme).
 
@@ -16,7 +16,7 @@ npm run dev
 
 Open <http://127.0.0.1:4173>. The server rebuilds after content, template or asset edits; restart it after editing build scripts. `npm run build` writes `dist/`. `npm run preview` serves an existing build.
 
-`npm run check` rebuilds and verifies routes, links, source listings, asset hashes, recorded-view safety, response headers and local HTTP behavior. It also tests malformed imports. Browser layout and the deployed host need separate verification.
+`npm run check` rebuilds and verifies routes, links, source listings, asset hashes, recorded-view safety, vector-only figures, response headers and local HTTP behavior. It also tests malformed imports. Browser layout and the deployed host need separate verification.
 
 ## Edit the site
 
@@ -26,11 +26,11 @@ Open <http://127.0.0.1:4173>. The server rebuilds after content, template or ass
 | `tutorial/` | Seven lessons, exercises and downloadable Lean examples |
 | `templates/page.html` | Shared navigation, document and footer |
 | `source-assets/site.css` | Site layout and typography |
-| `source-assets/views/` | Recorded HTML/SVG, screenshots, Lean sources and pinned public manifest |
+| `source-assets/views/` | Recorded HTML/SVG, Lean sources and pinned public manifest; the recordings' screenshots are kept here but never published |
 | `scripts/site.mjs` | Routes, allowed outputs and teaching-source digests |
 | `scripts/` | Build, checks, imports and local server |
 
-Use root-relative page links with trailing slashes. `{{view:id}}` inserts a recorded figure, its label, source and caption; `{{capture:id}}` inserts an application screenshot. In Markdown, put each directive in its own paragraph. `{{source:Example.lean}}` inserts a published Lean example. Update its digest deliberately when changing the source.
+Use root-relative page links with trailing slashes. `{{view:id}}` inserts a recorded figure, its label, source and caption. In Markdown, put each directive in its own paragraph. The site is vector only: the build can still render a screenshot figure (`{{capture:id}}`, `{{image:name}}`), but `npm run check` fails if a page places one or `dist/` holds a pixel image. Where no recorded view of a state exists, describe the state in words. `{{source:Example.lean}}` inserts a published Lean example. Update its digest deliberately when changing the source.
 
 See [recorded-view maintenance](docs/recorded-views.md) for the import format, review requirements and rendering safeguards. Synthetic test fixtures in `scripts/fixtures/` are not reader output and never enter `dist/`.
 

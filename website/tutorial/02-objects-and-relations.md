@@ -1,7 +1,7 @@
 <!-- description: Trace objects through the Relationships, Visual sequence and Structure views, and tell assumptions from what a statement requires. -->
 # 2. Objects and relations
 
-Most statements relate a few objects to each other. An element belongs to a set, one set lies inside another, a function sends an input to an output. Definograph keeps one identity for each object and draws each relation with the role that each object plays in it. In this lesson you follow objects through the relations of two statements, and you learn to tell what a statement assumes from what it requires.
+Most statements relate a few objects: an element belongs to a set, one set lies inside another, a function sends an input to an output. Definograph keeps one identity for each object and draws each relation with the role each object plays in it. In this lesson you follow objects through the relations of two statements and tell what a statement assumes from what it requires.
 
 ## A statement about sets
 
@@ -12,9 +12,7 @@ This is Definograph's example **Sets, membership, and inclusion**:
   A ⊆ B → x ∈ A → x ∈ B
 ```
 
-`Set ℝ` is the type of sets of real numbers, so `(A B : Set ℝ)` introduces two sets. Between conditions, `→` means "implies", and a chain of them groups to the right: `A ⊆ B → x ∈ A → x ∈ B` means "if A ⊆ B, then if x ∈ A, then x ∈ B". So `A ⊆ B` and `x ∈ A` are assumptions, and `x ∈ B` is what the statement requires.
-
-The statement is true: if every element of A is in B, and x is in A, then x is in B.
+`Set ℝ` is the type of sets of real numbers, so `(A B : Set ℝ)` introduces two sets. Between conditions, `→` means "implies", and a chain of them groups to the right: `A ⊆ B → x ∈ A → x ∈ B` means "if A ⊆ B, then if x ∈ A, then x ∈ B". So `A ⊆ B` and `x ∈ A` are assumptions, and `x ∈ B` is what the statement requires. The statement is true: if every element of A is in B, and x is in A, then x is in B.
 
 ## The Relationships view
 
@@ -23,8 +21,8 @@ The statement is true: if every element of A is in B, and x is in A, then x is i
 The Relationships view gives each relation a numbered card.
 
 - The small heading on a card names the kind of relation: **Set inclusion** or **Membership**.
-- Each object appears with its role in the relation: **subset** and **superset**, **element** and **set**. The gray badge before a name shows what kind of object it is: { } for a set, a for a number. The other badges in this lesson are ↦ for a function, T for a type, ⋯ for an expression built from other objects, and x for a variable of any other type.
-- The tags above the objects give the relation's place in the logic of the statement. Card 01 is a **Premise of an implication**. Card 02 is **Conditional on the premise**, is itself a **Premise of an implication**, and sits **Under 1 assumption**. Card 03 is **Conditional on the premise** and sits **Under 2 assumptions**.
+- Each object appears with its role in the relation: **subset** and **superset**, **element** and **set**. The gray badge before a name shows the kind of object: { } for a set, a for a number. The other badges in this lesson are ↦ for a function, T for a type, ⋯ for an expression built from other objects, and x for a variable of any other type.
+- The tags above the objects place the relation in the logic of the statement. Card 01 is a **Premise of an implication**. Card 02 is **Conditional on the premise**, is itself a **Premise of an implication**, and sits **Under 1 assumption**. Card 03 is **Conditional on the premise** and sits **Under 2 assumptions**.
 
 Card 03 is the only relation that is not a premise. It is the conclusion, required under the two assumptions in cards 01 and 02.
 
@@ -32,28 +30,28 @@ To follow an object, find every card it appears in. x is the element in cards 02
 
 ## Read the statement in order
 
-The **Visual sequence** presents the same statement one step at a time. It is what Definograph shows first. For this statement it has five steps: the variables, the step **Given → then** that sets out the implications, the inclusion, and the two memberships.
+The **Visual sequence**, which Definograph shows first, presents the same statement one step at a time. Here it has five steps: the variables, the step **Given → then** that sets out the implications, the inclusion, and the two memberships.
 
-The small capitals above each step's title say what kind of step it is. **Objects and choices** introduces variables. **Logical structure** sets out implications and other connectives. **Condition** reads a relation such as membership or inclusion, whether it is assumed or required. **Compare** reads an equation or inequality between two expressions. **Construction** reads how an object is built, for example by applying a function. This is step 3, the inclusion condition:
+The small capitals above a step's title name the kind of step. **Objects and choices** introduces variables. **Logical structure** sets out implications and other connectives. **Condition** reads a relation such as membership or inclusion, whether it is assumed or required. **Compare** reads an equation or inequality between two expressions. **Construction** reads how an object is built, for example by applying a function.
+
+This is step 3, the inclusion condition:
 
 {{view:light-sets-inclusion}}
 
 - **In scope** lists the variables available at this step: A, B and x, each introduced by ∀.
-- **Given assumption** says where the condition sits in the statement. It is assumed, not asserted.
-- The figure draws A inside B. Its caption states the figure's limits: "Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion."
+- **Given assumption** says where the condition sits in the statement: it is assumed, not asserted.
+- The figure draws A inside B. The note under it states the figure's limits: "Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion."
 - **Lean fragment and source context** holds the Lean text of the part being read, here `A ⊆ B`.
 
 Step 5 is the conclusion:
 
 {{view:light-sets-conclusion}}
 
-- The path reads **Conditional conclusion** twice, once for each implication that encloses this step.
+- The line under **In scope** reads **Conditional conclusion** twice, once for each implication that encloses this step.
 - **2 assumptions in scope** lists `A ⊆ B` and `x ∈ A`.
-- The figure places x in B, with the caption "Membership condition · the named element belongs to the region". This is what the statement requires under those two assumptions.
+- The figure places x in B, with the note "Membership condition · the named element belongs to the region". This is what the statement requires under those two assumptions.
 
-These figures show single steps. In Definograph, **Next** and the **Reading step** menu move from step to step, and an outline of the whole statement sits beside the steps: for every A, B, x; given A is contained in B; given x belongs to A; then x belongs to B.
-
-Below the steps, **Full visual statement** shows the whole reading at once.
+These figures show single steps. In Definograph, **Next** and the **Reading step** menu move between steps, and an outline of the whole statement sits beside them: for every A, B, x; given A is contained in B; given x belongs to A; then x belongs to B. Below the steps, **Full visual statement** shows the whole reading at once.
 
 ## Follow an object through a chain of maps
 
@@ -66,45 +64,37 @@ The second statement is Definograph's example **An equation between two map path
 
 `(A B C : Type)` introduces three arbitrary types, that is, three collections of objects of any kind. `f : A → B` is a function from A to B. Lean writes function application without brackets: `f x` is f applied to x, and `g (f x)` applies g to that result.
 
-The statement says: whatever the types A, B, C and the functions f, g, h between them, applying f and then g to any x in A gives the same result as applying h.
-
-So f(x) lies in B, and g(f(x)) and h(x) both lie in C: the equation compares two elements of C.
+The statement says that applying f and then g to any x in A gives the same result as applying h, whatever the types A, B, C and the functions f, g, h between them. Here f(x) lies in B, and g(f(x)) and h(x) both lie in C, so the equation compares two elements of C.
 
 Here is the last step of the Visual sequence:
 
 {{view:light-paths-compare}}
 
-The figure draws two routes that start at x. The upper route passes through f and then g and ends at g(f(x)). The lower route passes through h and ends at h(x). The = between the two ends is the condition: "Compare the outputs of these map paths: they are required to agree."
+Two routes start at x. The upper passes through f and then g and ends at g(f(x)). The lower passes through h and ends at h(x). The = between the two ends is the condition: "Compare the outputs of these map paths: they are required to agree."
 
-Below the figure, the collapsed section **Inside this expression** holds the three applications that build f(x), g(f(x)) and h(x). In Definograph it opens to show them, with the note "These are parts of the expression, not separate assertions." Writing g(f(x)) builds an object; it does not claim anything about it.
+Below the figure, the collapsed section **Inside this expression** holds the three applications that build f(x), g(f(x)) and h(x). In Definograph it opens to show them, with the note "These are parts of the expression, not separate assertions." Writing g(f(x)) builds an object; it claims nothing about it.
 
 The Relationships view lists the same four relations as cards:
 
 {{view:paths-connections}}
 
-Card 01 is the equation. Cards 02 to 04 are the applications, each with an input, a function and an output. The type under each object says where it lives. Here x has the badge x because its type A is arbitrary, and f(x), g(f(x)) and h(x) have ⋯ because they are built from other objects.
+Card 01 is the equation. Cards 02 to 04 are the applications, each with an input, a function and an output. The type under each object says where it lives. x has the badge x because its type A is arbitrary; f(x), g(f(x)) and h(x) have ⋯ because they are built from other objects.
 
 f(x) is the output of card 03 and the input of card 02. That shared object joins f and g into one route.
 
-The **Structure** tab under **Explore a sample** draws all the objects and relations at once, with a line for each role. Here the types A, B and C appear as objects too, with the badge T. Selecting an object highlights its lines. Here x is selected:
+The **Structure** tab under **Explore a sample** draws all the objects and relations at once, with a line for each role. The types A, B and C appear as objects too, with the badge T. Selecting an object highlights its lines. Here x is selected:
 
 {{view:paths-trace-x}}
 
-Two lines from x are highlighted. They are its roles as input 1 in the applications of f and of h. The other lines are dimmed.
+The two highlighted lines from x are its roles as input 1 in the applications of f and of h. The other lines are dimmed.
 
-The Visual sequence can show the same thing. In Definograph, select x in any figure of the Visual sequence, then open **Full visual statement** and, inside it, **Inside this expression**. Selecting x also opens the **Inspect** panel for x; x stays selected when you close the panel. A dashed line, the identity thread, now joins every place in the Visual sequence where x appears. This screenshot of the Visual sequence was taken in that state:
-
-{{capture:light-paths-identity-trace}}
-
-The reading is at step 1. The thread joins eight appearances of x: the entry x : A in the list of variables and the small x : A box under **Types and maps** at this step, the same two again in the full visual statement, the start of each of the two compared routes, and the inputs of f and of h inside **Inside this expression**.
-
-The thread says only that these eight are one object, the x introduced at the start of the statement. Its route means nothing.
+The Visual sequence can show the same thing. In Definograph, when you select x in one of its figures, a dashed line, the identity thread, joins every place in the Visual sequence where x appears. The thread says only that these are one object, the x introduced at the start of the statement. Its route means nothing. Definograph draws the thread from the positions of the elements on its page, so this site has no recording of it.
 
 ## What these views do not tell you
 
 - **That an assumption holds.** `A ⊆ B` has a card and a figure, but only as a premise. In the words of the Structure view: "A relation may occur inside an assumption, negation, or alternative; its presence is not a claim that it holds."
 - **That the statement holds.** The second statement is false (Exercise 2.3). Definograph draws it anyway, because it is a well-formed statement.
-- **Geometry.** "These are diagrams of mathematical roles. Relative position and distance carry no geometric meaning." In the subset figure, A is not smaller than B; the two sets may be equal. The curves of the lines in the Structure view mean nothing either.
+- **Geometry.** "These are diagrams of mathematical roles. Relative position and distance carry no geometric meaning." The subset figure does not say that A is smaller than B; the two sets may be equal. The curves of the lines in the Structure view mean nothing either.
 - **How many elements.** No figure says how many elements a set has, or that it has any.
 
 ## Exercises

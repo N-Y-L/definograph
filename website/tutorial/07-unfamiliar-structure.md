@@ -1,7 +1,7 @@
 <!-- description: Read a structure that Definograph has no special rules for: its fields and law, the round trip it draws, and where the proof of the law comes from. -->
 # 7. An unfamiliar structure
 
-This last lesson uses a structure that Definograph has no special knowledge of. Whatever it shows comes from the definition itself. You read the definition first, then Definograph's figures of it, and then you follow where the proof of its law comes from. The exercises ask what the figures show.
+This last lesson uses a structure that Definograph has no special knowledge of. Whatever it shows comes from the definition itself. You read the definition, then Definograph's figures of it, then follow where the proof of its law comes from. The exercises ask what the figures show.
 
 ## The definition
 
@@ -20,7 +20,7 @@ example (system : ReturnMap) (unused : Nat) :
   system.returns
 ```
 
-A `ReturnMap` bundles two types, `Source` and `Target`, a function `send` from `Source` to `Target`, a function `back` from `Target` to `Source`, and a law `returns`: applying `send` and then `back` gives back every input x. The dot means field access: `system.send` is the `send` field of `system`.
+A `ReturnMap` bundles two types, `Source` and `Target`, a function `send` from `Source` to `Target`, a function `back` from `Target` to `Source`, and a law `returns`. The law says that applying `send` and then `back` gives back every input x. The dot means field access: `system.send` is the `send` field of `system`.
 
 The `example` takes an existing `system` and a natural number `unused`, which it does not use. It states the law for `system`, and its proof is the law stored in `system`, `system.returns`.
 
@@ -31,12 +31,12 @@ With the editor set up as in Lesson 5, select the proposition in the `example`, 
 {{view:light-editor-returnmap-structure-excerpt}}
 
 - **Inside system** counts "4 data fields · 1 law", and says: "These fields belong to this object, within the statement’s current quantifiers and assumptions."
-- **What it contains** draws the data: the functions `send` and `back`, and the two types they go between, `system.Source` and `system.Target`, labeled "carrier type".
+- **What it contains** draws the data: the functions `send` and `back`, and the two types they go between, `system.Source` and `system.Target`, labeled "carrier type". On a narrow screen, scroll the diagram sideways to see both types.
 - **What its fields must satisfy** lists the one law, `returns`. In Definograph you can read the law as a small visual sequence of its own.
 
 Definograph has no rule for `ReturnMap`. It found these fields and this law in the definition.
 
-The last step of the main reading draws the round trip:
+The last step of the Visual sequence draws the round trip. On a screen narrower than the diagram, scroll the diagram sideways to see where the route ends.
 
 {{view:light-editor-returnmap-guided-path}}
 
@@ -51,6 +51,8 @@ The history now has four steps: **Inspect fields**, **Check field 5** (`returns`
 **Supply reading** reads one of these occurrences as a proof of another:
 
 {{view:light-editor-returnmap-supply-excerpt}}
+
+Read both panels from the top, as in Lesson 6. Exercises 7.3 and 7.4 ask what they say.
 
 ## Exercises
 

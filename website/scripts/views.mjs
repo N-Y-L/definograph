@@ -434,8 +434,11 @@ export function scopeViewCss(css, batch, plan) {
 }
 
 // Adaptations of the reader's own styles for a static page, appended to each batch's scoped
-// styles. Each keeps the recorded content whole and, apart from focus rings, its look at desktop
-// widths. Keep this list short and give the reason for each rule.
+// styles. Each keeps the recorded content whole: none adds, removes or rewords anything the
+// reader drew. Keep this list short and give the reason for each rule; the Reference
+// (content/reference.html, "Figure labels and drawing details") tells readers what these rules
+// change, so update it with this list. `media`, where given, confines a rule to that media
+// query.
 export const RECORDING_ADAPTATIONS = [
   {
     // A batch paints its view root with the reader's page colour (#fbfaf7), so that a fragment
@@ -453,12 +456,71 @@ export const RECORDING_ADAPTATIONS = [
     declarations: 'max-height:none;overflow:visible;position:static',
   },
   {
+    // Where its container is narrow, the reader moves the "Whole statement" outline below the
+    // reading steps and parts the two with a rule and 20 px of space above the outline. A
+    // recording of the outline alone (kind logic-overview) has nothing above the outline: the
+    // rule would only double the top edge of the figure's frame, so it is not drawn there.
+    // Recordings that show the outline below reading steps keep the rule.
+    selector: '.dg-view.dg-view--logic-overview .sr-overview',
+    declarations: 'border-top:0;padding-top:0',
+  },
+  {
+    // The same for "Interpretation coverage", which the Inspect panel parts from the sections
+    // above it with a rule and 20 px of space on each side of the rule. A recording of the
+    // coverage section alone (kind coverage) has nothing above it, so the rule and its space,
+    // which only doubled the top edge of the frame, are not drawn.
+    selector: '.dg-view.dg-view--coverage > .coverage-details',
+    declarations: 'border-top:0;margin-top:0;padding-top:0',
+  },
+  {
+    // In a wide container the reader keeps a column of 205 to 240 px beside the reading steps
+    // for the "Whole statement" outline. A recording of a reading step alone has no outline:
+    // the column stayed empty, and a diagram wider than the remaining column was cut off inside
+    // its own scroll box (the structure of `system` in Lesson 7 showed one of its two carrier
+    // types). There the reading steps take the outline's column as well. Recordings that
+    // include the outline are unchanged.
+    selector: '.dg-view .sr-atlas-layout > .sr-atlas-main:only-child',
+    declarations: 'grid-column:1/-1',
+  },
+  {
     // The reader draws the Structure view's map inside its own box, at most 640 px tall, that
     // scrolls. A map of more than about seven objects then showed only part of itself, and the
     // rest had to be scrolled inside the figure. In a recording the map is shown whole; the page
     // scrolls instead.
     selector: '.dg-view .sv-map-scroll',
     declarations: 'max-height:none;overflow:visible',
+  },
+  {
+    // The reader caps a relation figure at 610 px and lets a wider diagram scroll inside that
+    // box. The round trip of Lesson 7 is 879 px wide at its recorded minimum, so the box showed
+    // two stages of the route, cut a label in half and hid the end of the route and its
+    // comparison with x, which the lesson's exercise asks about. In this recording the figure
+    // takes the width of its frame instead (WIDE_VIEWS gives it the wide frame).
+    selector: '.dg-view[data-view-id="light-editor-returnmap-guided-path"] .sr-relation-figure',
+    declarations: 'max-width:none',
+  },
+  {
+    // The wide frame (site.css, .dg-figure-wide, from 62em) leaves that figure 854 px, 25 px
+    // short of the diagram's recorded minimum. There, and on paper, where nothing scrolls, the
+    // diagram gives up its minimum and is drawn at the width of its box: 2.8% smaller on a wide
+    // screen. It is one SVG and scales as one picture, labels included. On a narrower screen it
+    // keeps its minimum and scrolls in its box, as in the app. !important because the recorded
+    // minimum is itself !important.
+    media: 'print,(min-width:62em)',
+    selector: '.dg-view[data-view-id="light-editor-returnmap-guided-path"] .sr-relation-figure svg',
+    declarations: 'min-width:0!important',
+  },
+  {
+    // In the editor the Continuation history panel (.source-decomposition) has an outline and a
+    // heading, and holds its sections, each outlined in turn: Supply reading (.source-supplier),
+    // Ordered provenance and others. An excerpt of one section leaves the panel's heading out,
+    // and for a supply reading the section's heading too. An outline without its heading held
+    // nothing but the next outline, so two or three empty nested outlines stood around the text
+    // with wide empty bands above and below it. Such an outline, with its padding and margin, is
+    // not drawn; the innermost one, around the text itself, stays. A browser without :has()
+    // draws the outlines as recorded.
+    selector: '.dg-view :is(.source-decomposition,.source-supplier):not(:has(> :is(h2,h3,h4)))',
+    declarations: 'border:0;margin:0;padding:0',
   },
   {
     // Every focusable element in a recording (disclosure summaries and elements with a tabindex)
@@ -480,7 +542,10 @@ export const RECORDING_ADAPTATIONS = [
 ];
 
 export function adaptationRules(batch) {
-  return RECORDING_ADAPTATIONS.map(({ selector, declarations }) => `:where([data-dg-batch="${batch}"]) > ${selector}{${declarations}}`).join('\n');
+  return RECORDING_ADAPTATIONS.map(({ selector, declarations, media }) => {
+    const rule = `:where([data-dg-batch="${batch}"]) > ${selector}{${declarations}}`;
+    return media ? `@media ${media}{${rule}}` : rule;
+  }).join('\n');
 }
 
 // Class names that a stylesheet's selectors mention.
@@ -885,11 +950,49 @@ export function loadViews(root) {
 
 // On wide screens recorded views are drawn a little larger, closer to the page's reading
 // size. A view that reflows is zoomed from 62.5em (site.css, .dg-reflows). A view with a
-// minimum width is zoomed from 80em only if its zoomed width still fits the narrowest wide
-// frame: the single reading column, with the frame breakout of site.css, leaves 854 px for
-// the view.
+// minimum width is zoomed from 80em only if its zoomed width still fits the widest frame: the
+// reading column with the breakout of site.css (.dg-figure-wide), which leaves 854 px for the
+// view. A view with typeset mathematical labels is never zoomed (hasMathLabels).
 export const VIEW_ZOOM = 1.125;
 const NARROWEST_WIDE_CANVAS = 854;
+
+// Whether a view holds typeset mathematical labels: KaTeX output, which only a batch with
+// verified math assets may contain (math-fragment.mjs). CSS zoom re-hints the HTML fonts of such
+// a label and moves it off the SVG baseline it was measured against, so these views keep the
+// app's size on screen and on paper. The other views of the same batch have no such label and
+// are zoomed like any other view.
+export const hasMathLabels = (view) => view.batch?.mathAssets !== undefined && view.classes?.has('katex') === true;
+const zoomable = (view) => view.sizing?.target === 'root' && !hasMathLabels(view);
+
+// Where a figure's frame sits in the reading column (site.css). The 768 px text column, less
+// the frame's border and the canvas padding, holds a view up to 734 px wide, and a frame stays
+// inside the column whenever its view fits there. Two kinds of view get another frame:
+// - dg-figure-wide: the view's minimum width (zoomed, where sizingRules zooms it) does not fit
+//   the column, so on wide screens its frame extends past the column on both sides, far enough
+//   to show the widest recorded diagrams (820 px) whole. WIDE_VIEWS adds the views whose
+//   diagram is wider than the column although their recorded minimum width is not;
+// - dg-figure-narrow: the view is a narrow column in the app (NARROW_KINDS). Stretched across
+//   the column it would leave most of its frame empty, so its frame takes the view's own
+//   recorded minimum width and hugs it.
+// Neither changes the recording: the fragment and its styles are published as recorded.
+const COLUMN_CANVAS = 734;
+// The "Whole statement" outline stands beside the reading steps in the app.
+export const NARROW_KINDS = ['logic-overview'];
+// Two views of Lesson 7 reflow down to 320 px, but hold a diagram that needs more than the
+// 734 px of the column:
+// - the structure of `system`: its diagram is 773 px wide and scrolls inside its own box
+//   wherever the view is narrower than 823 px, which cut the second carrier type off;
+// - the round trip: its diagram is 879 px wide at its recorded minimum (RECORDING_ADAPTATIONS
+//   lets it take the frame's width).
+// The wide frame leaves each 854 px.
+export const WIDE_VIEWS = ['light-editor-returnmap-structure-excerpt', 'light-editor-returnmap-guided-path'];
+export function frameClass(view) {
+  if (!view.sizing) return '';
+  if (view.sizing.target === 'root' && NARROW_KINDS.includes(view.kind)) return ' dg-figure-narrow';
+  if (WIDE_VIEWS.includes(view.id)) return ' dg-figure-wide';
+  const zoomed = zoomable(view) && view.sizing.minWidthPx * VIEW_ZOOM <= NARROWEST_WIDE_CANVAS;
+  return view.sizing.minWidthPx * (zoomed ? VIEW_ZOOM : 1) > COLUMN_CANVAS ? ' dg-figure-wide' : '';
+}
 
 // On paper nothing scrolls. A diagram whose minimum width, with the canvas padding and frame
 // borders of the print styles (18 px), is wider than the text column of an A4 page with the
@@ -905,9 +1008,9 @@ export function sizingRules(views) {
     const scope = `.dg-view[data-view-id="${view.id}"]`;
     return `${view.sizing.target === 'svg' ? `${scope} svg` : scope}{min-width:${view.sizing.minWidthPx}px}`;
   });
-  const zoomed = sized.filter((view) => view.sizing.target === 'root' && view.sizing.minWidthPx * VIEW_ZOOM <= NARROWEST_WIDE_CANVAS);
+  const zoomed = sized.filter((view) => zoomable(view) && view.sizing.minWidthPx * VIEW_ZOOM <= NARROWEST_WIDE_CANVAS);
   if (zoomed.length) rules.push(`@media (min-width:80em){${zoomed.map((view) => `.dg-view[data-view-id="${view.id}"]{zoom:${VIEW_ZOOM}}`).join('')}}`);
-  const printed = sized.filter((view) => view.sizing.target === 'root' && view.sizing.minWidthPx + PRINT_FRAME > PRINT_COLUMN);
+  const printed = sized.filter((view) => zoomable(view) && view.sizing.minWidthPx + PRINT_FRAME > PRINT_COLUMN);
   if (printed.length) rules.push(`@media print{${printed.map((view) => `.dg-view[data-view-id="${view.id}"]{zoom:${Math.floor(((PRINT_COLUMN - PRINT_FRAME) / view.sizing.minWidthPx) * 1000) / 1000}}`).join('')}}`);
   return rules.length ? `\n/* Minimum widths of recorded diagrams, from source-assets/views/views.json: diagrams scroll instead of shrinking. */\n${rules.join('\n')}\n` : '';
 }
@@ -981,7 +1084,7 @@ export function fragmentBody(view) {
 
 export function renderViewFigure(view, { downloadFor, sourceShown = false } = {}) {
   return [
-    `<figure class="dg-figure${view.excerpt ? ' dg-figure-excerpt' : ''}" id="view-${view.id}">`,
+    `<figure class="dg-figure${view.excerpt ? ' dg-figure-excerpt' : ''}${frameClass(view)}" id="view-${view.id}">`,
     provenance(view.excerpt ? 'Recorded Definograph excerpt' : 'Recorded Definograph output', view, { adaptiveTheme: view.batch.adaptiveTheme === true }),
     sourceBlock(view, downloadFor, sourceShown),
     ...(view.excerpt ? [`<p class="visually-hidden">${EXCERPT_NOTE}</p>`] : []),

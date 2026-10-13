@@ -161,7 +161,7 @@ export const DOWNLOADS = [
   { source: 'tutorial/examples/Evidence.lean', output: 'learn/examples/Evidence.lean', type: TEXT, sha256: 'd08b151d13dc4b093abec35848290ae5f96bd79a9daeb8c18909f381bff3f9b4' },
   { source: 'tutorial/examples/ReturnMap.lean', output: 'learn/examples/ReturnMap.lean', type: TEXT, sha256: '21ebbb3dd5b0fe4fea31f7b6f9e049378b037a2fd0701210ab032d46cec1b409' },
   { source: 'source-assets/examples/RecordedAxiom.lean', output: 'learn/examples/RecordedAxiom.lean', type: TEXT, sha256: '19e978d4d579aec7d354c8282f546a32bbcb5cf0ae5b6466d566517f18f4e1bc' },
-  { source: 'source-assets/contracts/local-setup.md', output: 'reference/contracts/local-setup.md', type: TEXT, sha256: '6bae7270050ec88f561ddc95a7788fe4a89cf0bd90fe0738b821097253568d56' },
+  { source: 'source-assets/contracts/local-setup.md', output: 'reference/contracts/local-setup.md', type: TEXT, sha256: '6c1bc9e8aa2f7dc8e1cab2824ce72f5425b531797c4a9fa48a2c9e71e99157e6' },
   { source: 'source-assets/contracts/reader-relations.md', output: 'reference/contracts/reader-relations.md', type: TEXT, sha256: '846d9d226d707be14e4b5b6ae8e224e2f8246509bb863d6e12cb0e0b9fab0bab' },
 ];
 

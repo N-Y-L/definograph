@@ -1,19 +1,17 @@
 <header class="page-head">
 <h1 id="definograph">Definograph</h1>
-<p>Definograph draws the structure of mathematical statements written in Lean: the order of choices, which variables may depend on which, the assumptions and requirements, and the definitions behind them. It reads the statement as Lean has understood it, with its notation resolved and every type filled in, not as printed text. Definograph is a research prototype that runs on your own computer. It does not prove statements or say whether they are true. The figures on this site are recorded output from it, and the site itself runs no Lean, so you can read everything here without installing anything.</p>
-<p><a href="/examples/lebesgue-number/"><strong>Start reading: the Lebesgue-number lemma →</strong></a></p>
+<p>Definograph draws the structure of a mathematical statement written in Lean: the order of its choices, which variables may depend on which, its assumptions and requirements, and the definitions behind them. It reads the statement as Lean has understood it, with notation resolved and every type filled in, not as printed text. It does not prove statements or say whether they are true. Definograph is a research prototype that runs on your own computer. The figures on this site are its recorded output. The site runs no Lean, so you can read everything here without installing anything.</p>
+<p><a href="/learn/follow-the-scope/"><strong>Start reading: Lesson 1, the order of choices →</strong></a></p>
 </header>
 
 <div class="hero-views">
+<p>Below are two views of two statements. <strong>Choices</strong> reads <code>∀ x : ℝ, ∃ y : ℝ, x &lt; y</code> from the top: <code>x</code> is chosen first, and <code>y</code> may depend on it. <strong>Relationships</strong> reads <code>A ⊆ B → x ∈ A → x ∈ B</code> one relation at a time.</p>
 {{view:depends-choices}}
 {{view:light-sets-connections}}
 </div>
 
-<p>Two views of two statements. The <strong>Choices</strong> view reads <code>∀ x : ℝ, ∃ y : ℝ, x &lt; y</code> from the top: <code>x</code> is chosen first, and <code>y</code> may depend on it. The <strong>Relationships</strong> view reads <code>A ⊆ B → x ∈ A → x ∈ B</code> relation by relation, with each object in its role and a note of where the relation sits.</p>
-
 <h2 id="reading-order">Reading order</h2>
 <ol>
-<li><a href="/examples/lebesgue-number/">Reading the Lebesgue-number lemma</a>: what does a theorem from Mathlib assume, choose and conclude?</li>
 <li>{{lesson:01-order-of-choices.md}}: which choice may depend on which?</li>
 <li>{{lesson:02-objects-and-relations.md}}: which relations does an object take part in?</li>
 <li>{{lesson:03-specialized-figures.md}}: what does a condition require?</li>
@@ -21,10 +19,11 @@
 <li>{{lesson:05-inspect-in-the-editor.md}}: where does Definograph keep what Lean checked?</li>
 <li>{{lesson:06-checking-evidence.md}}: what did Lean check, and what did it not?</li>
 <li>{{lesson:07-unfamiliar-structure.md}}: what do the figures show about a definition Definograph has never seen?</li>
+<li><a href="/examples/lebesgue-number/">Reading the Lebesgue-number lemma</a>: what does a theorem from Mathlib assume, choose and conclude? A worked example in words; it has no figures.</li>
 </ol>
-<p>The <a href="/learn/">Tutorial</a> introduces the lessons and their exercises. <a href="/examples/">Examples</a> collects recorded views of real statements with their sources, <a href="/reference/">Reference</a> explains how to read each view and what checking evidence means, and <a href="/install/">Setup</a> says how to try Definograph yourself.</p>
+<p>The <a href="/learn/">Tutorial</a> introduces the lessons and their exercises. <a href="/examples/">Examples</a> collects recorded views of real statements with their sources. <a href="/reference/">Reference</a> explains how to read each view and what checking evidence means. <a href="/install/">Setup</a> says how to try Definograph yourself.</p>
 
 <h2 id="status">Status</h2>
-<p>Definograph is not a general mathematical visualizer. It runs beside Lean 4.28.0 on your own computer. Its source is available in the <a href="https://github.com/N-Y-L/definograph">Definograph GitHub repository</a>; <a href="/install/#try-it-yourself">Try it yourself</a> explains the build and setup requirements.</p>
-<p>The formal foundations already prove general results about specified encodings of Lean expressions and local source records: decoding an encoding recovers the expression’s structure, and the encoded forms can be printed as text and read back exactly. These results say what can be recovered from an encoding under its stated conditions; the <a href="/reference/#generality-and-formal-foundations">Reference</a> explains what they cover.</p>
+<p>Definograph is not a general mathematical visualizer. It runs beside Lean 4.28.0 on your own computer. Its source is in the <a href="https://github.com/N-Y-L/definograph">Definograph GitHub repository</a>. <a href="/install/#try-it-yourself">Try it yourself</a> gives the build and setup requirements.</p>
+<p>The formal foundations already prove general results about specified encodings of Lean expressions and local source records: decoding an encoding recovers the expression’s structure, and the encoded forms can be printed as text and read back exactly. These results say what can be recovered from an encoding under its stated conditions. The <a href="/reference/#generality-and-formal-foundations">Reference</a> explains what they cover.</p>
 <p>The goal is a formally proved general visualization method for <strong>any valid Lean mathematical statement</strong>. The current application provides bounded structural inspection and selected guided readings; a universal guarantee connecting valid inputs to the rendered interactive view remains unproved. Mathematics that Definograph does not interpret stays visible as typed or logical structure.</p>
