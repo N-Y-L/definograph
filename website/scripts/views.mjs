@@ -886,9 +886,10 @@ export function loadViews(root) {
 // On wide screens recorded views are drawn a little larger, closer to the page's reading
 // size. A view that reflows is zoomed from 62.5em (site.css, .dg-reflows). A view with a
 // minimum width is zoomed from 80em only if its zoomed width still fits the narrowest wide
-// column: a tutorial page with its sidebar at 1280 px leaves 866 px for the view.
+// frame: the single reading column, with the frame breakout of site.css, leaves 854 px for
+// the view.
 export const VIEW_ZOOM = 1.125;
-const NARROWEST_WIDE_CANVAS = 866;
+const NARROWEST_WIDE_CANVAS = 854;
 
 // On paper nothing scrolls. A diagram whose minimum width, with the canvas padding and frame
 // borders of the print styles (18 px), is wider than the text column of an A4 page with the

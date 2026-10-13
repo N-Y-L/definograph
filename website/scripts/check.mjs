@@ -210,7 +210,7 @@ await group('HTML syntax and structure', async (fail) => {
     if (!metas.some((meta) => meta.attrs.get('name') === 'viewport' && /width=device-width/.test(meta.attrs.get('content') ?? ''))) {
       f('viewport meta missing');
     }
-    if (!metas.some((meta) => meta.attrs.get('name') === 'color-scheme' && meta.attrs.get('content') === 'light dark')) f('needs <meta name="color-scheme" content="light dark">');
+    if (!metas.some((meta) => meta.attrs.get('name') === 'color-scheme' && meta.attrs.get('content') === 'light')) f('needs <meta name="color-scheme" content="light"> (the site is light only)');
     // Titles and descriptions: content pages use the approved metadata; a tutorial page's
     // title is its h1 plus the suffix, and its description is its first paragraph.
     const title = page.all('title').filter((element) => element.parent?.name === 'head').map((element) => normalize(doc.text(element)));
@@ -1227,7 +1227,30 @@ await group('stylesheet', async (fail) => {
   }
   if (/\d(vw|vh)\b/.test(declarations.replace(/clamp\([^;]*\)/g, ''))) fail('viewport units outside clamp() do not follow text zoom');
   if (/box-shadow|linear-gradient|radial-gradient/i.test(css)) fail('the documentation style uses no shadows or gradients');
-  if (!/@media\s*\(prefers-color-scheme:\s*dark\)/.test(css)) fail('the stylesheet needs a dark colour scheme');
+  // The site is light only. :root declares the light scheme, and the only rules that depend on
+  // the system scheme hold recorded views in the light palette they were recorded in.
+  if (!/:root\s*\{[^}]*color-scheme:\s*light\s*;/.test(css)) fail('the site is light only: :root must declare color-scheme: light');
+  const LIGHT_PIN = '.dg-canvas[data-dg-theme="adaptive"] > .dg-view';
+  const schemeBlocks = (sheet) => [...sheet.matchAll(/@media[^{]*prefers-color-scheme[^{]*\{((?:[^{}]|\{[^{}]*\})*)\}/g)].map((match) => match[1]);
+  const rulesIn = (block) => [...block.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({ selector: match[1].trim().replace(/\s+/g, ' '), properties: [...match[2].matchAll(/(?:^|;)\s*([\w-]+)\s*:/g)].map((d) => d[1]) }));
+  const pinned = new Set();
+  for (const block of schemeBlocks(css)) {
+    for (const rule of rulesIn(block)) {
+      if (rule.selector !== LIGHT_PIN) fail(`"${rule.selector}" depends on the system colour scheme; the site is light only`);
+      else rule.properties.forEach((property) => pinned.add(property));
+    }
+  }
+  // A used batch's own stylesheet may switch its view root to the reader's dark palette. The
+  // light pin must restore every property such a block sets, or dark ink lands on a white page.
+  for (const batch of built.batches) {
+    for (const block of schemeBlocks(batch.css.replace(/\/\*[\s\S]*?\*\//g, ''))) {
+      for (const rule of rulesIn(block)) {
+        if (batch.adaptiveTheme !== true) fail(`${batch.name}: its stylesheet depends on the system colour scheme, so its batch must be marked adaptiveTheme for the site's light pin to reach it`);
+        if (rule.selector !== '.dg-view') fail(`${batch.name}: its dark-preference rule for "${rule.selector}" is not covered by the site's light pin`);
+        for (const property of rule.properties) if (!pinned.has(property)) fail(`${batch.name}: its dark-preference block sets ${property}, which the site's light pin does not restore`);
+      }
+    }
+  }
   if (!/@media\s+print/.test(css)) fail('the stylesheet needs print rules');
 
   // Isolation of recorded views. A site rule whose last compound is a bare element (or a
@@ -1274,7 +1297,7 @@ await group('stylesheet', async (fail) => {
   const STRUCTURAL = new Set(['route-list', 'source', 'language-lean', 'language-sh', 'dg-view', 'dg-figure-image', 'dg-figure-capture']);
   const used = new Set(pages.flatMap((page) => page.doc.elements.filter((element) => !page.inView(element)).flatMap((element) => (element.attrs.get('class') ?? '').split(/\s+/).filter(Boolean))));
   for (const name of used) if (!STRUCTURAL.has(name) && !new RegExp(`\\.${name}(?![\\w-])`).test(css)) fail(`class "${name}" is used but not styled`);
-  return `self-contained; text ≥ 14px, body ≥ 16px; no fixed widths above 320px; no shadows or gradients; light, dark and print; ${guarded} guarded rules keep site styles out of recorded views; no class shared with the reader's markup`;
+  return `self-contained; text ≥ 14px, body ≥ 16px; no fixed widths above 320px; no shadows or gradients; light only, with print rules; ${guarded} guarded rules keep site styles out of recorded views; no class shared with the reader's markup`;
 });
 
 await group('content invariants', async (fail) => {
