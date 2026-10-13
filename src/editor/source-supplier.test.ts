@@ -613,9 +613,10 @@ describe.skipIf(!acceptance.length)('supplier reading on the RC3 acceptance corp
     // K3: the selected pair's own typing receipt gates the link; the other base receipts do not.
     expect(read(last(acceptance, 'ascribed proof term selected'), value => verdictAt(value, 5, 'rejected')).links[0]).toMatchObject({ status: 'annotation-only', typing: { outcome: 'rejected' } });
     for (const index of [1, 3, 4]) expect(read(last(acceptance, 'ascribed proof term selected'), value => verdictAt(value, index, 'rejected')).links[0].status).toBe('supplier');
-    const bare = read(last(acceptance, 'proof term selected'));
-    expect(bare.links[0]).toMatchObject({ status: 'supplier' });
-    expect(bare.provenance.occurrences[1].inspections[0].form).toBe('forall');
+    // A selected identifier is the whole elaborated term at its source range, so it carries the instantiated equality.
+    const identifier = read(last(acceptance, 'proof term selected'));
+    expect(identifier.links[0]).toMatchObject({ status: 'supplier' });
+    expect(identifier.provenance.occurrences[1].inspections[0].form).toBe('eq');
     const value = read(last(acceptance, 'imported function applied'));
     expect(value.links[0]).toMatchObject({ status: 'value-of-type', formation: { kind: 'type' } });
     const law = read(last(acceptance, 'second law of a structure'));

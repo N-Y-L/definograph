@@ -8,6 +8,7 @@ import { validateDecompositionHistory, type DecompositionHistory, type SourceDec
 import { createExactJsonTools, type JsonValue } from '../packets/packet';
 import { GUIDED_CONTEXT_CONTRACT, GUIDED_CONTEXT_MISMATCH } from './guided-context-contract';
 import { sanitizeSourcePresentation, fitSourcePresentationHistory } from './source-presentation';
+import { isSelectionClass, type SelectionClass } from './selection-class';
 
 export interface EditorPosition { line: number; character: number }
 export interface EditorRange { start: EditorPosition; end: EditorPosition }
@@ -19,6 +20,8 @@ export interface EditorDocument {
 }
 export type { HeadExposureBundle } from './source-history';
 interface SourceAttachment {
+  /** The elaborator's class of the selected term. It accompanies the capture whether or not the guided reading succeeded. */
+  selectionClass?: SelectionClass;
   sourceSnapshot?: SourceSnapshot;
   sourceSnapshotOrigin?: SourceSnapshotOrigin;
   sourceSnapshotUnavailable?: string;
@@ -94,6 +97,7 @@ export function parseEditorMessage(value: unknown): EditorMessage | undefined {
   if (value.type === 'statementlens.status' && ['analyzing', 'idle', 'stale'].includes(String(value.phase))) return value as unknown as EditorMessage;
   if ((value.type === 'statementlens.error' && typeof value.message === 'string')
     || (value.type === 'statementlens.analysis' && record(value.analysis) && typeof value.analysis.source === 'string' && record(value.analysis.tree) && typeof value.analysis.tree.id === 'string' && Array.isArray(value.analysis.tree.children) && record(value.analysis.expression))) {
+    if (value.selectionClass !== undefined && !isSelectionClass(value.selectionClass)) return undefined;
     if (value.sourceSnapshotUnavailable !== undefined && (typeof value.sourceSnapshotUnavailable !== 'string' || [...value.sourceSnapshotUnavailable].length > 4096 || value.sourceSnapshot !== undefined)) return undefined;
     if (value.sourceOccurrenceUnavailable !== undefined && (typeof value.sourceOccurrenceUnavailable !== 'string' || [...value.sourceOccurrenceUnavailable].length > 4096 || value.sourceOccurrence !== undefined)) return undefined;
     if (value.headExposureUnavailable !== undefined && (typeof value.headExposureUnavailable !== 'string' || [...value.headExposureUnavailable].length > 4096 || value.headExposure !== undefined)) return undefined;

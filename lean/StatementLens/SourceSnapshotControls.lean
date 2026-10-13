@@ -167,9 +167,13 @@ def parametersAndSerialization : MetaM Unit := do
     | .ok value => pure value | .error reason => throwError "{reason}"
   require (same (field parsed "ok") (toJson false) && same (field parsed "sourceSnapshot") snapshot)
     "oversized guided response discarded the source snapshot"
+  let parsed ← match Json.parse (StatementLens.Context.serializeContextResponse (large.setObjVal! "selectionClass" (toJson "proof"))) with
+    | .ok value => pure value | .error reason => throwError "{reason}"
+  require (same (field parsed "ok") (toJson false) && same (field parsed "selectionClass") (toJson "proof") &&
+    same (field parsed "sourceSnapshot") snapshot) "oversized guided response discarded the selection class"
   require (validCaptureId captureId && !validCaptureId "invalid" && !validCaptureId (captureId ++ "x"))
     "capture UUID validation changed"
-  IO.println "PASS snapshot parameters/transport: exact universe order and Name distinctions, unchanged legacy prefix, oversized-guided fallback retaining snapshot"
+  IO.println "PASS snapshot parameters/transport: exact universe order and Name distinctions, unchanged legacy prefix, oversized-guided fallback retaining snapshot and selection class"
 
 end StatementLens.SourceSnapshotControls
 

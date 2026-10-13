@@ -69,7 +69,10 @@ source checks are unavailable. **Save source snapshot** creates an unverified sa
 record; it does not certify a proposition or the diagram. Imported libraries are
 recorded as process context, without continuously tracking later compiled changes.
 
-In **Checker input**, choose a constructor inside the prepared term, then press
+When Lean reports the selection as a proof, **Source data** does not draw the
+term: its position holds one closed leaf with the statement, the typing outcome
+and the recorded axioms, and no constructor inside it can be chosen. Otherwise,
+in **Checker input**, choose a constructor inside the prepared term, then press
 **Check chosen occurrence**. This reruns the buffer, requires an exact match with
 the prepared source, and displays the selected dependent context and all retained
 source, root and selected typing outcomes. A failed root remains visible even if

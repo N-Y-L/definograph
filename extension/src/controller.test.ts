@@ -79,8 +79,10 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     const fresh = pending.shift()!;
     assert.equal(fresh.request.selection.start.character,9);
     assert.deepEqual(JSON.parse(JSON.stringify(fresh.request.expansion)),{constants:['Custom'],maxDepth:2});
-    fresh.resolve({ok:true,diagnostics:[]}); await refresh;
+    fresh.resolve({ok:true,diagnostics:[],selectionClass:'proposition'}); await refresh;
     assert.equal(messages.at(-1).type,'statementlens.analysis');
+    assert.equal(messages.at(-1).selectionClass,'proposition','the class of the chosen term is an attachment of the result');
+    assert.equal(Object.hasOwn(messages.at(-1).analysis,'selectionClass'),false,'the class is not part of the guided reading');
     assert.equal(messages.at(-1).document.version,2);
     assert.equal(fresh.request.document.uri, a.uri.toString());
     assert.equal(fresh.request.document.version, 2);
@@ -96,7 +98,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     const sourceResult = (request:any, captureId:string) => {
       const unavailable = {status:'unavailable',kind:'prerequisite',phase:'control',reason:'No Lean checking in the controller test.'};
       const frame = {schema:'definograph.raw-frame.v1',naturalProfile:2,originalDeclarations:[],sourceTerm:['const',['str',['anonymous'],'True'],[]],sourceType:['sort',['zero']]};
-      return intoContext({ok:false,error:'guided control failure',diagnostics:[],sourceSnapshot:{schema:'definograph.source-snapshot.v1',
+      return intoContext({ok:false,error:'guided control failure',diagnostics:[],selectionClass:'proof',sourceSnapshot:{schema:'definograph.source-snapshot.v1',
         selection:{startByte:10,endByte:14,requestedStartByte:10,requestedEndByte:14,parentDeclaration:null},
         policy:{id:'named-source-v1',operation:'editor-source',preparation:'Lean.instantiateMVars',heartbeatBound:['nat','200000'],retainedMetadata:'definograph.raw.v1'},
         expectedType:{status:'absent'},original:{status:'available',typeOrigin:'inferred',frame},prepared:{status:'available',typeOrigin:'inferred-instantiated',frame,checkerUniverseParams:[]},checking:{...unavailable,attempted:false}},
@@ -111,6 +113,8 @@ test('extension controller orders host messages, cancels stale analysis, and gua
       current.resolve(result); await call; return {current,result};
     };
     const parent = await establishParent();
+    assert.equal(messages.at(-1).type,'statementlens.error');
+    assert.equal(messages.at(-1).selectionClass,'proof','the class survives a failed guided reading');
     const occurrenceCommand = {type:'statementlens.checkOccurrence',parentCaptureId:parentId,path:['appArg']};
     const errorCount = errors.length;
     for (const invalid of [
@@ -135,6 +139,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     followup.resolve({...next,sourceOccurrence:occurrence}); await followupCall;
     assert.equal(messages.at(-1).type,'statementlens.error');
     assert.equal(messages.at(-1).sourceOccurrence,occurrence,'guided failure retains independent occurrence output');
+    assert.equal(messages.at(-1).selectionClass,'proof');
     const exposureCommand = {type:'statementlens.exposeDefinitionHead',parentCaptureId:next.sourceSnapshotOrigin.captureId,target:'term'};
     for (const invalid of [
       {...exposureCommand,parentCaptureId:parentId}, {...exposureCommand,target:'body'}, {...exposureCommand,target:{toString:()=> 'term'}},
@@ -152,8 +157,9 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     assert.equal(exposureRequest.request.signal.aborted,false,'rejected duplicate does not cancel current work');
     const freshExposure = sourceResult(exposureRequest.request,'880e8400-e29b-41d4-a716-446655440000');
     const exposureRecord = intoContext({schema:'control-only-exposure',captureId:freshExposure.sourceSnapshotOrigin.captureId,target:'term', checking:{status:'captured',action:{status:'completed'},exposure:{status:'candidate',result:occurrence.checking.selected,checking:{status:'completed'}}}});
-    exposureRequest.resolve({...freshExposure,sourceHeadExposure:exposureRecord}); await exposeCall;
+    exposureRequest.resolve({...freshExposure,selectionClass:'other',sourceHeadExposure:exposureRecord}); await exposeCall;
     assert.equal(messages.at(-1).sourceSnapshot,next.sourceSnapshot,'parent snapshot survives unchanged');
+    assert.equal(messages.at(-1).selectionClass,'proof','an exposure answers with its parent capture and the class reported with it');
     assert.equal(messages.at(-1).sourceSnapshotOrigin,next.sourceSnapshotOrigin,'parent keeps its original process identity');
     assert.equal(messages.at(-1).sourceOccurrence,occurrence,'original outcomes remain in the original occurrence');
     assert.equal(messages.at(-1).headExposure.snapshot,freshExposure.sourceSnapshot);
@@ -186,9 +192,10 @@ test('extension controller orders host messages, cancels stale analysis, and gua
         {index:1,operation:{kind:'focus',path:[]},output:{status:'candidate',result:occurrence.checking.selected,checking:{status:'completed'}},replay:'new'},
       ]}});
     const exactFocus = JSON.stringify(focusRecord);
-    focusRequest.resolve({...focusFresh,sourceDecomposition:focusRecord,
+    focusRequest.resolve({...focusFresh,selectionClass:'not-a-class',sourceDecomposition:focusRecord,
       sourceDecompositionPresentation:intoContext({schema:'definograph.source-presentation.v1',captureId:focusRecord.captureId,status:'unavailable',reason:'Synthetic display unavailable.'})}); await focusCall;
     assert.equal(messages.at(-1).decompositions.length,1); assert.equal(messages.at(-1).decompositions[0].record,focusRecord);
+    assert.equal(messages.at(-1).selectionClass,'proof','a continuation keeps the class of its parent capture');
     assert.equal(messages.at(-1).decompositions[0].presentation.status,'unavailable');
     assert.equal(JSON.stringify(focusRecord),exactFocus,'display sidecar leaves the exact continuation record unchanged');
     assert.equal(Object.hasOwn(messages.at(-1).analysis ?? {},'sourceDecompositionPresentation'),false,'display sidecar is removed from guided analysis');
@@ -276,6 +283,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
       assert.equal(result.sourceSnapshot,completeHistory.sourceSnapshot);
       assert.equal(result.sourceSnapshotOrigin,completeHistory.sourceSnapshotOrigin);
       assert.equal(result.sourceOccurrence,boundedOccurrence);
+      assert.equal(result.selectionClass,'proof','a refused continuation keeps the retained class');
       assert.equal(result.decompositions,completeHistory.decompositions,'refusal retains all eight attempts unchanged');
       lastResult = result;
     }

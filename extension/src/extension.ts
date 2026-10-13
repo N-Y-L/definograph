@@ -15,6 +15,7 @@ import { sanitizeSourcePresentation, fitSourcePresentationHistory } from '../../
 import { createExactJsonTools } from '../../src/packets/packet.js';
 import { continuationCommand, requireContinuationParent, type ContinuationAction } from './continuation.js';
 import { GUIDED_CONTEXT_CONTRACT, GUIDED_CONTEXT_MISMATCH } from '../../src/editor/guided-context-contract.js';
+import { isSelectionClass, type SelectionClass } from '../../src/editor/selection-class.js';
 
 interface Expansion { constants: string[]; maxDepth: number }
 type SourceAction = { kind: 'occurrence'; parentCaptureId: string; path: SourceOccurrenceStep[] }
@@ -53,7 +54,7 @@ export function activate(context: vscode.ExtensionContext): void {
   let activeSelection: vscode.Range | undefined;
   let policy: Expansion | undefined;
   let engine = '';
-  let retained: { ticket: Ticket; snapshot: SourceSnapshot; origin: SourceSnapshotOrigin; occurrence?: SourceOccurrence; headExposure?: HeadExposureBundle; decompositions?: SourceDecompositionBundle[] } | undefined;
+  let retained: { ticket: Ticket; snapshot: SourceSnapshot; origin: SourceSnapshotOrigin; selectionClass?: SelectionClass; occurrence?: SourceOccurrence; headExposure?: HeadExposureBundle; decompositions?: SourceDecompositionBundle[] } | undefined;
   const lifecycle = new EditorAnalysisLifecycle();
   const post = (message: object) => { if (panel && ready) void panel.webview.postMessage(message); };
   const documentInfo = (doc: vscode.TextDocument, selection: vscode.Range): EditorDocument => ({ uri: doc.uri.toString(), version: doc.version, fileName: doc.fileName, selection: rangeValue(selection) });
@@ -96,7 +97,7 @@ export function activate(context: vscode.ExtensionContext): void {
         retained = { ...parent, ticket };
         post({ type: 'statementlens.status', phase: 'analyzing', requestId: ticket.requestId, document: metadata });
         post({ type: 'statementlens.error', requestId: ticket.requestId, document: metadata, message,
-          sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence,
+          sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence, selectionClass: parent.selectionClass,
           ...(parent.headExposure ? { headExposure: parent.headExposure } : {}),
           decompositions: parent.decompositions ?? [], decompositionUnavailable: message });
         return;
@@ -126,7 +127,9 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!lifecycle.accepts(ticket) || doc.version !== metadata.version) return;
       if (dirtyDependency(doc)) throw new Error("Another Lean buffer changed during analysis. Save and build imported dependencies, then refresh.");
       const { sourceSnapshot, sourceSnapshotOrigin, sourceSnapshotUnavailable, sourceOccurrence, sourceOccurrenceUnavailable,
-        sourceHeadExposure, sourceHeadExposureUnavailable, sourceDecomposition, sourceDecompositionUnavailable, sourceDecompositionPresentation, ...guided } = analysis;
+        sourceHeadExposure, sourceHeadExposureUnavailable, sourceDecomposition, sourceDecompositionUnavailable, sourceDecompositionPresentation, selectionClass, ...guided } = analysis;
+      // A continuation or exposure answers with its parent's capture, so it keeps the class reported with that capture.
+      const reportedClass = isSelectionClass(selectionClass) ? selectionClass : undefined;
       let attachments: object;
       if (decomposition && parent) {
         if (sourceDecomposition !== undefined && (sourceSnapshot === undefined || !isSourceSnapshotOrigin(sourceSnapshotOrigin))
@@ -148,7 +151,7 @@ export function activate(context: vscode.ExtensionContext): void {
           }
         }
         retained = { ...parent, ticket, decompositions: attempts };
-        attachments = { sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence,
+        attachments = { sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence, selectionClass: parent.selectionClass,
           ...(parent.headExposure ? { headExposure: parent.headExposure } : {}), decompositions: attempts, ...(unavailable !== undefined ? { decompositionUnavailable: unavailable } : {}) };
       } else if (headExposure && parent) {
         if (sourceHeadExposure !== undefined && (sourceSnapshot === undefined || !isSourceSnapshotOrigin(sourceSnapshotOrigin))
@@ -159,7 +162,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const seed = sourceHeadExposure !== undefined ? { snapshot: sourceSnapshot as SourceSnapshot, origin: sourceSnapshotOrigin as SourceSnapshotOrigin, record: sourceHeadExposure as HeadExposureBundle['record'] } : undefined;
         if (seed) createExactJsonTools().freeze(seed);
         retained = { ...parent, ticket, ...(seed ? { headExposure: seed, decompositions: [] } : {}) };
-        attachments = { sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence,
+        attachments = { sourceSnapshot: parent.snapshot, sourceSnapshotOrigin: parent.origin, sourceOccurrence: parent.occurrence, selectionClass: parent.selectionClass,
           ...(sourceHeadExposure !== undefined ? { headExposure: seed }
             : { headExposureUnavailable: sourceHeadExposureUnavailable }) };
       } else {
@@ -167,9 +170,9 @@ export function activate(context: vscode.ExtensionContext): void {
           createExactJsonTools().freeze(sourceSnapshot); createExactJsonTools().freeze(sourceSnapshotOrigin);
           if (sourceOccurrence !== undefined) createExactJsonTools().freeze(sourceOccurrence);
           retained = {
-          ticket, snapshot: sourceSnapshot as SourceSnapshot, origin: sourceSnapshotOrigin, occurrence: sourceOccurrence as SourceOccurrence | undefined };
+          ticket, snapshot: sourceSnapshot as SourceSnapshot, origin: sourceSnapshotOrigin, selectionClass: reportedClass, occurrence: sourceOccurrence as SourceOccurrence | undefined };
         }
-        attachments = { sourceSnapshot, sourceSnapshotOrigin, sourceSnapshotUnavailable, sourceOccurrence, sourceOccurrenceUnavailable };
+        attachments = { sourceSnapshot, sourceSnapshotOrigin, sourceSnapshotUnavailable, sourceOccurrence, sourceOccurrenceUnavailable, selectionClass: reportedClass };
       }
       if (!analysis.ok) {
         post({ type: 'statementlens.error', requestId: ticket.requestId, document: metadata,

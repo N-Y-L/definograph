@@ -13,6 +13,9 @@ import { SourceDecompositionReading, type ContinueSource } from './SourceDecompo
 import type { HeadExposureTarget } from './source-head-exposure';
 import './source-snapshot.css';
 import { counted } from '../core/counted';
+import { ProofLeaf } from './ProofLeaf';
+import { proofWording, rootProofFold, selectionClassUnknown, type ProofFold } from './source-proof-fold';
+import type { SelectionClass } from './selection-class';
 
 type Tab = 'original' | 'prepared' | 'expectedType' | 'checking';
 const titles: Record<Tab, string> = { original: 'Original data', prepared: 'Checker input', expectedType: 'Expected type', checking: 'Check outcomes' };
@@ -31,7 +34,9 @@ function occurrenceTitle(path: SourceOccurrenceStep[]): string {
   return path.length ? path.map(step => stepTitles[step]).join(' → ') : 'Whole prepared term';
 }
 
-export function SourceOccurrenceReading({ value, initialView = 'guided', onExposeDefinitionHead }: { value: SourceOccurrence; initialView?: 'guided' | 'structure'; onExposeDefinitionHead?: (target: HeadExposureTarget) => void }) {
+/** `proof` is given only for the whole selected term when it is read as a proof: its views then show the statement
+ * and one closed leaf for the term. The exact selected term stays in its collapsed disclosure as data. */
+export function SourceOccurrenceReading({ value, initialView = 'guided', proof, onExposeDefinitionHead }: { value: SourceOccurrence; initialView?: 'guided' | 'structure'; proof?: ProofFold; onExposeDefinitionHead?: (target: HeadExposureTarget) => void }) {
   const checking = value.checking;
   const [view, setView] = useState(initialView);
   const structure = useMemo(() => sourceOccurrenceDrawing(value), [value]);
@@ -63,10 +68,11 @@ export function SourceOccurrenceReading({ value, initialView = 'guided', onExpos
           <button type="button" role="tab" aria-selected={view === 'guided'} onClick={() => setView('guided')}>Guided reading</button>
           <button type="button" role="tab" aria-selected={view === 'structure'} onClick={() => setView('structure')}>Structure</button>
         </div>
-        {structure?.ok && <p className="occurrence-readback">The Structure view reconstructs the exact selected term, inferred type and complete surrounding context. This comparison does not establish typing or verify the record's origin. Guided reading presents supported parts of that syntax.</p>}
+        {structure?.ok && <p className="occurrence-readback">The Structure view reconstructs the exact selected term, inferred type and complete surrounding context. This comparison does not establish typing or verify the record's origin. Guided reading presents supported parts of that syntax.{proof && ' The term is part of that comparison and is not drawn in either view.'}</p>}
         <div role="tabpanel" aria-label={view === 'guided' ? 'Occurrence guided reading' : 'Occurrence structure'}>
-          {view === 'guided' ? <SourceOccurrenceGuidedReading key={`${value.captureId}:${JSON.stringify(value.path)}`} value={value} onExposeDefinitionHead={onExposeDefinitionHead}/>
-            : structure?.ok ? <StructuralReading drawing={structure.value} recordedContext={recordedContextEntries(checking.binding)}/>
+          {view === 'guided' ? <SourceOccurrenceGuidedReading key={`${value.captureId}:${JSON.stringify(value.path)}`} value={value} proof={proof} onExposeDefinitionHead={onExposeDefinitionHead}/>
+            : structure?.ok ? <StructuralReading drawing={structure.value} recordedContext={recordedContextEntries(checking.binding)}
+              {...(proof ? { closedTerm: <ProofLeaf fold={proof}/>, positionalRootTitles: proofWording.titles(proof) } : {})}/>
               : <p className="snapshot-unavailable" role="status">Selected structure unavailable ({structure?.error.code ?? 'unavailable'}): {structure?.error.message ?? 'No drawing was produced.'} The retained source data and check outcomes remain available.</p>}
         </div>
       </>}
@@ -89,10 +95,14 @@ export function savedSourceSnapshot(snapshot: SourceSnapshot, origin?: SourceSna
   return saved;
 }
 
-export function SourceSnapshotReading({ snapshot, origin, initialTab, occurrence, occurrenceUnavailable, onCheckOccurrence,
+export function SourceSnapshotReading({ snapshot, origin, initialTab, selectionClass, printedStatement, occurrence, occurrenceUnavailable, onCheckOccurrence, onCheckStatement,
   headExposure, headExposureUnavailable, onExposeDefinitionHead, decompositions, decompositionUnavailable, onContinue }: {
   snapshot: SourceSnapshot; origin?: SourceSnapshotOrigin; initialTab?: Tab;
+  /** The elaborator's class of the selected term and Lean's printed statement of a selected proof, as the host reported them. */
+  selectionClass?: SelectionClass; printedStatement?: string;
   occurrence?: SourceOccurrence; occurrenceUnavailable?: string; onCheckOccurrence?: (path: SourceOccurrenceStep[]) => void;
+  /** Checks the whole selected proof and then inspects its type: the existing occurrence and type-component operations. */
+  onCheckStatement?: () => void;
   headExposure?: HeadExposureBundle; headExposureUnavailable?: string; onExposeDefinitionHead?: (target: HeadExposureTarget) => void;
   decompositions?: SourceDecompositionBundle[]; decompositionUnavailable?: string; onContinue?: ContinueSource;
 }) {
@@ -102,9 +112,20 @@ export function SourceSnapshotReading({ snapshot, origin, initialTab, occurrence
   // Only the host-validated history object carries ordered provenance; nothing is rebuilt or re-validated here.
   const history = decompositions ? retainedDecompositionHistory(decompositions) : undefined;
   const section = snapshot[tab];
+  // A selected proof is read through its statement: one closed leaf stands for the term in every view below.
+  const proof = useMemo(() => rootProofFold({ snapshot, selectionClass, printedStatement, history }), [snapshot, selectionClass, printedStatement, history]);
+  // Without a reported class or a kernel reading of the type, the term is drawn as recorded and the drawer says it may be a proof.
+  const classUnknown = useMemo(() => !proof && selectionClassUnknown({ snapshot, selectionClass, history }), [proof, snapshot, selectionClass, history]);
   const continueAction = origin && (decompositions?.length ?? 0) < 8 ? onContinue : undefined;
-  const checkSource = headExposure || decompositions !== undefined ? undefined : onCheckOccurrence;
+  const checkSource = headExposure || decompositions !== undefined || proof ? undefined : onCheckOccurrence;
+  const wholeProof = proof && occurrence?.path.length === 0 ? proof : undefined;
   const originalReady = occurrence?.checking.status === 'captured' && occurrence.checking.action.status === 'completed' && occurrence.checking.selected;
+  const statementUnchecked = proof?.basis === 'elaborator' && !headExposure && decompositions === undefined;
+  // Offered until a whole-term check is retained; a completed one continues through the existing type inspection. Not
+  // offered when the snapshot's own check could not begin: a rerun stops at the same place, and the Typing line gives the reason.
+  const checkStatement = statementUnchecked && !occurrence && snapshot.prepared.status === 'available'
+    && (snapshot.checking.status === 'captured' || snapshot.checking.attempted) ? onCheckStatement : undefined;
+  const checkStopped = statementUnchecked && occurrence?.path.length === 0 && !originalReady;
   const exposeOriginal = continueAction && originalReady ? (target: HeadExposureTarget) => continueAction(occurrence!.captureId, 0, { kind: 'expose', target }) : origin && !headExposure && decompositions === undefined ? onExposeDefinitionHead : undefined;
   function download() {
     const text = JSON.stringify(savedSourceSnapshot(snapshot, origin, occurrence, headExposure, headExposureUnavailable, decompositions, decompositionUnavailable));
@@ -116,6 +137,9 @@ export function SourceSnapshotReading({ snapshot, origin, initialTab, occurrence
     <header><h2>Selected source data</h2><button className="toolbar-button" onClick={download}>Save source snapshot</button></header>
     <p>{origin ? 'Captured from your Lean buffer by the local reader process.' : 'Saved source snapshot. Its origin is unverified.'} Raw data and kernel outcomes are separate records.</p>
     <p className="snapshot-context">Selected bytes {snapshot.selection.startByte}–{snapshot.selection.endByte}{origin?.document ? ` · buffer v${origin.document.version}` : ''}. Imported libraries describe that process’s environment; their later changes are not tracked by this snapshot.</p>
+    {proof ? <p className="snapshot-context" data-proof-closed={proof.basis}>{proofWording.closedSelection(proof)}</p>
+      : classUnknown ? <p className="snapshot-context" data-selection-class="unreported">{proofWording.unreported(!!origin)}</p>
+      : <p className="snapshot-context" data-proof-arguments-open="">{proofWording.openArguments}</p>}
     <div className="snapshot-tabs" role="tablist" aria-label="Source snapshot sections">{(Object.keys(titles) as Tab[]).map(key => <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{titles[key]}</button>)}</div>
     <div role="tabpanel" aria-label={titles[tab]}>
       {tab === 'original' && <p>The exact selected expression and local declarations before preparation, with a type inferred in the captured context. This may retain assigned metavariables, metadata and local definitions.</p>}
@@ -125,11 +149,13 @@ export function SourceSnapshotReading({ snapshot, origin, initialTab, occurrence
         <p className="occurrence-path">{chosenPath === null ? 'No occurrence chosen.' : occurrenceTitle(chosenPath)}</p>
         <button type="button" className="toolbar-button" disabled={chosenPath === null} onClick={() => { if (chosenPath) checkSource!([...chosenPath]); }}>Check chosen occurrence</button>
       </div>}
-      {tab === 'prepared' && occurrence && <SourceOccurrenceReading key={`${occurrence.captureId}:${JSON.stringify(occurrence.path)}`} value={occurrence} onExposeDefinitionHead={exposeOriginal}/>}
-      {tab === 'prepared' && originalReady && continueAction && <div className="head-exposure-action"><p>Continue from the original selected pair. To read the logical structure of its type, choose Inspect type first.</p>
+      {tab === 'prepared' && occurrence && <SourceOccurrenceReading key={`${occurrence.captureId}:${JSON.stringify(occurrence.path)}`} value={occurrence} proof={wholeProof} onExposeDefinitionHead={exposeOriginal}/>}
+      {tab === 'prepared' && originalReady && continueAction && (wholeProof ? <div className="head-exposure-action"><p>Continue from the inferred type of the selected term. Inspect type makes that type the next term, where its logical structure and its definitions can be read. The selected term stays closed.</p>
+        <button type="button" className="toolbar-button" onClick={() => continueAction(occurrence!.captureId, 0, { kind: 'typeComponent' })}>Inspect type of original selected term</button></div>
+        : <div className="head-exposure-action"><p>Continue from the original selected pair. To read the logical structure of its type, choose Inspect type first.</p>
         <button type="button" className="toolbar-button" onClick={() => continueAction(occurrence!.captureId, 0, { kind: 'typeComponent' })}>Inspect type of original selected term</button>
         <button type="button" className="toolbar-button" onClick={() => continueAction(occurrence!.captureId, 0, { kind: 'logical' })}>Read logical structure of original selected term (one layer)</button>
-        <button type="button" className="toolbar-button" onClick={() => continueAction(occurrence!.captureId, 0, { kind: 'fields' })}>Inspect fields of original occurrence</button><button type="button" className="toolbar-button" onClick={() => continueAction(occurrence!.captureId, 0, { kind: 'focus', path: [] })}>Check whole selected term</button></div>}
+        <button type="button" className="toolbar-button" onClick={() => continueAction(occurrence!.captureId, 0, { kind: 'fields' })}>Inspect fields of original occurrence</button><button type="button" className="toolbar-button" onClick={() => continueAction(occurrence!.captureId, 0, { kind: 'focus', path: [] })}>Check whole selected term</button></div>)}
       {tab === 'prepared' && headExposure && occurrence && <SourceHeadExposureReading key={headExposure.record.captureId} bundle={headExposure} original={occurrence} currentOrigin={!!origin} onContinue={continueAction} onFocusExposedPart={continueAction ? path => continueAction(headExposure.record.captureId, 0, { kind: 'focus', path }) : undefined}/>}
       {tab === 'prepared' && headExposure && origin && <p className="snapshot-context">This history keeps the original selection and earlier attempts. Save the history and Refresh to start another source/exposure history.</p>}
       {tab === 'prepared' && decompositions && <SourceDecompositionReading key={decompositions.at(-1)?.record.captureId ?? 'empty'} attempts={decompositions} history={history} currentOrigin={!!origin} onContinue={continueAction}/>}
@@ -145,7 +171,8 @@ export function SourceSnapshotReading({ snapshot, origin, initialTab, occurrence
           const path = sourceOccurrencePath(snapshot, node.sourcePath);
           if (node.family !== 'expression' || !path) return undefined;
           return { label: 'Choose occurrence', selected: chosenPath !== null && JSON.stringify(chosenPath) === JSON.stringify(path), onClick: () => setChosenPath(path) };
-        } : undefined}/> : <p>Raw drawing unavailable.</p>)}
+        } : undefined} closedEdge={proof ? (node, edge) => node.family === 'frame' && edge.role === 'sourceTerm'
+          ? <ProofLeaf fold={proof} original={tab === 'original'} onCheckStatement={checkStatement} checkStopped={checkStopped}/> : undefined : undefined}/> : <p>Raw drawing unavailable.</p>)}
       {tab === 'prepared' && snapshot.prepared.status === 'available' && <ExactDetails title="Exact checking universe parameters" value={snapshot.prepared.checkerUniverseParams}/>}
       {tab === 'checking' && (snapshot.checking.status === 'unavailable' ? <>
         <p className="snapshot-unavailable" role="status">Check record unavailable during {snapshot.checking.phase}: {snapshot.checking.reason}</p>

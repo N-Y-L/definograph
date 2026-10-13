@@ -17,6 +17,8 @@ const fileName = path.join(fixture, 'Main.lean');
 const position = (source: string, index: number) => { const before = source.slice(0, index); const lines = before.split('\n'); return { line: lines.length - 1, character: lines.at(-1)!.length }; };
 function selection(source: string, term: string): EditorRange { const start = source.lastIndexOf(term); assert.ok(start >= 0); return { start: position(source, start), end: position(source, start + term.length) }; }
 function nodes(root: StatementNode): StatementNode[] { return [root, ...root.children.flatMap(nodes)]; }
+/** The elaborator's class of the chosen term is a top-level response key, reported with or without a guided reading. */
+const selectionClass = (response: unknown) => (response as { selectionClass?: unknown }).selectionClass;
 let checks = 0;
 async function analyze(source: string, term: string, options: { expansion?: { constants: string[]; maxDepth: number }; mathlib?: boolean; expectError?: boolean } = {}): Promise<Analysis> {
   const response = await analyzeEditorContext({ engineDirectory: engine, fileName, source, selection: selection(source, term), workspaceTrusted: true,
@@ -45,6 +47,7 @@ try {
 
   const source = 'import Dep\nopen Fixture\nexample (n : Nat) (h : n = 2) : Reflexive n := by rfl\n';
   const exact = await analyze(source, 'Reflexive n');
+  assert.equal(selectionClass(exact), 'proposition');
   assert.equal(exact.tree.kind, 'parameter');
   assert.equal(exact.tree.binder?.name, 'n');
   assert.equal(exact.tree.children[0]?.kind, 'implies');
@@ -61,7 +64,23 @@ try {
   await analyze('example (n : Nat) : missingPredicate n := by rfl\n', 'missingPredicate n', { expectError: true });
   const proof = await analyze('example (P : Prop) (h : P) : P := by exact h\n', 'h');
   assert.equal(proof.provenance?.selectionKind, 'proof-type');
+  assert.equal(selectionClass(proof), 'proof');
   assert.ok(nodes(proof.tree).some(node => node.binder?.name === 'h' && node.binder.role === 'assumption'));
+  // An anonymous constructor and its synthesized constructor constant share one byte range. The outermost term is
+  // chosen, so the statement read is the one the selection proves and not the general statement of the constructor.
+  const pairProof = await analyze('example (p q : Prop) (hp : p) (hq : q) : p ∧ q := ⟨hp, hq⟩\n', '⟨hp, hq⟩');
+  assert.equal(pairProof.pretty, 'p ∧ q');
+  assert.equal(pairProof.provenance?.selectionKind, 'proof-type');
+  assert.equal(selectionClass(pairProof), 'proof');
+  const existsProof = await analyze('example : ∃ n : Nat, n = 2 := ⟨2, rfl⟩\n', '⟨2, rfl⟩');
+  assert.equal(existsProof.pretty, '∃ n, n = 2');
+  assert.equal(selectionClass(existsProof), 'proof');
+  const pairData = await analyze('def two : { n : Nat // 0 < n } := ⟨2, Nat.succ_pos 1⟩\n', '⟨2, Nat.succ_pos 1⟩', { expectError: true });
+  assert.equal(selectionClass(pairData), 'other');
+  // The class does not depend on the guided reading: a proof in a context the guided reading refuses is still reported as one.
+  const crowded = await analyze(`#check fun (${Array.from({ length: 128 }, (_, i) => `x${i}`).join(' ')} : Nat) (P : Prop) (h : P) => h\n`, 'h', { expectError: true });
+  assert.match(String((crowded as unknown as { error: unknown }).error), /exceeds 128 declarations/);
+  assert.equal(selectionClass(crowded), 'proof');
   const auxiliaryCases = [
     { name: 'proposition-valued example', ordinaryCount: 0, source: 'example : 2 + 2 = 4 := rfl\n', term: 'rfl' },
     { name: 'named theorem', ordinaryCount: 1, source: 'theorem helper (n : Nat) : n = n := rfl\n', term: 'rfl' },
@@ -116,6 +135,7 @@ try {
     assert.equal(refused.ok, false);
     assert.match(refused.error, /Incompatible guided context format/);
     assert.equal(refused.guidedContextContract, GUIDED_CONTEXT_CONTRACT);
+    assert.equal(refused.selectionClass, 'proposition', 'contract refusal retains the class of the chosen term');
     assert.ok(refused.sourceSnapshot, 'contract refusal retains the separate raw capture');
     assert.equal(refused.tree, undefined);
     checks++;
@@ -128,7 +148,7 @@ try {
   await analyze('def sample : Prop := let P : Prop := sorry; P\n', 'P', { expectError: true });
   await analyze('example : True := let h : True := by sorry; h\n', 'h', { expectError: true });
   await analyze('def bad : Prop := by sorry\n#check bad\n', 'bad', { expansion: { constants: ['bad'], maxDepth: 1 }, expectError: true });
-  await analyze('example (x : Nat) : x = x := rfl\n', 'x', { expectError: true });
+  assert.equal(selectionClass(await analyze('example (x : Nat) : x = x := rfl\n', 'x', { expectError: true })), 'other');
   const fake = await analyze('def Set (A : Type) := A\nexample (x : Set Nat) : x = x := rfl\n', 'x = x');
   assert.equal(fake.tree.binder?.typeDescriptor?.kind, 'structure');
   assert.equal(fake.tree.expression.kind, 'lambda');
@@ -145,7 +165,7 @@ try {
 
   const cursor = position(source, source.lastIndexOf('Reflexive n') + 'Reflexive '.length);
   const atCursor = await analyzeEditorContext({ engineDirectory: engine, fileName, source, selection: {start: cursor, end: cursor}, workspaceTrusted: true });
-  assert.equal(atCursor.ok, true); assert.equal((atCursor.provenance as any).selectionKind, 'proposition'); checks++;
+  assert.equal(atCursor.ok, true); assert.equal((atCursor.provenance as any).selectionKind, 'proposition'); assert.equal(atCursor.selectionClass, 'proposition'); checks++;
   await analyze('#eval IO.println "project console output"\n#check True\n', 'True');
   const slow = '#eval IO.sleep 2000\n#check True\n';
   await assert.rejects(analyzeEditorContext({engineDirectory:engine,fileName,source:slow,selection:selection(slow,'True'),workspaceTrusted:true,timeoutMs:50}), /time|seconds/); checks++;

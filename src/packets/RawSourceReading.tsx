@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { readRawInspection, type RawInspectionDrawing, type RawNode } from './raw';
+import { readRawInspection, type RawEdge, type RawInspectionDrawing, type RawNode } from './raw';
 import { StructuralFieldValue } from './StructuralReading';
 import './raw-source-reading.css';
 import { counted } from '../core/counted';
@@ -15,8 +15,10 @@ const labels: Record<string, string> = {
 };
 function words(value: string): string { return value.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, first => first.toUpperCase()); }
 
-/** Each expansion is bounded independently of the length of a collection. */
-export function expandRawBranch(drawing: RawInspectionDrawing, visible: ReadonlySet<string>, rootId: string, limit = CHUNK): Set<string> {
+/** Each expansion is bounded independently of the length of a collection. A child position the caller closes is
+ * never entered, so the undrawn branch behind it spends none of the bound. */
+export function expandRawBranch(drawing: RawInspectionDrawing, visible: ReadonlySet<string>, rootId: string, limit = CHUNK,
+  closed?: (node: RawNode, edge: RawEdge) => boolean): Set<string> {
   const nodes = new Map(drawing.nodes.map(node => [node.id, node]));
   const next = new Set(visible), pending = [rootId];
   let added = 0;
@@ -24,7 +26,7 @@ export function expandRawBranch(drawing: RawInspectionDrawing, visible: Readonly
     const id = pending.pop()!, node = nodes.get(id);
     if (!node) continue;
     if (!next.has(id)) { next.add(id); added++; }
-    for (let i = node.children.length - 1; i >= 0; i--) pending.push(node.children[i].nodeId);
+    for (let i = node.children.length - 1; i >= 0; i--) if (!closed?.(node, node.children[i])) pending.push(node.children[i].nodeId);
   }
   return next;
 }
@@ -42,10 +44,17 @@ function Fields({ node }: { node: RawNode }) {
 export interface RawNodeAction { label: string; selected: boolean; onClick(): void }
 
 /** Raw constructor data has no declaration links, scopes or evidence outcomes.
- * A caller can select exact constructors without changing their interpretation. */
-export function RawSourceReading({ drawing, nodeAction }: { drawing: RawInspectionDrawing; nodeAction?: (node: RawNode) => RawNodeAction | undefined }) {
+ * A caller can select exact constructors without changing their interpretation.
+ * A caller can also close one child position: what it returns for that edge is
+ * shown in place of the branch, which stays in the checked drawing undrawn. */
+export function RawSourceReading({ drawing, nodeAction, closedEdge }: {
+  drawing: RawInspectionDrawing; nodeAction?: (node: RawNode) => RawNodeAction | undefined;
+  closedEdge?: (node: RawNode, edge: RawEdge) => ReactNode | undefined;
+}) {
   const checked = useMemo(() => readRawInspection(drawing), [drawing]);
-  const initial = useMemo(() => checked.ok ? expandRawBranch(drawing, new Set(), drawing.rootId, 32) : new Set<string>(), [drawing, checked]);
+  // The caller's closing rule also bounds the folds: a closed position is not entered by the initial fold or by a later expansion.
+  const isClosed = useMemo(() => closedEdge && ((node: RawNode, edge: RawEdge) => closedEdge(node, edge) !== undefined), [closedEdge]);
+  const initial = useMemo(() => checked.ok ? expandRawBranch(drawing, new Set(), drawing.rootId, 32, isClosed) : new Set<string>(), [drawing, checked, isClosed]);
   const [state, setState] = useState({ drawing, visible: initial, childLimits: new Map<string, number>() });
   const current = state.drawing === drawing ? state : { drawing, visible: initial, childLimits: new Map<string, number>() };
   const nodes = useMemo(() => new Map(drawing.nodes.map(node => [node.id, node])), [drawing]);
@@ -54,7 +63,7 @@ export function RawSourceReading({ drawing, nodeAction }: { drawing: RawInspecti
     const node = nodes.get(id)!;
     if (!current.visible.has(id)) return <div className="struct-fold" data-raw-fold={id}>
       <strong>{labels[node.family]} · {node.tag}</strong><p>Folded constructor branch.</p>
-      <button className="toolbar-button" type="button" onClick={() => setState({ ...current, visible: expandRawBranch(drawing, current.visible, id) })}>Show next constructors in this branch</button>
+      <button className="toolbar-button" type="button" onClick={() => setState({ ...current, visible: expandRawBranch(drawing, current.visible, id, CHUNK, isClosed) })}>Show next constructors in this branch</button>
     </div>;
     const childLimit = current.childLimits.get(id) ?? CHUNK;
     const action = nodeAction?.(node);
@@ -66,10 +75,13 @@ export function RawSourceReading({ drawing, nodeAction }: { drawing: RawInspecti
         {node.family === 'integer' && node.tag === 'negSucc' && <p>The stored natural n represents the negative integer −(n + 1).</p>}
         {node.family === 'substring' && <p>Complete backing string and original byte positions. Positions are not applied to the string.</p>}
         <Fields node={node}/>
-        {node.children.length > 0 && <ol className="struct-ports">{node.children.slice(0, childLimit).map((edge, position) => <li className="struct-port" key={`${edge.role}:${position}`} data-raw-role={edge.role} data-raw-order={position}>
-          <div className="struct-port-label"><span className="struct-port-number">{position + 1}</span>{words(edge.role)}{edge.ordinal !== undefined && <span> · index {edge.ordinal}</span>}</div>
-          {renderNode(edge.nodeId, depth + 1)}
-        </li>)}</ol>}
+        {node.children.length > 0 && <ol className="struct-ports">{node.children.slice(0, childLimit).map((edge, position) => {
+          const closed = closedEdge?.(node, edge);
+          return <li className="struct-port" key={`${edge.role}:${position}`} data-raw-role={edge.role} data-raw-order={position} data-raw-closed={closed !== undefined || undefined}>
+            <div className="struct-port-label"><span className="struct-port-number">{position + 1}</span>{words(edge.role)}{edge.ordinal !== undefined && <span> · index {edge.ordinal}</span>}</div>
+            {closed !== undefined ? closed : renderNode(edge.nodeId, depth + 1)}
+          </li>;
+        })}</ol>}
         {node.children.length > childLimit && <div className="struct-fold"><p>{counted(node.children.length - childLimit, 'further ordered child', 'further ordered children')} {node.children.length - childLimit === 1 ? 'is' : 'are'} folded.</p><button type="button" className="toolbar-button" onClick={() => {
           const childLimits = new Map(current.childLimits); childLimits.set(id, childLimit + CHUNK);
           setState({ ...current, childLimits });

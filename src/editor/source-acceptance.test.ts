@@ -53,7 +53,7 @@ const EXPECTED: Record<string, string> = {
   'proof binder not referenced by the body': 'proposition/type:forall proposition/proposition:implies proposition/unestablished:exists proposition/unestablished:unexpanded | contain(piBody forall/body universal) > contain(piBody implies/body proof) > contain(appArg/lamBody exists/predicate candidate)',
   'proposition object then implication': 'proposition/type:forall proposition/proposition:implies | contain(piBody forall/body universal)',
   'statement selected': 'proposition/unestablished:eq | ',
-  'proof term selected': 'unestablished/unestablished proposition/type:forall | type-of',
+  'proof term selected': 'unestablished/unestablished proposition/unestablished:eq | type-of',
   'ascribed proof term selected': 'unestablished/unestablished proposition/unestablished:eq | type-of',
   'unproved false existential': 'proposition/unestablished:exists proposition/unestablished:unexpanded | contain(appArg/lamBody exists/predicate candidate)',
   'statement with sorry proof': 'proposition/unestablished:false | ',
@@ -290,7 +290,7 @@ describe.skipIf(!location)('RC3 acceptance corpus: real captures answer their re
     expect(noDomain.occurrences[1].inspections[0]).toMatchObject({ form: 'forall', proofBinder: false, bodyUsesBinder: true });
   }, 240000);
 
-  it('keeps the statement a term carries exact: declared for a named theorem, inferred for an ascribed term, instantiated for a bare constant', () => {
+  it('keeps the statement a term carries exact: declared for a named theorem, inferred for an ascribed term, instantiated for a selected identifier', () => {
     const pair = (label: string) => { const { history, record, last } = fixture(end(label)); return occurrenceProvenance(history, record.captureId, last).occurrences[0].pair; };
     const literal = (node: JsonValue) => JSON.stringify(node).match(/\["lit",\["natVal",\["nat","(\d+)"\]\]\]/g) ?? [];
     // Named theorem: the inferred type is the declared statement 2 + 2 = 4, with the literal 4 on the right side only.
@@ -334,9 +334,13 @@ describe.skipIf(!location)('RC3 acceptance corpus: real captures answer their re
     expect(inside.parent.occurrence.path).toEqual(['piBody']); expect(body.home.arity).toBe(2);
     expect(a(body.home.telescope)[0]).toBe('port'); expect(o(a(body.home.telescope)[2]).name).toEqual(['str', ['anonymous'], 'x']);
     expect(o(a(a(body.home.telescope)[1])[2]).name).toEqual(['str', ['anonymous'], '_example']);
-    // Bare constant: captured at universe level 1 with its own general statement.
-    expect(pair('proof term selected').term).toEqual(['const', ['str', ['anonymous'], 'rfl'], [['succ', ['zero']]]]);
-    expect((pair('proof term selected').type as JsonValue[])[0]).toBe('forallE');
+    // Selected identifier: the outermost term at its source range, rfl at universe level 1 with the two implicit arguments Lean
+    // inserted and the instantiated statement. The bare constant shares that range and its general statement is not what is read.
+    const [identifierHead, ...identifierArguments] = spine(pair('proof term selected').term as JsonValue);
+    expect(identifierHead).toEqual(['const', ['str', ['anonymous'], 'rfl'], [['succ', ['zero']]]]); expect(identifierArguments).toHaveLength(2);
+    expect(pair('proof term selected').type).toEqual(pair('ascribed proof term selected').type);
+    const [helperHead, , helperArgument] = spine(pair('term inside a named theorem').term as JsonValue);
+    expect(helperHead).toEqual(identifierHead); expect(helperArgument).toEqual(['bvar', ['nat', '0']]);
   }, 240000);
 
   it('keeps each reader answer evidence-driven: the negative beside every real capture (saved-data mutations)', () => {

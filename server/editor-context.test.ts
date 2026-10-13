@@ -111,6 +111,25 @@ require('node:readline').createInterface({input:process.stdin}).once('line', lin
   } finally { await rm(root, { recursive: true, force: true }); }
 }
 
+test('the selection class survives a guided failure and an unknown class is refused', async () => {
+  for (const selectionClass of ['proposition', 'proof', 'other']) {
+    await syntheticContext(`response.selectionClass = ${JSON.stringify(selectionClass)};`, async request => {
+      const response = await analyzeEditorContext(request);
+      assert.equal(response.ok, false);
+      assert.equal(response.selectionClass, selectionClass);
+      assert.ok(response.sourceSnapshot);
+    });
+  }
+  await syntheticContext('', async request => {
+    assert.equal(Object.hasOwn(await analyzeEditorContext(request), 'selectionClass'), false);
+  });
+  for (const selectionClass of ['theorem', null, true, { class: 'proof' }]) {
+    await syntheticContext(`response.selectionClass = ${JSON.stringify(selectionClass)};`, async request => {
+      await assert.rejects(analyzeEditorContext(request), (error: unknown) => error instanceof WorkerError && error.code === 'EDITOR_PROTOCOL' && /selection class/.test(error.message));
+    });
+  }
+});
+
 test('source attachments survive guided failure and receive only actual host request/build metadata', async () => {
   await syntheticContext('response.testLibraryPath = process.env.LEAN_PATH;', async (request, config) => {
     const response = await analyzeEditorContext(request);

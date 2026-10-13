@@ -5,7 +5,9 @@ import type { SourceOccurrenceStep } from './source-occurrence';
 export type SourceActionRequest =
   | { kind: 'continuation'; parentCaptureId: string; previousCaptureId: string; parentStepIndex: number; attemptsBefore: number }
   | { kind: 'head-exposure'; parentCaptureId: string }
-  | { kind: 'occurrence'; parentCaptureId: string; path: readonly SourceOccurrenceStep[] };
+  | { kind: 'occurrence'; parentCaptureId: string; path: readonly SourceOccurrenceStep[];
+    /** Set on the whole-term check that leads to a selected proof's statement: its answer is followed by one type inspection. */
+    thenInspectType?: boolean };
 export interface PendingSourceAction { request: SourceActionRequest; requestId?: string }
 /** Where the answer to an explicit action is shown. Each value names one `data-source-result` element. */
 export type SourceResultAnchor = 'attempt' | 'continuation-unavailable' | 'head-exposure' | 'head-exposure-unavailable' | 'occurrence' | 'occurrence-unavailable';
@@ -14,7 +16,8 @@ export interface SourceActionResult {
   requestId: string;
   sourceSnapshot?: unknown;
   sourceSnapshotOrigin?: { captureId: string };
-  sourceOccurrence?: { parentCaptureId: string; path: readonly SourceOccurrenceStep[] };
+  sourceOccurrence?: { parentCaptureId: string; path: readonly SourceOccurrenceStep[]; captureId?: string;
+    checking?: { status: string; action?: { status: string }; selected?: unknown } };
   sourceOccurrenceUnavailable?: string;
   headExposure?: unknown;
   headExposureUnavailable?: string;
@@ -50,6 +53,19 @@ export function sourceActionResultAnchor(pending: PendingSourceAction | null, re
   if (added && added.parentCaptureId === request.parentCaptureId && added.previousCaptureId === request.previousCaptureId
     && added.parentStepIndex === request.parentStepIndex) return 'attempt';
   return typeof result.decompositionUnavailable === 'string' ? 'continuation-unavailable' : null;
+}
+
+/** The type inspection that follows a whole-term check posted to reach a selected proof's statement, or null when
+ * the chain ends here: the result does not answer that check, it retained no completed selected pair, or it already
+ * carries a later history. The continuation is the ordinary one from the original pair of the fresh capture. */
+export function statementContinuation(pending: PendingSourceAction | null, result: SourceActionResult): Extract<SourceActionRequest, { kind: 'continuation' }> | null {
+  if (pending?.request.kind !== 'occurrence' || !pending.request.thenInspectType || pending.request.path.length !== 0) return null;
+  if (sourceActionResultAnchor(pending, result) !== 'occurrence') return null;
+  const origin = result.sourceSnapshotOrigin, occurrence = result.sourceOccurrence;
+  if (!origin || !occurrence || occurrence.captureId !== origin.captureId || occurrence.checking?.status !== 'captured'
+    || occurrence.checking.action?.status !== 'completed' || !occurrence.checking.selected
+    || result.headExposure !== undefined || result.decompositions !== undefined) return null;
+  return { kind: 'continuation', parentCaptureId: origin.captureId, previousCaptureId: origin.captureId, parentStepIndex: 0, attemptsBefore: 0 };
 }
 
 /** Scrolls the open drawer so the answer sits just below its sticky heading and moves keyboard

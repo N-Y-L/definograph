@@ -114,6 +114,17 @@ try {
   const typePresentation = available(await append(typeAlias, { kind: 'expose', target: 'type' }));
   assert.equal(typePresentation.target, 'type');
   assert.match(typePresentation.text, /\{\s*y\s*\/\/\s*y = x\s*\}/u);
+  // Lean stores the body's nested proof as an auxiliary theorem, which exposure does not open. The printer elides
+  // it and, with its type shown, the opened definition reads the proof closed with the statement it proves.
+  const carried = await seed('Nested proof closed with its statement', 'def pickLess (a b c d : Nat) (h : a < b) (h2 : b < c) (h3 : c < d) : { n : Nat // n < d } := Subtype.mk a (by omega)\nexample (a b c d : Nat) (h : a < b) (h2 : b < c) (h3 : c < d) : Nat := (pickLess a b c d h h2 h3).val\n', 'pickLess a b c d h h2 h3');
+  const carriedBundle = await append(carried, { kind: 'expose', target: 'term' });
+  const carriedText = available(carriedBundle).text;
+  assert.match(carriedText, /\(⋯ : a < d\)/u);
+  assert.doesNotMatch(carriedText, /omega|_proof_|Decidable|Classical/u);
+  assert.ok(carriedBundle.record.checking.status === 'captured');
+  const carriedStep = carriedBundle.record.checking.steps.at(-1)!;
+  assert.ok(carriedStep.output.status === 'candidate');
+  assert.match(JSON.stringify(carriedStep.output.result.term), /_proof_/u, 'The exact exposed result keeps the auxiliary theorem as a constant.');
   const explicit = [];
   for (const instance of ['first', 'second']) {
     const selected = `@Metric.ball α ${instance} x δ`;

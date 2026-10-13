@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { followSourceStatus, sourceActionResultAnchor, type PendingSourceAction, type SourceActionResult } from './source-action-navigation';
+import { followSourceStatus, sourceActionResultAnchor, statementContinuation, type PendingSourceAction, type SourceActionResult } from './source-action-navigation';
 
 const ORIGIN = 'c52c05ff-d114-4a9e-84cd-353f895a06e9', FRESH = '77b5bb42-0000-4000-8000-000000000001';
 const PREVIOUS = 'ad5b470c-0000-4000-8000-000000000002', EARLIER = '117cf9d7-0000-4000-8000-000000000003';
@@ -63,5 +63,31 @@ describe('answer to other explicit source actions', () => {
     expect(sourceActionResultAnchor(occurrence, answer({ ...fresh, sourceOccurrence: { parentCaptureId: FRESH, path: ['appArg', 'lamBody'] } }))).toBeNull();
     expect(sourceActionResultAnchor(occurrence, answer({ ...fresh, sourceOccurrenceUnavailable: 'unsupported position' }))).toBe('occurrence-unavailable');
     expect(sourceActionResultAnchor(occurrence, { requestId: '5', sourceOccurrenceUnavailable: 'no snapshot' })).toBeNull();
+  });
+});
+
+describe('whole-term check that leads to a selected proof’s statement', () => {
+  const pending = (extra: object = {}): PendingSourceAction => ({ request: { kind: 'occurrence', parentCaptureId: ORIGIN, path: [], thenInspectType: true, ...extra }, requestId: '5' });
+  const checked = (extra: object = {}) => ({ parentCaptureId: ORIGIN, path: [], captureId: FRESH, checking: { status: 'captured', action: { status: 'completed' }, selected: {} }, ...extra });
+  const fresh = (occurrence: object = checked(), extra: Partial<SourceActionResult> = {}) => answer({ sourceSnapshotOrigin: { captureId: FRESH }, sourceOccurrence: occurrence as never, ...extra });
+  it('is followed by one type inspection from the original pair of the fresh capture', () => {
+    expect(statementContinuation(pending(), fresh())).toEqual({ kind: 'continuation', parentCaptureId: FRESH, previousCaptureId: FRESH, parentStepIndex: 0, attemptsBefore: 0 });
+    expect(sourceActionResultAnchor(pending(), fresh())).toBe('occurrence');
+  });
+  it('ends at the occurrence answer when the check was an ordinary one, was superseded or retained no completed pair', () => {
+    expect(statementContinuation(pending({ thenInspectType: undefined }), fresh())).toBeNull();
+    expect(statementContinuation(pending({ path: ['appArg'] }), fresh(checked({ path: ['appArg'] })))).toBeNull();
+    expect(statementContinuation(null, fresh())).toBeNull();
+    expect(statementContinuation(pending(), { ...fresh(), requestId: '6' })).toBeNull();
+    expect(statementContinuation({ ...pending(), requestId: undefined }, fresh())).toBeNull();
+    expect(statementContinuation(pending(), fresh(checked({ parentCaptureId: EARLIER })))).toBeNull();
+    expect(statementContinuation(pending(), fresh(checked({ captureId: ORIGIN })))).toBeNull();
+    expect(statementContinuation(pending(), fresh(checked({ checking: { status: 'unavailable' } })))).toBeNull();
+    expect(statementContinuation(pending(), fresh(checked({ checking: { status: 'captured', action: { status: 'error' }, selected: null } })))).toBeNull();
+    expect(statementContinuation(pending(), fresh(checked({ checking: { status: 'captured', action: { status: 'completed' }, selected: null } })))).toBeNull();
+    expect(statementContinuation(pending(), answer({ sourceSnapshotOrigin: { captureId: FRESH }, sourceOccurrenceUnavailable: 'unsupported' }))).toBeNull();
+    expect(statementContinuation(pending(), fresh(checked(), { decompositions: [] }))).toBeNull();
+    expect(statementContinuation(pending(), fresh(checked(), { headExposure: {} }))).toBeNull();
+    expect(statementContinuation({ request: { kind: 'head-exposure', parentCaptureId: ORIGIN }, requestId: '5' }, fresh())).toBeNull();
   });
 });

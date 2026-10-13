@@ -45,6 +45,42 @@ describe('raw constructor inspection UI', () => {
     expect(expandRawBranch(model, initial, model.rootId).size).toBe(72);
   });
 
+  it('shows the caller’s content in place of a closed child position and keeps the branch in the checked drawing', () => {
+    const frame: JsonValue = { schema: 'definograph.raw-frame.v1', naturalProfile: 2, originalDeclarations: [],
+      sourceTerm: ['app', ['const', name, []], ['lit', ['natVal', ['nat', '3']]]], sourceType: ['const', name, []] };
+    const model = drawing(frame, 'frame'), asked: string[] = [];
+    const html = renderToStaticMarkup(createElement(RawSourceReading, { drawing: model, closedEdge: (node, edge) => {
+      asked.push(`${node.family}:${edge.role}`);
+      return node.family === 'frame' && edge.role === 'sourceTerm' ? createElement('p', { 'data-closed-content': '' }, 'closed by the caller') : undefined;
+    } }));
+    const term = html.split('data-raw-role="sourceTerm"')[1].split('data-raw-role="sourceType"')[0];
+    expect(term).toContain('data-raw-closed="true"'); expect(term).toContain('closed by the caller');
+    expect(term).not.toContain('data-raw-constructor'); expect(term).not.toContain('data-raw-fold');
+    expect(html.match(/data-raw-closed=/g)).toHaveLength(1);
+    expect(html.split('data-raw-role="sourceType"')[1]).toContain('data-raw-constructor="const"');
+    expect(html).toContain('Exact constructor readback checked');
+    expect(html).toContain(`${model.nodes.length} constructor nodes retained`);
+    // The closed branch is never visited, by the initial fold or by the drawing, so no position inside it can be closed or chosen.
+    expect([...new Set(asked)].sort()).toEqual(['expression:levels', 'frame:originalDeclarations', 'frame:sourceTerm', 'frame:sourceType']);
+    expect(render(model)).toContain('data-raw-constructor="app"'); expect(render(model)).not.toContain('data-raw-closed');
+  });
+
+  it('spends none of the initial fold on a closed branch, so what follows it starts drawn', () => {
+    let sourceTerm: JsonValue = ['lit', ['natVal', ['nat', '3']]];
+    for (let depth = 0; depth < 10; depth++) sourceTerm = ['app', ['const', name, []], sourceTerm];
+    const model = drawing({ schema: 'definograph.raw-frame.v1', naturalProfile: 2, originalDeclarations: [], sourceTerm, sourceType: ['const', name, []] }, 'frame');
+    const type = (html: string) => html.split('data-raw-role="sourceType"')[1];
+    // Drawn whole, the term takes the initial 32 nodes and the type after it starts folded.
+    expect(type(render(model))).toContain('data-raw-fold'); expect(type(render(model))).not.toContain('data-raw-constructor="const"');
+    const closing = (node: { family: string }, edge: { role: string }) => node.family === 'frame' && edge.role === 'sourceTerm';
+    const closed = renderToStaticMarkup(createElement(RawSourceReading, { drawing: model, closedEdge: (node, edge) => closing(node, edge) ? 'closed' : undefined }));
+    expect(type(closed)).toContain('data-raw-constructor="const"'); expect(type(closed)).not.toContain('data-raw-fold');
+    const visible = expandRawBranch(model, new Set(), model.rootId, 32, closing);
+    const term = model.nodes.find(node => node.id === model.rootId)!.children.find(edge => edge.role === 'sourceTerm')!.nodeId;
+    expect(visible.has(term)).toBe(false); expect(visible.size).toBeLessThan(32);
+    expect(expandRawBranch(model, new Set(), model.rootId, 32).has(term)).toBe(true);
+  });
+
   it('refuses mutated drawing connections before rendering a success label', () => {
     const model = structuredClone(drawing(raw));
     model.nodes[0].children[0].nodeId = 'missing';

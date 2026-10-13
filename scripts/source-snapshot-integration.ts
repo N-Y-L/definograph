@@ -150,6 +150,12 @@ async function analyze(label: string, source: string, selected: string) {
   }
   return { response, snapshot, checking, metavariables };
 }
+/** The head of an application spine and the number of arguments applied to it. */
+function spine(term: JsonValue): { head: JsonValue; arguments: number } {
+  let head = term, count = 0;
+  while (Array.isArray(head) && head[0] === 'app') { head = head[1]; count++; }
+  return { head, arguments: count };
+}
 function accepted(checking: JsonObject) {
   assert.equal(checking.status, 'captured', JSON.stringify(checking));
   assert.equal(object(checking.action).status, 'completed');
@@ -173,10 +179,32 @@ try {
   assert.equal(proof.response.ok, true);
   assert.equal((proof.response.provenance as Record<string, unknown>).selectionKind, 'proof-type');
   assert.equal(proof.response.pretty, 'P');
+  assert.equal(proof.response.selectionClass, 'proof');
   const proofFrame = frame(proof.snapshot, 'prepared');
   assert.deepEqual(proofFrame.sourceTerm, ['fvar', declaration(proofFrame, 'h').fvarId]);
   assert.deepEqual(proofFrame.sourceType, ['fvar', declaration(proofFrame, 'P').fvarId]);
   assert.notDeepEqual(proofFrame.sourceTerm, proofFrame.sourceType); accepted(proof.checking);
+
+  // An anonymous constructor shares its byte range with the constructor constant Lean synthesizes for it. The
+  // outermost term is the one captured: the whole proof at the statement it proves, and a data body whole.
+  const pairProof = await analyze('anonymous-constructor proof is captured as the whole term', 'example (p q : Prop) (hp : p) (hq : q) : p ∧ q := ⟨hp, hq⟩\n', '⟨hp, hq⟩');
+  assert.equal(pairProof.response.ok, true);
+  assert.equal(pairProof.response.pretty, 'p ∧ q');
+  assert.equal((pairProof.response.provenance as Record<string, unknown>).selectionKind, 'proof-type');
+  assert.equal(pairProof.response.selectionClass, 'proof');
+  const pairFrame = frame(pairProof.snapshot, 'prepared'), fvar = (label: string): JsonValue => ['fvar', declaration(pairFrame, label).fvarId];
+  assert.deepEqual(pairFrame.sourceTerm, ['app', ['app', ['app', ['app', ['const', exactName('And.intro'), []], fvar('p')], fvar('q')], fvar('hp')], fvar('hq')]);
+  assert.deepEqual(pairFrame.sourceType, ['app', ['app', ['const', exactName('And'), []], fvar('p')], fvar('q')]);
+  accepted(pairProof.checking);
+
+  const pairData = await analyze('anonymous-constructor data body is captured whole', 'def two : { n : Nat // 0 < n } := ⟨2, Nat.succ_pos 1⟩\n', '⟨2, Nat.succ_pos 1⟩');
+  assert.equal(pairData.response.ok, false);
+  assert.equal(pairData.response.selectionClass, 'other');
+  const dataSpine = spine(frame(pairData.snapshot, 'prepared').sourceTerm);
+  assert.deepEqual(dataSpine.head, ['const', exactName('Subtype.mk'), [['succ', ['zero']]]]);
+  assert.equal(dataSpine.arguments, 4);
+  assert.ok(hasConstant(frame(pairData.snapshot, 'prepared').sourceTerm, 'Nat.succ_pos'), 'the proof argument is part of the captured data body');
+  accepted(pairData.checking);
 
   const dependent = await analyze('actual dependent local context', 'example (A : Type) (B : A → Type) (x : A) (y : B x) : y = y := rfl\n', 'y = y');
   const dependentFrame = frame(dependent.snapshot, 'prepared');
@@ -214,6 +242,7 @@ try {
 
   const nonProposition = await analyze('nonproposition survives guided refusal', 'def selectedNat (x : Nat) : Nat := Nat.succ x\n', 'Nat.succ x');
   assert.equal(nonProposition.response.ok, false);
+  assert.equal(nonProposition.response.selectionClass, 'other');
   assert.ok(hasConstant(frame(nonProposition.snapshot, 'prepared').sourceTerm, 'Nat.succ'));
   accepted(nonProposition.checking);
 
@@ -259,6 +288,21 @@ try {
   assert.equal(manyLocals.checking.kind, 'limit');
   assert.equal(manyLocals.checking.phase, 'checking-output');
   assert.equal(manyLocals.checking.attempted, true);
+
+  // The guided reading refuses this context. The class of the chosen term is still reported, so the reader can
+  // show the selected proof closed although no guided reading and no kernel verdict exist for it.
+  const crowdedProof = await analyze('proof beyond the guided context limit keeps its class',
+    `#check fun (${Array.from({ length: 128 }, (_, i) => `x${i}`).join(' ')} : Nat) (P : Prop) (h : P) => h\n`, 'h');
+  assert.equal(crowdedProof.response.ok, false);
+  assert.match(String(crowdedProof.response.error), /exceeds 128 declarations/);
+  assert.equal(crowdedProof.response.selectionClass, 'proof');
+  const crowdedFrame = frame(crowdedProof.snapshot, 'prepared');
+  assert.equal(array(crowdedFrame.originalDeclarations).length, 130);
+  assert.deepEqual(crowdedFrame.sourceTerm, ['fvar', declaration(crowdedFrame, 'h').fvarId]);
+  assert.deepEqual(crowdedFrame.sourceType, ['fvar', declaration(crowdedFrame, 'P').fvarId]);
+  assert.equal(crowdedProof.checking.status, 'unavailable');
+  assert.equal(crowdedProof.checking.phase, 'context-policy');
+  assert.equal(crowdedProof.checking.attempted, false);
 
   for (const [file, contents] of before) assert.deepEqual(await readFile(path.join(fixture, file)), contents, `${file} was changed`);
   await verifyBuildInputs();

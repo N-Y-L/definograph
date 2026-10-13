@@ -9,6 +9,9 @@ export const SOURCE_PRESENTATION_BYTES = 128 * 1024;
 export const SOURCE_PRESENTATION_TEXT_CHARACTERS = 8192;
 export const SOURCE_PRESENTATION_TEXT_BYTES = 32768;
 export const SOURCE_PRESENTATION_NOTE = 'Notation may hide implicit arguments; exact arguments and scope remain in details.';
+/** Shown with a text in which Lean's printer elided a proof and kept its type, the form `pp.proofs.withType` gives. */
+export const SOURCE_PRESENTATION_PROOF_MARK = '(⋯ :';
+export const SOURCE_PRESENTATION_PROOF_NOTE = 'Where this text shows (⋯ : P), Lean’s printer left out a term it classed as a proof of P. That is the printer’s report, not a kernel check. The exact term remains in details.';
 export type SourcePresentation = {
   schema: typeof SOURCE_PRESENTATION_SCHEMA; captureId: string; status: 'available';
   stepIndex: number; target: 'term' | 'type'; result: PositionalStructuralInput; text: string;

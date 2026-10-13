@@ -35,6 +35,26 @@ partial def candidates (tree : InfoTree) (outer : Option ContextInfo) (start sto
     for child in children do result := candidates child outer start stop result
     return result
 
+/-- Smallest byte range first. `candidates` records a parent before its children,
+so among terms with the same range the outermost comes first: an anonymous
+constructor is read as the whole term, not as its synthesized constructor constant. -/
+def orderCandidates (found : Array Candidate) : Array Candidate :=
+  (found.zipIdx.qsort fun (a, i) (b, j) =>
+    let spanA := a.endByte - a.startByte
+    let spanB := b.endByte - b.startByte
+    spanA < spanB || spanA == spanB && i < j).map (·.1)
+
+/-- How Lean's elaborator classifies a selected term: a proposition, a proof of
+one, or neither. This is `Meta.isProp`, not a kernel check. A term whose
+classification fails is reported as neither. -/
+def selectionClass (candidate : Candidate) : IO String :=
+  try candidate.term.runMetaM candidate.context do
+    let e ← instantiateMVars candidate.term.expr
+    if ← isProp e then pure "proposition"
+    else if ← isProp (← inferType e) then pure "proof"
+    else pure "other"
+  catch _ => pure "other"
+
 /-- Local context is an explicitly parameterized fragment, not a universally asserted theorem. -/
 partial def contextTree (locals : Array LocalDecl) (index : Nat) (expression : Expr)
     (bs : Bounds := #[]) (path := "context") (policy : ExportPolicy := {}) : MetaM Json := do
@@ -159,20 +179,17 @@ unsafe def analyze (request : Json) : IO Json := do
   let mut found := #[]
   for tree in infoState.trees do
     found := candidates (tree.substitute infoState.assignment) none start stop found
-  found := found.qsort fun a b => a.endByte - a.startByte < b.endByte - b.startByte
-  let mut selected : Option Candidate := none
-  for candidate in found do
-    let eligible ← try candidate.term.runMetaM candidate.context do
-      let e ← instantiateMVars candidate.term.expr
-      pure ((← isProp e) || (← isProp (← inferType e)))
-      catch _ => pure false
-    if eligible then
-      selected := some candidate
+  let ordered := orderCandidates found
+  let mut selected : Option (Candidate × String) := none
+  for candidate in ordered do
+    let classification ← selectionClass candidate
+    if classification != "other" then
+      selected := some (candidate, classification)
       break
   -- Keep all previous proposition choices. If none is eligible, the smallest
   -- available term may still have an inspectable raw snapshot; guided export
   -- reports its own boundary without discarding that term.
-  let some chosen := selected.orElse (fun _ => found[0]?) |
+  let some (chosen, chosenClass) := selected.orElse (fun _ => ordered[0]?.map (·, "other")) |
     throw (IO.userError "No elaborated term is available at this selection.")
   -- Do not fall back from an invalid selected proposition to a larger unrelated one.
   let (snapshot, captureFailure) ← try
@@ -234,8 +251,11 @@ unsafe def analyze (request : Json) : IO Json := do
   if let some reason := captureFailure then
     diagnostics := diagnostics.push (obj [("severity", str "warning"),
       ("message", str ("Exact source capture unavailable: " ++ reason))])
+  -- The class belongs to the chosen term, not to the guided reading: it is
+  -- reported whether or not the guided export succeeded.
   let mut result := result.setObjVal! "diagnostics" (Json.arr diagnostics)
     |>.setObjVal! "guidedContextContract" (str guidedContextContract)
+    |>.setObjVal! "selectionClass" (str chosenClass)
   if let some occurrence := occurrence then result := result.setObjVal! "sourceOccurrence" occurrence
   if let some reason := occurrenceFailure then result := result.setObjVal! "sourceOccurrenceUnavailable" (str reason)
   if let some value := headExposure then result := result.setObjVal! "sourceHeadExposure" value
@@ -249,8 +269,11 @@ unsafe def analyze (request : Json) : IO Json := do
 
 /-- Preserve the existing 2 MiB guided-export policy independently of the bounded
 snapshot. In particular, optional legacy trimming must never enter raw source
-records or diagnostic declarations and delete a constructor field by its name. -/
+records or diagnostic declarations and delete a constructor field by its name.
+The selection class is appended the same way, so it also survives a guided
+reading that is replaced for exceeding that limit. -/
 def serializeContextResponse (result : Json) : String := Id.run do
+  let selectionClass := (result.getObjVal? "selectionClass").toOption
   let snapshot := (result.getObjVal? "sourceSnapshot").toOption
   let unavailable := (result.getObjVal? "sourceSnapshotUnavailable").toOption
   let occurrence := (result.getObjVal? "sourceOccurrence").toOption
@@ -262,7 +285,7 @@ def serializeContextResponse (result : Json) : String := Id.run do
   let presentation := (result.getObjVal? "sourceDecompositionPresentation").toOption
   let legacy := match result.getObj? with
     | .ok fields => Json.mkObj (fields.toList.filter fun (key, _) =>
-      !["sourceSnapshot", "sourceSnapshotUnavailable", "sourceOccurrence", "sourceOccurrenceUnavailable",
+      !["selectionClass", "sourceSnapshot", "sourceSnapshotUnavailable", "sourceOccurrence", "sourceOccurrenceUnavailable",
         "sourceHeadExposure", "sourceHeadExposureUnavailable", "sourceDecomposition", "sourceDecompositionUnavailable",
         "sourceDecompositionPresentation"].contains key)
     | .error _ => result
@@ -272,11 +295,14 @@ def serializeContextResponse (result : Json) : String := Id.run do
       ("diagnostics", Json.arr #[])]).compress else serialized
   let append := fun (text key : String) (value : Json) =>
     (text.dropEnd 1).toString ++ "," ++ (str key).compress ++ ":" ++ value.compress ++ "}"
+  let classText := match selectionClass with
+    | some value => append legacyText "selectionClass" value
+    | none => legacyText
   let snapshotText := match snapshot with
-    | some value => append legacyText "sourceSnapshot" value
+    | some value => append classText "sourceSnapshot" value
     | none => match unavailable with
-      | some reason => append legacyText "sourceSnapshotUnavailable" reason
-      | none => legacyText
+      | some reason => append classText "sourceSnapshotUnavailable" reason
+      | none => classText
   let occurrenceText := match occurrence with
     | some value => Id.run do
       let complete := append snapshotText "sourceOccurrence" value

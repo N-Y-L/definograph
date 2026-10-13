@@ -7,7 +7,7 @@ import type { SourceSnapshotOrigin } from './source-origin';
 import type { JsonObject, JsonValue } from '../packets/packet';
 import type { HeadExposureCandidate } from './source-head-exposure';
 import { parseEditorMessage, retainedDecompositionHistory, type HeadExposureBundle } from './host';
-import { SOURCE_PRESENTATION_SCHEMA, SOURCE_PRESENTATION_NOTE } from './source-presentation';
+import { SOURCE_PRESENTATION_SCHEMA, SOURCE_PRESENTATION_NOTE, SOURCE_PRESENTATION_PROOF_NOTE } from './source-presentation';
 import { assertSourceHistoryLimit, MAX_SOURCE_HISTORY_BYTES } from './source-history';
 import { SourceSnapshotReading, savedSourceSnapshot } from './SourceSnapshotReading';
 import { SourceDecompositionReading, canContinueDecompositionStep } from './SourceDecompositionReading';
@@ -60,9 +60,16 @@ describe('continuation host, retention and reading', () => {
       expect(bundle.presentation?.status).toBe(sidecar === presentation ? 'available' : 'unavailable');
       expect(Object.isFrozen(bundle.presentation)).toBe(true);
       const html = renderToStaticMarkup(createElement(SourceDecompositionReading, { attempts: parsed.decompositions }));
-      if (sidecar === presentation) { expect(html).toContain('&lt;script&gt;ExpandedNat&lt;/script&gt;'); expect(html).toContain(SOURCE_PRESENTATION_NOTE); expect(html).not.toContain('<script>'); }
+      if (sidecar === presentation) { expect(html).toContain('&lt;script&gt;ExpandedNat&lt;/script&gt;'); expect(html).toContain(SOURCE_PRESENTATION_NOTE); expect(html).not.toContain('<script>'); expect(html).not.toContain(SOURCE_PRESENTATION_PROOF_NOTE); }
       else expect(html).toContain('Readable Lean text was rejected');
     }
+    // A text in which the printer elided a proof says what the mark stands for and who decided it.
+    const elided = parseEditorMessage({ ...f.message, decompositions: [f.first, { ...f.second, presentation: { ...presentation, text: '⟨a, (⋯ : a < d)⟩' } }] });
+    if (!elided || elided.type === 'statementlens.status' || !elided.decompositions) throw Error('Lost valid raw history.');
+    const elidedHtml = renderToStaticMarkup(createElement(SourceDecompositionReading, { attempts: elided.decompositions }));
+    expect(elidedHtml).toContain('⟨a, (⋯ : a &lt; d)⟩'); expect(elidedHtml).toContain(SOURCE_PRESENTATION_NOTE);
+    expect(elidedHtml).toContain(`<p data-presentation-proof-elided="">${SOURCE_PRESENTATION_PROOF_NOTE}</p>`);
+    expect(SOURCE_PRESENTATION_PROOF_NOTE).toContain('printer’s report, not a kernel check');
     expect(parseEditorMessage({ ...f.message, headExposure: { ...f.seed, presentation } })).toBeUndefined();
     expect(parseEditorMessage({ ...f.message, decompositions: [{ ...f.first, extra: true }] })).toBeUndefined();
     const extended = [f.first]; Object.assign(extended, { extra: true });

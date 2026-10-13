@@ -9,6 +9,8 @@ import type { SourceOccurrence } from './source-occurrence';
 import { sourceOccurrenceReading } from './source-occurrence-reading';
 import type { HeadExposureTarget } from './source-head-exposure';
 import { counted } from '../core/counted';
+import { ProofLeaf } from './ProofLeaf';
+import { proofWording, type ProofFold } from './source-proof-fold';
 
 function ExactValue({ title, value }: { title: string; value: unknown }) {
   const [open, setOpen] = useState(false);
@@ -62,9 +64,9 @@ function OccurrenceSourceInspector({ model, selectedId, onSelect, label }: {
   </section>;
 }
 
-function TargetReading({ value, target }: { value: SourceOccurrence; target: 'term' | 'type' }) {
+function TargetReading({ value, target, title }: { value: SourceOccurrence; target: 'term' | 'type'; title: string }) {
   const model = useMemo(() => sourceOccurrenceReading(value, target), [value, target]);
-  return <PositionalReadingPane model={model} title={target === 'term' ? 'Selected term' : 'Inferred type'}/>;
+  return <PositionalReadingPane model={model} title={title}/>;
 }
 
 /** A record adapter supplies actual positional data and provenance. Display
@@ -102,14 +104,20 @@ export function PositionalReadingPane({ model, title, inspectorLabel = 'Exact oc
   </div>;
 }
 
-/** A target switch creates a fresh focus state without invoking the native host. */
-export function SourceOccurrenceGuidedReading({ value, onExposeDefinitionHead }: { value: SourceOccurrence; onExposeDefinitionHead?: (target: HeadExposureTarget) => void }) {
-  const [target, setTarget] = useState<'term' | 'type'>('term');
+/** A target switch creates a fresh focus state without invoking the native host. When the occurrence is a whole
+ * selected term shown closed as a proof, its type is read first and the term target shows one closed leaf: no reading
+ * of the term is compiled and no definition head of the term is offered. The targets are titled as a proof term and
+ * its statement only on the kernel basis. */
+export function SourceOccurrenceGuidedReading({ value, proof, onExposeDefinitionHead }: { value: SourceOccurrence; proof?: ProofFold; onExposeDefinitionHead?: (target: HeadExposureTarget) => void }) {
+  const [target, setTarget] = useState<'term' | 'type'>(proof ? 'type' : 'term');
+  const titles = proof ? proofWording.titles(proof) : { term: 'Selected term', type: 'Inferred type' };
+  const closed = proof && target === 'term';
   return <section className="occurrence-guided" aria-label="Chosen occurrence guided reading">
-    <div className="snapshot-tabs" role="tablist" aria-label="Occurrence reading target">{(['term', 'type'] as const).map(item => <button type="button" key={item} role="tab" aria-selected={target === item} onClick={() => setTarget(item)}>{item === 'term' ? 'Selected term' : 'Inferred type'}</button>)}</div>
-    {onExposeDefinitionHead && <div className="head-exposure-action"><p>Expose one definition head of this {target === 'term' ? 'term' : 'type'}. This reruns the current Lean buffer; the original occurrence and its outcomes stay separate.</p><button type="button" className="toolbar-button" onClick={() => onExposeDefinitionHead(target)}>Expose definition head of {target}</button></div>}
-    <div role="tabpanel" aria-label={target === 'term' ? 'Selected term reading' : 'Inferred type reading'}>
-      <TargetReading key={`${value.captureId}:${JSON.stringify(value.path)}:${target}`} value={value} target={target}/>
+    <div className="snapshot-tabs" role="tablist" aria-label="Occurrence reading target">{(['term', 'type'] as const).map(item => <button type="button" key={item} role="tab" aria-selected={target === item} onClick={() => setTarget(item)}>{titles[item]}</button>)}</div>
+    {onExposeDefinitionHead && !closed && <div className="head-exposure-action"><p>Expose one definition head of this {target === 'term' ? 'term' : 'type'}. This reruns the current Lean buffer; the original occurrence and its outcomes stay separate.</p><button type="button" className="toolbar-button" onClick={() => onExposeDefinitionHead(target)}>Expose definition head of {target}</button></div>}
+    <div role="tabpanel" aria-label={`${titles[target]} reading`}>
+      {closed ? <ProofLeaf fold={proof}/>
+        : <TargetReading key={`${value.captureId}:${JSON.stringify(value.path)}:${target}`} value={value} target={target} title={titles[target]}/>}
     </div>
   </section>;
 }

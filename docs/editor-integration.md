@@ -53,16 +53,24 @@ engine, the configured Lean toolchain and compiled libraries remain separate
 prerequisites. Building and packaging do not install an extension into the
 user's VS Code profile.
 
-With the official Lean extension enabled, open a saved `.lean` file in a trusted workspace. Select a complete proposition and run **Definograph: Visualize Selection**. A nonempty selection must match an elaborated proposition or proof term, apart from surrounding whitespace. An empty selection chooses the smallest containing proposition or proof term with a proposition type. Arbitrarily selecting a variable does not silently expand a nonempty selection into a different statement.
+With the official Lean extension enabled, open a saved `.lean` file in a trusted workspace. Select a complete proposition and run **Definograph: Visualize Selection**. A nonempty selection must match an elaborated proposition or proof term, apart from surrounding whitespace. An empty selection chooses the smallest containing proposition or proof term with a proposition type. Among terms that cover the same source range the outermost is chosen, so selecting a proof written as `⟨…⟩` reads the statement it proves. Arbitrarily selecting a variable does not silently expand a nonempty selection into a different statement.
 
 The **Source data** tab independently captures the original term, local declarations,
 prepared checker input and available source-check outcomes. If no proposition is
 eligible, the smallest available elaborated term can supply a raw snapshot while
-the guided reader reports that it cannot read that selection. See
+the guided reader reports that it cannot read that selection. A selected proof
+is not drawn there. In place of the term the tab shows the statement it proves,
+the recorded typing verdict and axiom list, and whether the statement being a
+proposition is reported by Lean's elaborator or accepted by Lean's kernel. A
+capture that arrives without Lean's class, as from an extension installed before
+this change, says so and draws the term as recorded. See
 [exact source snapshots](editor-source-snapshots.md) for its separate contract.
 
 The guided reader labels a selected proof **Statement of your selected proof**
-and displays its inferred proposition with the recorded context. **Inspect a
+and displays its inferred proposition with the recorded context. Below the title
+one line gives the typing verdict, the axiom list recorded for the selected
+term and the same basis as the Source data leaf, and says when the recorded
+expected type is not the inferred type shown. **Inspect a
 definition in this statement** retains the current clause and ordered context
 beside a searchable list of applications from the whole exact statement. Choose
 an occurrence with its actual arguments and scope to check it and expose one
@@ -77,7 +85,10 @@ for search and history bounds.
 term. It reruns the buffer, compares the exact prepared parent, and retains the
 chosen dependent context and separate source, inferred-root and selected typing
 outcomes. An accepted child does not hide a rejected root. Its new process capture
-does not inherit earlier results or prove unchanged imported definitions.
+does not inherit earlier results or prove unchanged imported definitions. No
+constructor can be chosen inside a selected proof. Its leaf offers **Check with
+the kernel that this statement is a proposition** instead, which checks the
+whole term and then inspects its type, two buffer reruns for one click.
 
 From that retained occurrence, **Expose definition head** runs a fresh request for
 the chosen term or inferred type. It retains the original reading and shows one
@@ -129,7 +140,7 @@ claims.
 
 The separate `StatementLens.Context` native process parses the active buffer's own imports and elaborates the **complete buffer** with those actual modules. It obtains the expression, local context, metavariable context, namespace, options, and enclosing declaration from Lean `InfoTree` entries. It uses `TermInfo.runMetaM` with the saved `ContextInfo` and independently calls `checkWithKernel` on the selected expression and its displayed proposition. The shared `StatementLens.Export` module is compiled into the native adapter; it is not injected into the formal project's imports or environment.
 
-A fragment's ordinary free local objects become **context parameters**, not implicit universal assertions. Ordinary local proof hypotheses become **assumptions**, scoped over the displayed fragment. Recorded `auxDecl` and `implDetail` entries receive neutral context labels instead. Guided export substitutes local `let` entries whose recorded `nondep` flag is false, including a second placeholder check after substitution. Exact source frames retain recorded local definitions. A selected proof expression is displayed as its proposition type, with `selectionKind: "proof-type"`. Placeholder-containing proof values are refused even when their type is a valid proposition. Later proof errors may be reported as diagnostics while an independently valid selected statement remains inspectable. This checks the selected term's type; it does not certify that the surrounding theorem is proved.
+A fragment's ordinary free local objects become **context parameters**, not implicit universal assertions. Ordinary local proof hypotheses become **assumptions**, scoped over the displayed fragment. Recorded `auxDecl` and `implDetail` entries receive neutral context labels instead. Guided export substitutes local `let` entries whose recorded `nondep` flag is false, including a second placeholder check after substitution. Exact source frames retain recorded local definitions. A selected proof expression is displayed as its proposition type, with `selectionKind: "proof-type"`. Beside the guided result, every response in which a term was chosen carries the top-level `selectionClass` (`proposition`, `proof` or `other`), Lean's `Meta.isProp` on the chosen term and on its inferred type. It is reported whether or not the guided reading succeeded, the host and the webview refuse any other value, and continuation answers keep the class of their parent capture. It is the elaborator's report and establishes no receipt. Placeholder-containing proof values are refused even when their type is a valid proposition. Later proof errors may be reported as diagnostics while an independently valid selected statement remains inspectable. This checks the selected term's type; it does not certify that the surrounding theorem is proved.
 
 Exact safe definition names may be expanded on request, with at most 12 names and depth 1–3. Every expansion is kernel checked and checked for definitional equality; unresolved terms and `sorry` introduced by unfolding are refused. The adapter also requests bounded small-definition previews within the same elaboration; the reader selects at most one when it reduces unknown meaning and retains the original reading. Generating these previews does not replay the buffer again. See [the graph and inspection iteration](graph-iteration.md) for limits. Opaque or otherwise unsupported mathematics remains typed structure, with no invented properties.
 
@@ -158,6 +169,8 @@ Name-based mathematical recognition is limited by an exact audited **declaring-m
 The original selected pair and completed continuation pairs offer **Inspect type**
 and **Read logical structure of this term (one layer)**. The latter always inspects
 the term: use **Inspect type** first to read an inferred type’s logical structure.
+The original pair of a selected proof offers only **Inspect type**, which leads to
+its statement.
 Actions disappear while the editor is busy and on saved records.
 
 Below the selected step, ordered provenance identifies relations and their
@@ -181,7 +194,7 @@ The webview loads the same built application from local extension-approved URIs 
 
 Verified automated checks:
 
-- `node --import tsx scripts/editor-integration.ts`: native cases against an isolated fixture with a genuinely compiled imported dependency; unsaved active buffer, custom definitions and expansion, proof assumptions, dependent types, Unicode coordinates, later proof errors, selected errors, hidden/expanded placeholders, fake constructor names, canonical versus global replacement set instances, symbolic metric handling, trust/version/cancellation/deadline boundaries and separation of project console output, and unchanged project source/configuration.
+- `node --import tsx scripts/editor-integration.ts`: native cases against an isolated fixture with a genuinely compiled imported dependency; unsaved active buffer, custom definitions and expansion, proof assumptions, the outermost choice among equal-range terms, the reported selection class with and without a guided reading, dependent types, Unicode coordinates, later proof errors, selected errors, hidden/expanded placeholders, fake constructor names, canonical versus global replacement set instances, symbolic metric handling, trust/version/cancellation/deadline boundaries and separation of project console output, and unchanged project source/configuration.
 - `node --import tsx --test server/editor-context.test.ts`: UTF-16/CRLF/surrogate bounds, pre-access trust refusal, and read-only standard/path-package discovery.
 - `npm test --prefix extension`: controller execution against mocked VS Code APIs, including real generated webview HTML, message ordering, expansion forwarding, stale-result rejection, other-buffer invalidation, fresh visible selection, reveal races, configuration failure recovery, and generation lifecycle.
 - `npm run check --prefix extension` and `npm run package --prefix extension`: TypeScript and the official VS Code packaging tool produce the local VSIX.

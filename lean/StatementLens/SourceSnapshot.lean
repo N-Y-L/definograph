@@ -505,7 +505,10 @@ def presentationUnavailable (captureId reason : String) : Json := Json.mkObj [
 
 /-- Print only the last requested exposure, from its owned telescope in the
 original environment. The printer may hide implicit arguments; it supplies no
-new checked expression, reduction, or receipt. Its Meta state is always restored. -/
+new checked expression, reduction, or receipt. Its Meta state is always restored.
+A proof the printer elides is printed with its proposition, `(⋯ : P)`. That is
+the intended display of a nested proof, classified by the printer's own
+`Meta.isProof`, and is not reported as an omission. -/
 private def capturedPresentation (captureId : String) (initial : Environment)
     (originalOptions : Options) (requestedSteps : Nat)
     (captured : Definograph.CapturedSource Definograph.NamedDecompositionResult) : MetaM Json := do
@@ -538,7 +541,8 @@ private def capturedPresentation (captureId : String) (initial : Environment)
       withEnv initial <| withOptions (fun _ => originalOptions
           |>.set `maxRecDepth (min (maxRecDepth.get originalOptions) 128)
           |>.set `pp.maxSteps (min (getPPMaxSteps originalOptions) 20000)
-          |>.set `pp.beta false) do
+          |>.set `pp.beta false
+          |>.set `pp.proofs.withType true) do
         withLCtx {} {} do
           DefinographAdmission.withCoreContext step.input.context fun vars => do
             let opened := DefinographAdmission.instantiateSlots vars candidate.after
@@ -548,7 +552,7 @@ private def capturedPresentation (captureId : String) (initial : Environment)
             let omitted := printed.infos.toList.any fun (_, info) => match info with
               | .ofDelabTermInfo term => term.docString?.any fun reason =>
                 [PrettyPrinter.Delaborator.OmissionReason.deep,
-                  .proof, .maxSteps].any (fun omission => reason == omission.toString)
+                  .maxSteps].any (fun omission => reason == omission.toString)
               | _ => false
             if omitted then
               return presentationUnavailable captureId "The native printer omitted a subexpression under its display options or limits; the exact result is retained."

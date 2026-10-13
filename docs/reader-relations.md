@@ -31,6 +31,23 @@ incoming relation. Occurrence, relation, step and outcome numbers identify
 different things. Links to the matching provenance entries only move reading
 focus; they do not select another history or request a native check.
 
+The whole selected term is a special case of this reading. When Lean's elaborator
+reports that term as a proof, the Source data views show it as one closed leaf,
+`(⋯ : statement)`, with the snapshot's own typing verdict and axiom list, and its
+line on the statement being a proposition reads “reported by Lean’s elaborator”.
+When a type-of step taken on that whole term yields the two receipts of the
+Supply row, an accepted typing of the term and an established proposition
+formation of its type, that line reads “accepted by Lean’s kernel” and names the
+attempt and its outcome numbers, and the leaf stays closed on that basis alone.
+An accepted typing on the leaf carries this panel's sentence on kernel
+acceptance: a typing outcome in the captured environment, not a statement that
+the proposition is true. If the same step establishes the
+type as a type, the term is drawn as an ordinary value. The leaf
+is derived for display like the panels and is not saved. A term that is not the
+whole selection is not closed by this rule, and proof arguments inside a selected
+term are drawn as ordinary structure; the drawer says so. See
+[a selected proof](editor-source-snapshots.md#a-selected-proof).
+
 Each formation judgement lists its physical receipts once, preserving every
 outcome. A receipt that serves both typing and formation is identified as one
 receipt in two roles. The numbered outcome list also retains checks beyond the
@@ -81,7 +98,8 @@ An attempt whose checking is unavailable has no section navigation.
 **Read logical structure of this term (one layer)** inspects that term only. To
 inspect the logical structure of an inferred type, choose **Inspect type** first.
 These actions are available on the original pair and on eligible completed derived
-pairs, including the first definition exposure. Saved records and a busy editor
+pairs, including the first definition exposure. The original pair of a selected
+proof offers only **Inspect type**: the statement is read, the proof term is not. Saved records and a busy editor
 have no continuation actions. The host reports a refused request without inventing
 another result.
 

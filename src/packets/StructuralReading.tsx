@@ -125,9 +125,9 @@ export function expandStructuralBranch(drawing: StructuralReadingDrawing, visibl
   return next;
 }
 
-function initialVisibility(drawing: StructuralReadingDrawing, limit: number): Set<string> {
+function initialVisibility(drawing: StructuralReadingDrawing, limit: number, termClosed: boolean): Set<string> {
   let visible = new Set<string>();
-  for (const rootId of roots(drawing)) visible = expandStructuralBranch(drawing, visible, rootId, Math.max(0, limit - visible.size));
+  for (const rootId of roots(drawing)) if (!termClosed || rootId !== drawing.rootId) visible = expandStructuralBranch(drawing, visible, rootId, Math.max(0, limit - visible.size));
   return visible;
 }
 
@@ -142,6 +142,8 @@ export interface StructuralReadingProps {
   /** The captured context's declarations, oldest first. Their recorded kinds label the leading positional context
    * entries; entries entered later by a selection or focus have none. */
   recordedContext?: readonly RecordedContextEntry[];
+  /** Positional drawings only: shown in place of the term root, whose branch stays in the drawing undrawn. */
+  closedTerm?: ReactNode;
 }
 /** A captured declaration: its exact recorded name, used only to check alignment, and its recorded kind. */
 export interface RecordedContextEntry { readonly name: JsonValue; readonly kind: StructuralLocalKind }
@@ -172,10 +174,11 @@ export function recordedContextAligned(drawing: PositionalStructuralDrawing, rec
 
 /** Constructor structure only. A reference link records declaration identity;
  * neither that link nor the drawing asserts typing or mathematical evidence. */
-export function StructuralReading({ drawing, selectedPath, onSourceSelect, initialNodeLimit = INITIAL_NODE_COUNT, positionalRootTitles, recordedContext }: StructuralReadingProps) {
+export function StructuralReading({ drawing, selectedPath, onSourceSelect, initialNodeLimit = INITIAL_NODE_COUNT, positionalRootTitles, recordedContext, closedTerm }: StructuralReadingProps) {
   const prefix = useId();
   const initialLimit = Math.min(200, Math.max(1, Number.isSafeInteger(initialNodeLimit) ? initialNodeLimit : INITIAL_NODE_COUNT));
-  const initial = useMemo(() => initialVisibility(drawing, initialLimit), [drawing, initialLimit]);
+  const termClosed = closedTerm !== undefined && drawing.schema === 'definograph.structure.positional.v1';
+  const initial = useMemo(() => initialVisibility(drawing, initialLimit, termClosed), [drawing, initialLimit, termClosed]);
   const [state, setState] = useState({ drawing, visible: initial });
   const [focused, setFocused] = useState<{ drawing: StructuralReadingDrawing; id: string }>();
   const visible = state.drawing === drawing ? state.visible : initial;
@@ -283,11 +286,11 @@ export function StructuralReading({ drawing, selectedPath, onSourceSelect, initi
     </article>;
   }
   const isPositional = drawing.schema === 'definograph.structure.positional.v1';
-  return <section className="structural-reading" data-positional={isPositional || undefined} aria-label={isPositional ? positionalRootTitles ? 'Exact positional structure' : 'Exact selected structure' : 'Exact source structure'}><header><div><h3>{isPositional ? positionalRootTitles ? 'Positional expression structure' : 'Selected occurrence structure' : 'Source structure'}</h3><p>{isPositional ? positionalRootTitles ? 'Constructor roles in both expression roots and their shared context.' : 'Constructor roles in the selected term, its inferred type, and their shared context.' : 'Constructor roles and lexical scopes of the imported expression.'} This drawing does not assert typing or evidence.</p></div><button type="button" className="toolbar-button" onClick={() => { setState({ drawing, visible: initial }); setFocused(undefined); }}>Reset folds</button></header>
+  return <section className="structural-reading" data-positional={isPositional || undefined} aria-label={isPositional ? positionalRootTitles ? 'Exact positional structure' : 'Exact selected structure' : 'Exact source structure'}><header><div><h3>{isPositional ? positionalRootTitles ? 'Positional expression structure' : 'Selected occurrence structure' : 'Source structure'}</h3><p>{isPositional ? termClosed ? 'Constructor roles in the type root and the shared context. The term root is not drawn.' : positionalRootTitles ? 'Constructor roles in both expression roots and their shared context.' : 'Constructor roles in the selected term, its inferred type, and their shared context.' : 'Constructor roles and lexical scopes of the imported expression.'} This drawing does not assert typing or evidence.</p></div><button type="button" className="toolbar-button" onClick={() => { setState({ drawing, visible: initial }); setFocused(undefined); }}>Reset folds</button></header>
     <div className="struct-legend"><span><i/>Ordered constructor connection</span><span><i data-kind="reference"/>Declaration reference, not a mathematical arrow</span></div>
     <div className="struct-canvas">{drawing.schema === 'definograph.structure.positional.v1' ? <>
       <section className="struct-positional-context" aria-label="Surrounding context" data-complete-home={drawing.rootHomeId}><h4>Surrounding context, oldest first</h4><p>{drawing.contextDeclarationIds.length === 1 ? 'The 1 context entry is retained, even if it is unused.' : drawing.contextDeclarationIds.length ? `All ${drawing.contextDeclarationIds.length} context entries are retained, including unused entries.` : 'Empty surrounding context.'} {positionalRootTitles ? 'Both expression roots use this complete context.' : 'The selected term and inferred type use this complete context.'}</p>{contextUnmatched && <p className="struct-context-note" data-recorded-kinds-unmatched="">{UNMATCHED_RECORDED_KINDS}</p>}{drawing.contextDeclarationIds.map((id, position) => { const declaration = index.declarations.get(id); return declaration?.kind === 'positional' ? positional(declaration, position) : <p className="struct-error" key={id}>Context entry unavailable.</p>; })}</section>
-      <div className="struct-positional-roots"><section className="struct-root-section" aria-label={positionalRootTitles?.term ?? 'Selected term'} data-structure-root="term" data-root-home={drawing.rootHomeId}><h4>{positionalRootTitles?.term ?? 'Selected term'}</h4>{renderNode(drawing.rootId, 0)}</section><section className="struct-root-section" aria-label={positionalRootTitles?.type ?? 'Inferred type'} data-structure-root="type" data-root-home={drawing.rootHomeId}><h4>{positionalRootTitles?.type ?? 'Inferred type'}</h4>{renderNode(drawing.typeRootId, 0)}</section></div>
+      <div className="struct-positional-roots"><section className="struct-root-section" aria-label={positionalRootTitles?.term ?? 'Selected term'} data-structure-root="term" data-root-home={drawing.rootHomeId} data-root-closed={termClosed || undefined}><h4>{positionalRootTitles?.term ?? 'Selected term'}</h4>{termClosed ? closedTerm : renderNode(drawing.rootId, 0)}</section><section className="struct-root-section" aria-label={positionalRootTitles?.type ?? 'Inferred type'} data-structure-root="type" data-root-home={drawing.rootHomeId}><h4>{positionalRootTitles?.type ?? 'Inferred type'}</h4>{renderNode(drawing.typeRootId, 0)}</section></div>
     </> : <>{drawing.externalDeclarationIds.length > 0 && <section className="struct-registered-context" aria-label="Registered context"><h4>Registered context, oldest first</h4>{drawing.externalDeclarationIds.map(id => { const declaration = index.declarations.get(id); return declaration?.kind === 'external' ? external(declaration) : <p className="struct-error" key={id}>Registered declaration unavailable.</p>; })}</section>}{renderNode(drawing.rootId, 0)}</>}</div>
     <p className="struct-view-count">{visible.size} of {counted(drawing.nodes.length, 'constructor node')} shown. Folded branches retain their exact source positions and scopes.</p>
   </section>;

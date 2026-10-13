@@ -52,6 +52,19 @@ Notation can hide universes, implicit arguments and instance choices: two distin
 metric instances can both print as `{y | dist y x < δ}`. Their exact expressions
 remain distinct in the details; printed text is not expression identity.
 
+A proof inside the result is printed closed, with the statement it proves:
+`⟨a, (⋯ : a < d)⟩`. The printer runs with Lean's `pp.proofs.withType` option, and
+this elision is the intended display, not a failure. What counts as a proof here
+is decided by the printer's own `Meta.isProof`; no receipt is added for it. Under
+a text that contains `(⋯ :` the reader says so: the printer left out a term it
+classed as a proof, that is the printer's report and not a kernel check, and the
+exact term remains in details. Lean
+never elides an atomic proof such as a hypothesis name, and a file that sets
+`pp.proofs true` asks the printer to show proof terms. The exact proof term stays
+in the result. For a definition opened by exposure that term is usually a
+constant: Lean stores a definition's nested proofs as auxiliary theorems
+(`name._proof_n`), and exposure refuses to open a theorem head.
+
 `sourceDecompositionPresentation` is a separate, versioned response sidecar
 (`definograph.source-presentation.v1`). An available presentation binds its text to
 the capture ID, last operation index, exposure target and exact result triple
@@ -63,8 +76,9 @@ Printing is bounded to 4,000 input expression nodes across scope, term and carri
 input depth 80, recursion depth 128, 20,000 printer steps and at most 10,000 Lean
 heartbeats within the enclosing remaining budget. Display text is limited to 8,192
 Unicode characters and 32 KiB of UTF-8; the entire sidecar is at most 128 KiB.
-Printer omissions, unsupported results, failures and missing or over-budget text
-show an explicit fallback. Optional display data is dropped before exact records
+Depth and step-limit omissions, unsupported results, failures and missing or
+over-budget text show an explicit fallback. An elided proof printed with its
+statement is not such an omission. Optional display data is dropped before exact records
 when the existing 4 MiB response or 16 MiB retained-history limit is reached.
 
 ## The step
@@ -235,7 +249,8 @@ metadata fields, 128 parameters/universes, and an explicit omitted-field count.
 
 `npm run test:source-presentation` exercises real native printing of Metric.ball,
 UniformContinuousOn, a renamed wrapper, shadowed lambda/let scope, dependent
-partial application, inferred-type exposure and distinct explicit metric instances. It also checks opaque
+partial application, inferred-type exposure, a definition body whose nested proof prints closed with its
+statement, and distinct explicit metric instances. It also checks opaque
 refusal, printer/text limits, stale or wrong result associations, unchanged exact
 records and retained replay history. The test uses the configured pinned Lean
 engine and built imports; it does not download dependencies.

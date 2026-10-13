@@ -87,6 +87,20 @@ describe('editor host boundary', () => {
       { ...response, sourceSnapshotOrigin: { ...sourceSnapshotOrigin, document: { ...sourceSnapshotOrigin.document, version: 3 } } },
     ]) expect(parseEditorMessage(altered)).toBeUndefined();
   });
+  it('carries the reported selection class on results and errors and refuses any other value', () => {
+    const analysis = { source: 'True', tree: { id: 'root', children: [] }, expression: {}, guidedContextContract: 'definograph.guided-context.v1' };
+    for (const selectionClass of ['proposition', 'proof', 'other']) {
+      const failed = parseEditorMessage({ ...message, selectionClass });
+      expect(failed && 'selectionClass' in failed && failed.selectionClass).toBe(selectionClass);
+      const read = parseEditorMessage({ ...message, type: 'statementlens.analysis', analysis, selectionClass });
+      expect(read?.type).toBe('statementlens.analysis'); expect(read && 'selectionClass' in read && read.selectionClass).toBe(selectionClass);
+      // An incompatible guided reading is refused; the class reported with the capture stays with it.
+      const incompatible = parseEditorMessage({ ...message, type: 'statementlens.analysis', analysis: { ...analysis, guidedContextContract: 'unsupported' }, selectionClass });
+      expect(incompatible?.type).toBe('statementlens.error'); expect(incompatible && 'selectionClass' in incompatible && incompatible.selectionClass).toBe(selectionClass);
+    }
+    expect(parseEditorMessage({ ...message, selectionClass: undefined })).toBeDefined();
+    for (const selectionClass of ['proof-type', 'theorem', '', null, true, 1, { class: 'proof' }, ['proof']]) expect(parseEditorMessage({ ...message, selectionClass })).toBeUndefined();
+  });
   it('accepts a bounded independent omission and refuses malformed or oversized omissions', () => {
     expect(parseEditorMessage({ ...message, sourceOccurrenceUnavailable: 'No fresh occurrence record was produced.' })).toBeDefined();
     for (const omission of [null, {}, 'x'.repeat(4097)]) expect(parseEditorMessage({ ...message, sourceOccurrenceUnavailable: omission })).toBeUndefined();

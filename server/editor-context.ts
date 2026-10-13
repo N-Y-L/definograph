@@ -16,6 +16,7 @@ import { validateSourceHeadExposure, type HeadExposureTarget, type SourceHeadExp
 import { validateDecompositionHistory, decompositionPlan, validateSourceDecomposition,
   type DecompositionOperation, type SourceDecompositionBundle } from '../src/editor/source-decomposition.js';
 import { sanitizeSourcePresentation } from '../src/editor/source-presentation.js';
+import { isSelectionClass } from '../src/editor/selection-class.js';
 
 export interface EditorPosition { line: number; character: number }
 export interface EditorRange { start: EditorPosition; end: EditorPosition }
@@ -272,6 +273,8 @@ export async function analyzeEditorContext(request: EditorContextRequest): Promi
       response.code = 'EDITOR_COMPATIBILITY';
       delete response.tree; delete response.expression;
     }
+    // The elaborator's class of the chosen term accompanies every outcome of the guided reading, including its refusal.
+    if (Object.hasOwn(response, 'selectionClass') && !isSelectionClass(response.selectionClass)) throw new WorkerError('EDITOR_PROTOCOL', 'Invalid selection class.');
     if (response.sourceSnapshotUnavailable !== undefined && (typeof response.sourceSnapshotUnavailable !== 'string' || [...response.sourceSnapshotUnavailable].length > 4096 || Object.hasOwn(response, 'sourceSnapshot'))) throw new WorkerError('EDITOR_PROTOCOL', 'Invalid source capture omission record.');
     if (response.sourceOccurrenceUnavailable !== undefined && (typeof response.sourceOccurrenceUnavailable !== 'string' || [...response.sourceOccurrenceUnavailable].length > 4096 || Object.hasOwn(response, 'sourceOccurrence'))) throw new WorkerError('EDITOR_PROTOCOL', 'Invalid source occurrence omission record.');
     if (!occurrence && (Object.hasOwn(response, 'sourceOccurrence') || Object.hasOwn(response, 'sourceOccurrenceUnavailable'))) throw new WorkerError('EDITOR_PROTOCOL', 'The context worker returned an unrequested source occurrence.');
