@@ -11,6 +11,7 @@
  * that the type is not a proposition, the term is not closed, whatever the
  * elaborator reported. The typing verdict and the axiom list are the snapshot's
  * own component receipt and its audit, read as they were recorded. */
+import { counted } from '../core/counted';
 import { createExactJsonTools } from '../packets/packet';
 import { nameText } from '../packets/syntax';
 import { scopedExpressionLabel } from './definition-occurrences';
@@ -133,9 +134,11 @@ export function rootProofFold(input: ProofFoldInput): ProofFold | undefined {
 
 /** Fixed sentences of the closed-proof leaf. A kernel verdict is worded as one only for a recorded accepted or
  * rejected declaration; everything the elaborator reported is worded as a report. Each line names the judgement it
- * is about: the typing of the prepared term, and the statement being a proposition. Neither says the statement holds. */
+ * is about: the typing of the prepared term, and the statement being a proposition. Neither says the statement holds.
+ * The leaf shows the statement, the one-line verdict and the two warnings; every other sentence sits behind its one
+ * disclosure, whose label counts the constructor nodes that are not drawn. */
 export const proofWording = Object.freeze({
-  /** The term is called a proof term only on the kernel basis. */
+  /** What the leaf stands for. The term is called a proof term only on the kernel basis. */
   heading(fold: ProofFold): string { return fold.basis === 'kernel' ? 'Proof term, not drawn' : 'Term reported as a proof, not drawn'; },
   /** Display titles of the term and its type where the whole checked term is shown closed. */
   titles(fold: ProofFold): { term: string; type: string } {
@@ -146,16 +149,25 @@ export const proofWording = Object.freeze({
   openArguments: 'Proof arguments inside this term are not yet folded: they are drawn as ordinary structure and are not labelled as proofs.',
   /** The same limit for a selection shown closed: only the selected term itself is closed. */
   closedSelection(fold: ProofFold): string {
-    return `${proofWording.selected(fold)}, not drawn. Source Term shows it closed as ${proofWording.closed(fold.statement)}. Proof arguments inside the statement and in local definitions are not yet folded: they are drawn as ordinary structure and are not labelled as proofs.`;
+    return `${proofWording.selected(fold)}, closed at Source Term as ${proofWording.closed(fold.statement)}. Proof arguments inside the statement and in local definitions are still drawn as ordinary structure.`;
   },
-  /** No class was reported and no kernel check reads the type. A live capture names the likely cause. */
+  /** No class was reported and no kernel check reads the type. A live capture names the remedy. */
   unreported(live: boolean): string {
-    return `${live ? 'The editor host did not report Lean’s class of this selection' : 'This saved record does not hold Lean’s class of the selection'}, so the term is drawn as recorded: it may be a proof, and proof arguments inside it are not labelled.${live ? ' Rebuild the engine and install the matching extension, then run the selection again.' : ''}`;
+    return `${live ? 'Lean’s class of this selection was not reported' : 'This saved record does not hold Lean’s class of the selection'}: the term may be a proof, and no proof inside it is labelled.${live ? ' Rebuild the engine and install the matching extension, then run the selection again.' : ''}`;
   },
   closed(statement: ProofStatement): string { return statement.source === 'record' ? '⋯' : `(⋯ : ${statement.text})`; },
-  /** Shown on the leaf that stands for the original term: every other line is read from the prepared frame. */
-  originalFrame: 'This position holds the original term, before preparation. It is not drawn and stays in the saved snapshot. The lines below are about the prepared term under Checker input; the record does not prove the two frames equivalent.',
-  expected: 'The expected type recorded at this position is not the same expression as this inferred type; see the Expected type tab of Source data.',
+  /** The label of the one disclosure, which stays in view: what it holds, and how much of the term is not drawn. On
+   * the leaf that stands for the original term it names the frame that was checked, whose nodes the count is of. */
+  checked(fold: ProofFold, original: boolean): string {
+    const undrawn = fold.termNodes === null ? 'term not drawn' : `${counted(fold.termNodes, 'constructor node')} not drawn`;
+    return `${original ? 'What was checked: the prepared term' : 'What was checked'} · ${undrawn}`;
+  },
+  /** Opens the verdict on the leaf that stands for the original term: the verdict is the prepared term's. */
+  preparedSubject: 'Prepared term.',
+  /** Shown on the leaf that stands for the original term: every line is read from the prepared frame. */
+  originalFrame: 'This position holds the original term, before preparation. It is not drawn and stays in the saved snapshot. Every line of this leaf is about the prepared term under Checker input; the record does not prove the two frames equivalent.',
+  /** A comparison of two recorded expressions, and nothing about which of them holds. */
+  expected: 'The expected type recorded for this selection is a different expression; see the Expected type tab of Source data.',
   statement(statement: ProofStatement): string {
     if (statement.source === 'printed') return 'Statement: the inferred type of the term, printed by Lean’s elaborator with local definitions substituted.';
     if (statement.source === 'recorded') return 'Statement: the recorded inferred type of the term, written out with every argument explicit.';
@@ -190,9 +202,9 @@ export const proofWording = Object.freeze({
     if (!found) return `${proofWording.basisLead(fold)} No kernel check of this is recorded.`;
     return `${proofWording.basisLead(fold)} Attempt ${found.attempt} records that check (${found.formationOutcomes.length === 1 ? 'outcome' : 'outcomes'} ${found.formationOutcomes.join(', ')}) and an accepted typing of the term (outcome ${found.typingOutcome}). Its supply reading lists the full conditions.`;
   },
-  /** The verdict in one line, for a place that shows the statement by other means. */
+  /** The one line under a statement: the typing outcome, the axioms, and whose word it is that the statement is a proposition. */
   verdict(fold: ProofFold): string {
-    return `${proofWording.selected(fold)}. ${proofWording.typingLead(fold.typing)} ${proofWording.axiomsLead(fold.axioms)} ${proofWording.basisLead(fold)}${fold.expectedDiffers ? ` ${proofWording.expected}` : ''}`;
+    return `${proofWording.typingLead(fold.typing)} ${proofWording.axiomsLead(fold.axioms)} ${proofWording.basisLead(fold)}`;
   },
   /** Where the undrawn term can still be read. Check outcomes holds it only when a receipt for the term is recorded. */
   data(fold: ProofFold): string {
@@ -200,6 +212,7 @@ export const proofWording = Object.freeze({
     return `${recorded} is kept as data and is not drawn. Its exact form stays ${fold.typing.status === 'recorded' ? 'under Check outcomes and in the saved snapshot' : 'in the saved snapshot'}.`;
   },
   checkStatement: 'Check with the kernel that this statement is a proposition',
-  checkStatementNote: 'This reruns the current Lean buffer twice: once to check the whole selected term, once to inspect its type. The term stays closed.',
+  /** Kept with the other details; the action it describes sits directly above the disclosure. */
+  checkStatementNote: 'The check above reruns the current Lean buffer twice: once to check the whole selected term, once to inspect its type. The term stays closed.',
   checkStopped: 'The check of the whole selected term returned no checked pair, so its type was not inspected. Its record is under Chosen occurrence checks in Checker input.',
 });

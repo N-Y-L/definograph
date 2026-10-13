@@ -15,6 +15,11 @@
 .snapshot-exact > summary { cursor: pointer; font-size: .85rem; }
 .snapshot-exact .struct-exact-value { max-width: 100%; }
 .source-snapshot code { overflow-wrap: anywhere; }
+/* A closed proof: its statement is the largest text of the leaf, and the checking record sits behind one disclosure. */
+.proof-leaf > .proof-leaf-statement { display: block; font-size: 1.15rem; line-height: 1.5; white-space: pre-wrap; }
+.proof-leaf > p, .proof-leaf > details > p { margin: 6px 0 0; font-size: .8rem; color: var(--muted); }
+.proof-leaf > details { margin-top: 9px; font-size: .8rem; }
+.proof-leaf > details > summary { cursor: pointer; }
 .occurrence-choice, .source-occurrence, .source-head-exposure { margin: 20px 0; padding: 14px; border: 1px solid light-dark(#bccbc0, #556d5b); border-radius: 10px; min-width: 0; }
 .source-occurrence h3, .source-head-exposure h3 { margin-top: 0; }
 .head-exposure-action { margin: 16px 0; padding: 12px; border: 1px solid light-dark(#d9e0db, #576b5d); border-radius: 8px; }

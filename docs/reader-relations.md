@@ -33,16 +33,16 @@ focus; they do not select another history or request a native check.
 
 The whole selected term is a special case of this reading. When Lean's elaborator
 reports that term as a proof, the Source data views show it as one closed leaf,
-`(⋯ : statement)`, with the snapshot's own typing verdict and axiom list, and its
-line on the statement being a proposition reads “reported by Lean’s elaborator”.
-When a type-of step taken on that whole term yields the two receipts of the
-Supply row, an accepted typing of the term and an established proposition
-formation of its type, that line reads “accepted by Lean’s kernel” and names the
-attempt and its outcome numbers, and the leaf stays closed on that basis alone.
-An accepted typing on the leaf carries this panel's sentence on kernel
-acceptance: a typing outcome in the captured environment, not a statement that
-the proposition is true. If the same step establishes the
-type as a type, the term is drawn as an ordinary value. The leaf
+`(⋯ : statement)`. One line under the statement gives the snapshot's own typing
+verdict and axiom list, and says of the statement being a proposition “reported
+by Lean’s elaborator”. When a type-of step taken on that whole term yields the two
+receipts of the Supply row, an accepted typing of the term and an established
+proposition formation of its type, that line reads “accepted by Lean’s kernel”,
+and the leaf stays closed on that basis alone. The rest is behind the leaf's one
+disclosure, **What was checked**: the attempt and its outcome numbers, and, after
+an accepted typing, this panel's sentence on kernel acceptance: a typing outcome
+in the captured environment, not a statement that the proposition is true. If the
+same step establishes the type as a type, the term is drawn as an ordinary value. The leaf
 is derived for display like the panels and is not saved. A term that is not the
 whole selection is not closed by this rule, and proof arguments inside a selected
 term are drawn as ordinary structure; the drawer says so. See

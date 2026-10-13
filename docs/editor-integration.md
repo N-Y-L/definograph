@@ -59,18 +59,19 @@ The **Source data** tab independently captures the original term, local declarat
 prepared checker input and available source-check outcomes. If no proposition is
 eligible, the smallest available elaborated term can supply a raw snapshot while
 the guided reader reports that it cannot read that selection. A selected proof
-is not drawn there. In place of the term the tab shows the statement it proves,
-the recorded typing verdict and axiom list, and whether the statement being a
-proposition is reported by Lean's elaborator or accepted by Lean's kernel. A
-capture that arrives without Lean's class, as from an extension installed before
-this change, says so and draws the term as recorded. See
-[exact source snapshots](editor-source-snapshots.md) for its separate contract.
+is not drawn there. In place of the term the tab shows the statement it proves
+and, under it, one line: the recorded typing verdict, the axiom list, and whether
+the statement being a proposition is reported by Lean's elaborator or accepted by
+Lean's kernel. Every further qualifier is behind one disclosure, **What was
+checked**, whose label counts the constructor nodes that are not drawn. A capture that arrives without Lean's class, as from an extension
+installed before this change, says so in one line and draws the term as recorded.
+See [exact source snapshots](editor-source-snapshots.md) for its separate contract.
 
 The guided reader labels a selected proof **Statement of your selected proof**
 and displays its inferred proposition with the recorded context. Below the title
-one line gives the typing verdict, the axiom list recorded for the selected
-term and the same basis as the Source data leaf, and says when the recorded
-expected type is not the inferred type shown. **Inspect a
+is the same one line as on the Source data leaf: the typing verdict, the axiom
+list recorded for the selected term, and the basis. A second short line appears
+when the recorded expected type is a different expression. **Inspect a
 definition in this statement** retains the current clause and ordered context
 beside a searchable list of applications from the whole exact statement. Choose
 an occurrence with its actual arguments and scope to check it and expose one

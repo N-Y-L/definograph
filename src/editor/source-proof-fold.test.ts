@@ -51,11 +51,37 @@ describe('closed proof reading, constructed controls', () => {
     expect(proofWording.axioms(fold.axioms)).toBe('Axioms recorded for that declaration: Classical.choice, propext, Quot.sound.');
     expect(proofWording.basis(fold)).toBe('Statement is a proposition: reported by Lean’s elaborator. No kernel check of this is recorded.');
     expect(proofWording.data(fold)).toBe('The prepared term, 1 constructor node, is kept as data and is not drawn. Its exact form stays under Check outcomes and in the saved snapshot.');
-    expect(proofWording.verdict(fold)).toBe('Selected term reported as a proof. Typing: accepted by Lean’s kernel. Axioms: Classical.choice, propext, Quot.sound. Statement is a proposition: reported by Lean’s elaborator.');
+    expect(proofWording.verdict(fold)).toBe('Typing: accepted by Lean’s kernel. Axioms: Classical.choice, propext, Quot.sound. Statement is a proposition: reported by Lean’s elaborator.');
     // On the elaborator's report nothing calls the term a proof outright, and no kernel wording is attached to the proposition.
     for (const line of [proofWording.heading(fold), proofWording.titles(fold).term, proofWording.selected(fold), proofWording.verdict(fold), proofWording.closedSelection(fold)]) expect(line).not.toMatch(/proof term|^Proof/i);
     expect(`${proofWording.basis(fold)} ${proofWording.verdict(fold)}`).not.toContain('proposition: accepted by Lean’s kernel');
-    expect(proofWording.closedSelection(fold)).toBe('Selected term reported as a proof, not drawn. Source Term shows it closed as (⋯ : P). Proof arguments inside the statement and in local definitions are not yet folded: they are drawn as ordinary structure and are not labelled as proofs.');
+    // The drawer's line keeps the statement and states the remaining limit once.
+    expect(proofWording.closedSelection(fold)).toBe('Selected term reported as a proof, closed at Source Term as (⋯ : P). Proof arguments inside the statement and in local definitions are still drawn as ordinary structure.');
+  });
+  it('gives the verdict as one line that claims no more than the detail lines behind the disclosure', () => {
+    const kernel = withSupply(() => [link('supplier')], () => rootProofFold({ snapshot: proofSnapshot(), history: historyOf(['typeComponent']) }))!;
+    const folds = [kernel, ...[{}, { axioms: ['sorryAx'] }, { outcome: { tag: 'rejected', kind: 'typeError', detail: 'type mismatch' } as const }, { outcome: { tag: 'unknown', message: 'heartbeats exhausted' } as const },
+      { stoppedAfterContext: 'callback failed' }, { unchecked: 'The prepared context exceeds 128 declarations.' }, { unprepared: true }].map(options => rootProofFold({ snapshot: proofSnapshot(options), selectionClass: 'proof' })!)];
+    const count = (text: string, phrase: string) => text.split(phrase).length - 1;
+    for (const fold of folds) {
+      const verdict = proofWording.verdict(fold), details = `${proofWording.typing(fold.typing)} ${proofWording.axioms(fold.axioms)} ${proofWording.basis(fold)}`;
+      // Three short sentences: the typing outcome, the axioms, and whose word it is that the statement is a proposition.
+      expect(verdict).toBe(`${proofWording.typingLead(fold.typing)} ${proofWording.axiomsLead(fold.axioms)} ${proofWording.basisLead(fold)}`);
+      expect(verdict).toMatch(/^Typing: [^.]+\. Axioms: .+\. Statement is a proposition: [^.]+\.$/);
+      expect(verdict).not.toMatch(/\n|not drawn|kept as data|captured environment/);
+      // Every sentence of the verdict opens a detail line, so the kernel is named exactly as often as the details name it.
+      for (const phrase of ['accepted by Lean’s kernel', 'rejected by Lean’s kernel', 'reported by Lean’s elaborator']) expect(count(verdict, phrase), `${phrase}: ${verdict}`).toBe(count(details, phrase));
+      for (const lead of [proofWording.typingLead(fold.typing), proofWording.basisLead(fold)]) expect(details).toContain(lead);
+    }
+    expect(count(proofWording.verdict(kernel), 'accepted by Lean’s kernel')).toBe(2);
+    expect(folds.slice(3).map(fold => count(proofWording.verdict(fold), 'accepted by Lean’s kernel'))).toEqual([0, 0, 0, 0, 0]);
+    // The disclosure's label stays in view: it says what it holds and counts what is not drawn. On the leaf that
+    // stands for the original term it names the frame, and that leaf's verdict opens with its subject.
+    expect(proofWording.checked(kernel, false)).toBe('What was checked · 1 constructor node not drawn');
+    expect(proofWording.checked(kernel, true)).toBe('What was checked: the prepared term · 1 constructor node not drawn');
+    expect(proofWording.checked({ ...kernel, termNodes: 4 }, false)).toBe('What was checked · 4 constructor nodes not drawn');
+    expect(proofWording.checked(folds.at(-1)!, false)).toBe('What was checked · term not drawn');
+    expect(proofWording.preparedSubject).toBe('Prepared term.');
   });
   it('lists a placeholder axiom as recorded and never reads it for the verdict', () => {
     const fold = rootProofFold({ snapshot: proofSnapshot({ axioms: ['sorryAx'] }), selectionClass: 'proof' })!;
@@ -75,7 +101,7 @@ describe('closed proof reading, constructed controls', () => {
     expect(proofWording.typing(unchecked.typing)).toBe('Typing: no kernel verdict is recorded. The prepared context exceeds 128 declarations.');
     expect(proofWording.axioms(unchecked.axioms)).toBe('Axioms: not recorded. The prepared context exceeds 128 declarations.');
     for (const fold of [rejected, unknown, stopped, unchecked]) expect(`${proofWording.typing(fold.typing)} ${proofWording.verdict(fold)}`).not.toContain('Typing: accepted');
-    expect(proofWording.verdict(rejected)).toBe('Selected term reported as a proof. Typing: rejected by Lean’s kernel. Axioms: not recorded. Statement is a proposition: reported by Lean’s elaborator.');
+    expect(proofWording.verdict(rejected)).toBe('Typing: rejected by Lean’s kernel. Axioms: not recorded. Statement is a proposition: reported by Lean’s elaborator.');
     expect(proofWording.verdict(unknown)).toContain('Typing: no kernel verdict. Axioms: not recorded.');
     // Check outcomes holds the term only when a receipt for it is recorded.
     for (const fold of [stopped, unchecked]) expect(proofWording.data(fold)).toBe('The prepared term, 1 constructor node, is kept as data and is not drawn. Its exact form stays in the saved snapshot.');
@@ -103,9 +129,10 @@ describe('closed proof reading, constructed controls', () => {
     expect(same.expectedDiffers).toBe(false); expect(differs.expectedDiffers).toBe(true);
     expect(rootProofFold({ snapshot: proofSnapshot(), selectionClass: 'proof' })!.expectedDiffers).toBe(false);
     expect(rootProofFold({ snapshot: proofSnapshot({ unprepared: true }), selectionClass: 'proof' })!.expectedDiffers).toBe(false);
-    expect(proofWording.verdict(differs)).toBe(`${proofWording.verdict(same)} ${proofWording.expected}`);
+    // The difference is its own short line beside the verdict, which stays the same.
+    expect(proofWording.verdict(differs)).toBe(proofWording.verdict(same));
     // The sentence states a difference of recorded expressions and nothing about which one holds.
-    expect(proofWording.expected).toBe('The expected type recorded at this position is not the same expression as this inferred type; see the Expected type tab of Source data.');
+    expect(proofWording.expected).toBe('The expected type recorded for this selection is a different expression; see the Expected type tab of Source data.');
   });
   it('tells an unreported class from a class Lean reported and from a type the kernel read', () => {
     const snapshot = proofSnapshot();
@@ -115,8 +142,8 @@ describe('closed proof reading, constructed controls', () => {
       expect(withSupply(() => [link(status)], () => selectionClassUnknown({ snapshot, history: historyOf(['typeComponent']) }))).toBe(false);
     expect(withSupply(() => [link('not-established')], () => selectionClassUnknown({ snapshot, history: historyOf(['typeComponent']) }))).toBe(true);
     expect(selectionClassUnknown({ snapshot, history: historyOf(['logical']) })).toBe(true);
-    expect(proofWording.unreported(true)).toBe('The editor host did not report Lean’s class of this selection, so the term is drawn as recorded: it may be a proof, and proof arguments inside it are not labelled. Rebuild the engine and install the matching extension, then run the selection again.');
-    expect(proofWording.unreported(false)).toBe('This saved record does not hold Lean’s class of the selection, so the term is drawn as recorded: it may be a proof, and proof arguments inside it are not labelled.');
+    expect(proofWording.unreported(true)).toBe('Lean’s class of this selection was not reported: the term may be a proof, and no proof inside it is labelled. Rebuild the engine and install the matching extension, then run the selection again.');
+    expect(proofWording.unreported(false)).toBe('This saved record does not hold Lean’s class of the selection: the term may be a proof, and no proof inside it is labelled.');
   });
   it('takes the kernel basis from an accepted supply reading of a type-component step on the whole term', () => {
     const snapshot = proofSnapshot();
@@ -127,8 +154,8 @@ describe('closed proof reading, constructed controls', () => {
     expect(fold.established).toEqual({ attempt: 2, typingOutcome: 6, formationOutcomes: [8] });
     // The label names the judgement the kernel accepted: that the statement is a proposition, not the statement itself.
     expect(proofWording.basis(fold)).toBe('Statement is a proposition: accepted by Lean’s kernel. Attempt 2 records that check (outcome 8) and an accepted typing of the term (outcome 6). Its supply reading lists the full conditions.');
-    expect(proofWording.verdict(fold)).toBe('Selected proof term. Typing: accepted by Lean’s kernel. Axioms: none. Statement is a proposition: accepted by Lean’s kernel.');
-    expect(proofWording.closedSelection(fold)).toMatch(/^Selected proof term, not drawn\. Source Term shows it closed as \(⋯ : P\)\./);
+    expect(proofWording.verdict(fold)).toBe('Typing: accepted by Lean’s kernel. Axioms: none. Statement is a proposition: accepted by Lean’s kernel.');
+    expect(proofWording.closedSelection(fold)).toMatch(/^Selected proof term, closed at Source Term as \(⋯ : P\)\./);
     expect(proofWording.checkStatement).toBe('Check with the kernel that this statement is a proposition');
     // The kernel basis needs no report from the elaborator, and a report does not change it.
     expect(withSupply(() => [link('supplier')], () => rootProofFold({ snapshot, selectionClass: 'other', history: historyOf(['typeComponent']) }))!.basis).toBe('kernel');

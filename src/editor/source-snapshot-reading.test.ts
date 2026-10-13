@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { ProofLeaf, ProofVerdict } from './ProofLeaf';
 import { SourceOccurrenceReading, SourceSnapshotReading } from './SourceSnapshotReading';
 import { validateSourceSnapshot } from './source-snapshot';
 import type { SourceSnapshotOrigin } from './source-origin';
@@ -84,6 +85,15 @@ describe('a selected proof is shown closed with the statement it proves', () => 
   const axioms = ['Classical.choice', 'propext', 'Quot.sound'];
   const callback = () => undefined;
   const termPosition = (html: string) => html.split('data-raw-role="sourceTerm"')[1].split('data-raw-role="sourceType"')[0];
+  /** The leaf at a term position: what a reader sees before opening anything, and the body of its one disclosure. */
+  function leafParts(term: string) {
+    const leaf = term.slice(term.indexOf('<div class="struct-fold proof-leaf"'));
+    // A native disclosure without the `open` attribute is closed until the reader opens it.
+    expect(leaf.match(/<details[^>]*>/g)).toEqual(['<details data-proof-checked="">']);
+    const [before, rest] = leaf.split('<details data-proof-checked="">'), [checked, after] = rest.split('</details>');
+    // The disclosure's own label is in view while it is closed.
+    return { shown: before + after.slice(0, after.indexOf('</div>') + '</div>'.length), label: /^<summary>([^<]*)<\/summary>/.exec(checked)![1], checked };
+  }
   it('draws no structure for the proof term and offers no occurrence choice inside it', () => {
     const snapshot = proofSnapshot({ axioms, term: idApplied });
     for (const initialTab of ['original', 'prepared'] as const) {
@@ -92,17 +102,24 @@ describe('a selected proof is shown closed with the statement it proves', () => 
       expect(term).toContain('data-raw-closed="true"'); expect(term).toContain('data-proof-leaf="elaborator"');
       expect(term).not.toContain('data-raw-constructor'); expect(term).not.toContain('Exact fields and constructor path');
       expect(html).not.toContain('Choose occurrence'); expect(html).not.toContain('Choose a constructor inside the prepared term');
-      expect(term).toContain('<strong>Term reported as a proof, not drawn</strong>');
-      expect(term).toContain('<code data-proof-statement="recorded">(⋯ : P)</code>');
-      expect(term).toContain('data-proof-typing="accepted"'); expect(term).toContain('Typing: accepted by Lean’s kernel.');
-      expect(term).toContain('Axioms recorded for that declaration: Classical.choice, propext, Quot.sound.');
-      expect(term).toContain('Statement is a proposition: reported by Lean’s elaborator.');
+      // The statement comes first, then one line with the verdict, then the one action and the disclosure's label;
+      // nothing else is in view. The leaf that stands for the original term names the verdict's subject first.
+      const { shown, label, checked } = leafParts(term);
+      expect(shown).toBe('<div class="struct-fold proof-leaf" role="group" aria-label="Term reported as a proof, not drawn" data-proof-leaf="elaborator"><code class="proof-leaf-statement" data-proof-statement="recorded">(⋯ : P)</code>'
+        + `<p data-proof-verdict="elaborator">${initialTab === 'original' ? 'Prepared term. ' : ''}Typing: accepted by Lean’s kernel. Axioms: Classical.choice, propext, Quot.sound. Statement is a proposition: reported by Lean’s elaborator.</p>`
+        + `<button type="button" class="toolbar-button">${proofWording.checkStatement}</button></div>`);
+      // The fold keeps a label and a count in view: the constructor nodes of the term that are not drawn.
+      expect(label).toBe(`What was checked${initialTab === 'original' ? ': the prepared term' : ''} · 4 constructor nodes not drawn`);
       expect(term).not.toContain('proposition: accepted by Lean’s kernel');
+      // Behind the one disclosure, closed until opened: what the leaf stands for and every qualifier, worded as before.
+      expect(checked.startsWith(`<summary>${label}</summary><p>Term reported as a proof, not drawn.</p>`)).toBe(true);
+      expect(checked).toContain('<p data-proof-typing="accepted">Typing: accepted by Lean’s kernel. The recorded declaration gives the prepared term its recorded inferred type in the captured context.</p>');
       // An accepted typing carries the supply panel's own qualifier, directly after the axiom list.
-      expect(term).toContain(`Quot.sound. ${supplierWording.environment}`);
-      expect(term).toContain('Statement: the recorded inferred type of the term, written out with every argument explicit.');
-      expect(term).toContain(`${proofWording.checkStatement}</button>`); expect(term).toContain(proofWording.checkStatementNote);
-      expect(term.includes(proofWording.originalFrame)).toBe(initialTab === 'original');
+      expect(checked).toContain(`<p data-proof-axioms="recorded">Axioms recorded for that declaration: Classical.choice, propext, Quot.sound. ${supplierWording.environment}</p>`);
+      expect(checked).toContain('<p data-proof-basis="elaborator">Statement is a proposition: reported by Lean’s elaborator. No kernel check of this is recorded.</p>');
+      expect(checked).toContain('<p>Statement: the recorded inferred type of the term, written out with every argument explicit.</p>');
+      expect(checked).toContain(`<p>${proofWording.data(rootProofFold({ snapshot, selectionClass: 'proof' })!)}</p>`); expect(checked).toContain(`<p>${proofWording.checkStatementNote}</p>`);
+      expect(checked.includes(`<p data-proof-frame="original">${proofWording.originalFrame}</p>`)).toBe(initialTab === 'original');
       // The declarations and the statement stay drawn around the closed term, and the drawing still holds every node.
       expect(html.split('data-raw-role="sourceType"')[1]).toContain('data-raw-constructor="fvar"');
       expect(html).toContain('data-raw-constructor="cdecl"'); expect(html).toContain('Exact constructor readback checked');
@@ -117,16 +134,21 @@ describe('a selected proof is shown closed with the statement it proves', () => 
     if (snapshot.original.status !== 'available' || snapshot.prepared.status !== 'available') throw Error('fixture frames missing');
     expect(snapshot.original.frame.sourceTerm).not.toEqual(snapshot.prepared.frame.sourceTerm); expect(fold.termNodes).toBeGreaterThan(1);
     const original = termPosition(renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, initialTab: 'original', selectionClass: 'proof' })));
-    expect(original).toContain(`<p data-proof-frame="original">${proofWording.originalFrame}</p>`);
-    expect(original.indexOf(proofWording.originalFrame)).toBeLessThan(original.indexOf('data-proof-statement'));
     expect(original).not.toContain('data-raw-constructor');
+    // In view, the verdict opens with its subject and the disclosure's label names the frame whose nodes it counts.
+    // Behind the disclosure, the first lines say what stands at this position.
+    const { shown, label, checked } = leafParts(original);
+    expect(shown).toContain('</code><p data-proof-verdict="elaborator">Prepared term. Typing: accepted by Lean’s kernel.');
+    expect(label).toBe(`What was checked: the prepared term · ${fold.termNodes} constructor nodes not drawn`);
+    expect(checked.startsWith(`<summary>${label}</summary><p>Term reported as a proof, not drawn.</p><p data-proof-frame="original">${proofWording.originalFrame}</p>`)).toBe(true);
     // Every figure and verdict on that leaf is worded as the prepared term's.
-    expect(original).toContain('Typing: accepted by Lean’s kernel. The recorded declaration gives the prepared term its recorded inferred type');
-    expect(original).toContain(`The prepared term, ${fold.termNodes} constructor nodes, is kept as data`);
-    expect(proofWording.originalFrame).toContain('The lines below are about the prepared term under Checker input');
+    expect(checked).toContain('Typing: accepted by Lean’s kernel. The recorded declaration gives the prepared term its recorded inferred type');
+    expect(checked).toContain(`The prepared term, ${fold.termNodes} constructor nodes, is kept as data`);
+    expect(proofWording.originalFrame).toContain('Every line of this leaf is about the prepared term under Checker input');
     expect(proofWording.originalFrame).toContain('does not prove the two frames equivalent');
-    const prepared = termPosition(renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, initialTab: 'prepared', selectionClass: 'proof' })));
-    expect(prepared).not.toContain('data-proof-frame'); expect(prepared).toContain(`The prepared term, ${fold.termNodes} constructor nodes,`);
+    const prepared = leafParts(termPosition(renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, initialTab: 'prepared', selectionClass: 'proof' }))));
+    expect(prepared.label).toBe(`What was checked · ${fold.termNodes} constructor nodes not drawn`); expect(prepared.shown).not.toContain('Prepared term.');
+    expect(prepared.checked).not.toContain('data-proof-frame'); expect(prepared.checked).toContain(`The prepared term, ${fold.termNodes} constructor nodes,`);
   });
   it('draws the statement beside a closed proof however large the proof term is', () => {
     const nested = (h: unknown) => { let term = h; for (let depth = 0; depth < 20; depth++) term = idApplied(term); return term as never; };
@@ -138,28 +160,52 @@ describe('a selected proof is shown closed with the statement it proves', () => 
   it('points to the recorded expected type when it is not the inferred type shown', () => {
     const truth = ['const', ['str', ['anonymous'], 'True'], []] as never;
     const differs = termPosition(renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot: proofSnapshot({ expected: () => truth }), initialTab: 'prepared', selectionClass: 'proof' })));
-    expect(differs).toContain(`<p data-proof-expected="differs">${proofWording.expected}</p>`);
+    // The warning stays in view as one line under the verdict; it is not behind the disclosure.
+    expect(leafParts(differs).shown).toContain(`Lean’s elaborator.</p><p data-proof-expected="differs">${proofWording.expected}</p>`);
+    expect(leafParts(differs).checked).not.toContain('data-proof-expected');
     expect(differs.indexOf('data-proof-statement')).toBeLessThan(differs.indexOf('data-proof-expected'));
     const same = termPosition(renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot: proofSnapshot({ expected: (_h: unknown, P: unknown) => P as never }), initialTab: 'prepared', selectionClass: 'proof' })));
     expect(same).not.toContain('data-proof-expected');
   });
+  it('gives the main panel the same verdict and expected-type lines as the leaf', () => {
+    const truth = ['const', ['str', ['anonymous'], 'True'], []] as never;
+    const differs = rootProofFold({ snapshot: proofSnapshot({ expected: () => truth }), selectionClass: 'proof' })!, same = rootProofFold({ snapshot: proofSnapshot(), selectionClass: 'proof' })!;
+    expect(renderToStaticMarkup(createElement(ProofVerdict, { fold: differs }))).toBe(`<p data-proof-verdict="elaborator">${proofWording.verdict(differs)}</p><p data-proof-expected="differs">${proofWording.expected}</p>`);
+    expect(renderToStaticMarkup(createElement(ProofVerdict, { fold: same }))).toBe(`<p data-proof-verdict="elaborator">${proofWording.verdict(same)}</p>`);
+    expect(renderToStaticMarkup(createElement(ProofLeaf, { fold: differs }))).toContain(renderToStaticMarkup(createElement(ProofVerdict, { fold: differs })));
+    // The main panel draws these lines through the same component, so it cannot lose the warning by itself.
+    expect(readFileSync(new URL('../App.tsx', import.meta.url), 'utf8')).toContain("selectionKind==='proof-type'&&<ProofVerdict fold={proofFold}/>");
+  });
+  it('says in view that a statement is not written on one line, in the statement’s place', () => {
+    const fold = rootProofFold({ snapshot: proofSnapshot({ unprepared: true }), selectionClass: 'proof' })!;
+    expect(fold.statement).toEqual({ source: 'record' });
+    const leaf = renderToStaticMarkup(createElement(ProofLeaf, { fold }));
+    expect(leaf).toContain('<code class="proof-leaf-statement" data-proof-statement="record">⋯</code><p data-proof-statement-note="">Statement: the recorded inferred type of the term. It is not written on one line here and stays in the record.</p>'
+      + '<p data-proof-verdict="elaborator">Typing: no kernel verdict is recorded. Axioms: not recorded. Statement is a proposition: reported by Lean’s elaborator.</p><details data-proof-checked=""><summary>What was checked · term not drawn</summary>');
+    expect(leaf.split(proofWording.statement(fold.statement))).toHaveLength(2);
+    // A statement that is written out keeps its source note behind the disclosure.
+    expect(renderToStaticMarkup(createElement(ProofLeaf, { fold: rootProofFold({ snapshot: proofSnapshot(), selectionClass: 'proof' })! }))).not.toContain('data-proof-statement-note');
+  });
   it('offers the statement check only as a live action and shows Lean’s printed statement when one was reported', () => {
     const snapshot = proofSnapshot({ term: idApplied });
     const saved = renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, initialTab: 'prepared', selectionClass: 'proof', printedStatement: 'p ∨ ¬p' }));
-    expect(saved).toContain('<code data-proof-statement="printed">(⋯ : p ∨ ¬p)</code>');
-    expect(saved).toContain('Statement: the inferred type of the term, printed by Lean’s elaborator with local definitions substituted.');
-    expect(saved).not.toContain(proofWording.checkStatement);
-    expect(saved).toContain('Axioms recorded for that declaration: none.');
+    expect(saved).toContain('<code class="proof-leaf-statement" data-proof-statement="printed">(⋯ : p ∨ ¬p)</code><p data-proof-verdict="elaborator">Typing: accepted by Lean’s kernel. Axioms: none. Statement is a proposition: reported by Lean’s elaborator.</p>');
+    expect(leafParts(termPosition(saved)).checked).toContain('Statement: the inferred type of the term, printed by Lean’s elaborator with local definitions substituted.');
+    // A saved record offers no check, so neither the action nor its note is shown.
+    expect(saved).not.toContain(proofWording.checkStatement); expect(saved).not.toContain(proofWording.checkStatementNote);
+    expect(leafParts(termPosition(saved)).checked).toContain('Axioms recorded for that declaration: none.');
     const unchecked = renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot: proofSnapshot({ unchecked: 'The prepared context exceeds 128 declarations.' }),
       initialTab: 'prepared', selectionClass: 'proof', onCheckStatement: callback }));
-    expect(termPosition(unchecked)).toContain('Typing: no kernel verdict is recorded. The prepared context exceeds 128 declarations.');
+    // Without a receipt the one line says so; the recorded reason is the Typing line behind the disclosure.
+    expect(leafParts(termPosition(unchecked)).shown).toContain('<p data-proof-verdict="elaborator">Typing: no kernel verdict is recorded. Axioms: not recorded. Statement is a proposition: reported by Lean’s elaborator.</p>');
+    expect(leafParts(termPosition(unchecked)).checked).toContain('<p data-proof-typing="unrecorded">Typing: no kernel verdict is recorded. The prepared context exceeds 128 declarations.</p>');
     expect(termPosition(unchecked)).not.toContain('accepted by Lean’s kernel'); expect(termPosition(unchecked)).not.toContain('data-raw-constructor');
     expect(termPosition(unchecked)).toContain('Statement is a proposition: reported by Lean’s elaborator. No kernel check of this is recorded.');
     // The snapshot's own check could not begin, so no rerun is offered, no acceptance is qualified and Check outcomes is not named as holding the term.
     expect(termPosition(unchecked)).not.toContain(proofWording.checkStatement); expect(termPosition(unchecked)).not.toContain(supplierWording.environment);
     expect(termPosition(unchecked)).toContain('Its exact form stays in the saved snapshot.'); expect(termPosition(unchecked)).not.toContain('under Check outcomes');
     const offered = renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, initialTab: 'prepared', selectionClass: 'proof', onCheckStatement: callback }));
-    expect(termPosition(offered)).toContain(`${proofWording.checkStatement}</button>`); expect(termPosition(offered)).toContain('under Check outcomes and in the saved snapshot');
+    expect(leafParts(termPosition(offered)).shown).toContain(`${proofWording.checkStatement}</button>`); expect(termPosition(offered)).toContain('under Check outcomes and in the saved snapshot');
   });
   it('does not offer the statement check again after a whole-term check that returned no checked pair', () => {
     const snapshot = proofSnapshot({ term: idApplied });
@@ -169,8 +215,8 @@ describe('a selected proof is shown closed with the statement it proves', () => 
     const html = renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, origin: { captureId: PROOF_CAPTURE } as SourceSnapshotOrigin, occurrence, selectionClass: 'proof',
       onCheckOccurrence: callback, onCheckStatement: callback, onContinue: callback }));
     expect(html).toContain('Occurrence record unavailable during occurrence-output: Complete record exceeds the output limit.');
-    expect(termPosition(html)).toContain(`<p data-proof-check="stopped">${proofWording.checkStopped}</p>`);
-    expect(html).not.toContain(proofWording.checkStatement); expect(html).not.toContain('Inspect type of original selected term');
+    expect(leafParts(termPosition(html)).shown).toContain(`<p data-proof-check="stopped">${proofWording.checkStopped}</p>`);
+    expect(html).not.toContain(proofWording.checkStatement); expect(html).not.toContain(proofWording.checkStatementNote); expect(html).not.toContain('Inspect type of original selected term');
     expect(termPosition(html)).toContain('data-proof-leaf="elaborator"'); expect(html).not.toContain('Choose occurrence');
   });
   it('keeps the exact recorded term reachable as data under Check outcomes', () => {
@@ -195,7 +241,9 @@ describe('a selected proof is shown closed with the statement it proves', () => 
     const snapshot = proofSnapshot({ axioms, term: idApplied }), origin = { captureId: PROOF_CAPTURE } as SourceSnapshotOrigin;
     const html = renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, origin, initialTab: 'prepared', onCheckOccurrence: callback, onCheckStatement: callback }));
     expect(html).toContain(`<p class="snapshot-context" data-selection-class="unreported">${proofWording.unreported(true)}</p>`);
-    expect(proofWording.unreported(true)).toContain('it may be a proof'); expect(proofWording.unreported(true)).toContain('install the matching extension');
+    expect(proofWording.unreported(true)).toContain('the term may be a proof'); expect(proofWording.unreported(true)).toContain('install the matching extension');
+    // The warning is a line of the drawer itself: no leaf is shown, so no disclosure can hold it.
+    expect(html).not.toContain('data-proof-checked'); expect(html).not.toContain('data-proof-leaf');
     expect(html).not.toContain(proofWording.openArguments); expect(termPosition(html)).toContain('data-raw-constructor="app"');
     const reported = renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, origin, initialTab: 'prepared', selectionClass: 'other', onCheckOccurrence: callback }));
     expect(reported).not.toContain('data-selection-class'); expect(reported).toContain(proofWording.openArguments);
@@ -238,7 +286,8 @@ describe('a selected proof is shown closed with the statement it proves', () => 
     // Only the kernel basis titles the two roots as a proof term and its statement.
     const established = renderToStaticMarkup(createElement(SourceOccurrenceReading, { value, initialView: 'structure',
       proof: { ...proof, basis: 'kernel', established: { attempt: 1, typingOutcome: 6, formationOutcomes: [8] } } }));
-    expect(section(established, 'term')).toContain('<h4>Selected proof term</h4>'); expect(section(established, 'term')).toContain('<strong>Proof term, not drawn</strong>');
+    expect(section(established, 'term')).toContain('<h4>Selected proof term</h4>'); expect(section(established, 'term')).toContain('<summary>What was checked · 4 constructor nodes not drawn</summary><p>Proof term, not drawn.</p>');
+    expect(section(established, 'term')).toContain('<p data-proof-verdict="kernel">Typing: accepted by Lean’s kernel. Axioms: Classical.choice, propext, Quot.sound. Statement is a proposition: accepted by Lean’s kernel.</p>');
     expect(section(established, 'type')).toContain('<h4>Statement</h4>');
     const open = renderToStaticMarkup(createElement(SourceOccurrenceReading, { value, initialView: 'structure' }));
     expect(section(open, 'term')).toContain('data-constructor="app"'); expect(section(open, 'term')).not.toContain('data-root-closed');
@@ -270,7 +319,7 @@ describe.skipIf(!acceptanceCorpus)('actual selections after a type-component ste
     for (const reported of [true, false]) {
       const { selectionClass, html } = reading('term using a lemma proved with a placeholder', reported), term = termPosition(html);
       expect(selectionClass).toBe(reported ? 'proof' : undefined);
-      expect(term).toContain('data-proof-leaf="kernel"'); expect(term).toContain('<strong>Proof term, not drawn</strong>'); expect(term).not.toContain('data-raw-constructor');
+      expect(term).toContain('data-proof-leaf="kernel"'); expect(term).toContain('<p>Proof term, not drawn.</p>'); expect(term).not.toContain('data-raw-constructor');
       // The placeholder axiom is listed with the qualifier on what kernel acceptance means; the leaf never says the statement holds.
       expect(term).toContain('Typing: accepted by Lean’s kernel.'); expect(term).toContain(`Axioms recorded for that declaration: sorryAx. ${supplierWording.environment}`);
       expect(term).toContain('Statement is a proposition: accepted by Lean’s kernel. Attempt 1 records that check');
