@@ -710,7 +710,7 @@ await group('recorded views', async (fail) => {
 
 // The published site is vector only: every figure is the reader's own HTML and SVG, inline in
 // its page, so its text stays text and it scales without blurring. The site used to place eight
-// PNG screenshots ({{capture:…}}); the owner asked for vector figures only, so each was replaced
+// PNG screenshots ({{capture:…}}); the site is vector only by decision, so each was replaced
 // by the recorded view of the same state or removed, and nothing here expects a screenshot any
 // more. The recordings under source-assets/views/ keep their pinned context captures, unpublished,
 // and the build keeps its {{capture:…}} and {{image:…}} figures (the self-tests render them), but a
