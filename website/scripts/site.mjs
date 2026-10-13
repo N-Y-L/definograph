@@ -220,6 +220,8 @@ export const EXTERNAL_LINKS = new Set([
   'https://leanprover-community.github.io/mathematics_in_lean/C03_Logic.html',
   'https://github.com/N-Y-L/definograph',
   'https://github.com/N-Y-L/definograph/issues',
+  // The revision the lessons and recorded figures describe; the Setup page links to it.
+  'https://github.com/N-Y-L/definograph/tree/c25d9605dbbfc14e542fb4cfc1569ead3f02d61f',
 ]);
 
 export function routeOutput(route) {
