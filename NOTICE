@@ -28,6 +28,9 @@ The optional expression pretty printer vendors LeanTeX under Apache License 2.0;
 its license, pinned revision, and compatibility changes are recorded in vendor/LeanTeX.
 https://github.com/kmill/LeanTeX
 
+vendor/DefinographCapture is a pinned copy of this project's own foundation, a
+separate repository that is not public. It carries no license file; see its README.
+
 KaTeX supplies local mathematical typesetting under the MIT License.
 https://github.com/KaTeX/KaTeX
 

@@ -4,7 +4,7 @@ Reviewed on 2026-10-12, after the project owner suggested starting from human pa
 
 How to read this page:
 
-- Every source listed under References was opened during the review, and a second, independent pass checked that it exists, that its citation is right, and that it supports what is said here. Where only an abstract could be read, the entry says so.
+- Every source listed under References was opened during the review, and a second, independent pass checked that it exists, that its citation is right, and that it supports what is said here. Section 6 lists the sources that could be read only as an abstract or a record.
 - Nothing was copied from any source. Findings are summarized in our own words, and no code, figure or text from another project is in this repository because of this review.
 - Each design rule states its kind of evidence: an **experiment**, a design **framework**, or our own **inference**. None of the experiments studied drawings of Lean statements. Every rule is therefore a hypothesis for the reading evaluation that the [roadmap](roadmap.md) and the [architecture decision](design/architecture-decision.md) call for, not a result.
 
@@ -37,7 +37,7 @@ Each entry gives a question a reading session can ask.
 | Hidden structure not recovered | 8 of 94 attempts to write an informal statement with explicit quantifiers succeeded (Selden and Selden 1995) | List every variable: is it given, arbitrary or chosen? |
 | "For all" taken collectively; "there exists" taken as exactly one | Two students over eleven sessions (Vroom 2022) | Could two different `x` get two different `y`? Could there be two such `y`? |
 | A formal notation does not remove reasoning errors | A pilot posed the selection task as a Z schema and found the familiar error, compared with published results for the original task (Loomes and Vinter 1996). In LTL, errors appeared when reading a formula, when writing one, and when judging a trace, and most often when writing a formula from an English intent (Greenman et al. 2023) | Does this plain-language claim match this statement? |
-| Structure is seen, and can be trained | Practice at classifying equations, with no solving, cut solving time from about 28 s to about 12 s per problem for school algebra students (Kellman, Massey and Son 2010) | Which of these two statements does this drawing show? |
+| Structure is seen, and can be trained | Practice at recognizing which equation is a legal transformation of another, with no solving, cut solving time from about 28 s to about 12 s per problem for school algebra students (Kellman, Massey and Son 2010) | Which of these two statements does this drawing show? |
 
 We found no published study of people reading Lean, Rocq or Isabelle statements. That is the limit of this search, not a finding about the field. The studies above mostly observed undergraduates reading semi-formal English, so their transfer to Lean terms is an assumption a session would test.
 
@@ -80,7 +80,9 @@ Two facts for the axiom policy: the Lean 4.28.0 reference lists three compiler-t
 
 Licence boundary: Lean, Mathlib, ProofWidgets, doc-gen4, Verso, comparator, SafeVerify and LeanAide are Apache-2.0, and Penrose and Paperproof are MIT, which are compatible with this repository if code were ever reused. No code is to be taken from copyleft projects (rocq-lsp and coq-dpdgraph are LGPL-2.1, jsCoq is AGPL) or from repositories with no licence.
 
-## 5. Where the reader stands against these rules
+## 5. Where the reader stood against these rules on 2026-10-12
+
+Items 1 to 4 were addressed on 2026-10-13, and item 6 in part; [Guided reading](guided-reading.md) describes what was built. Items 5 and 7 to 9 stand.
 
 An audit of `src/visual`, `src/reading` and the recorded views found:
 

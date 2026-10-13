@@ -38,7 +38,7 @@ Here the choice of `y` may depend on the earlier `x`. Reversing the quantifiers 
 
 </details>
 
-Rendered on 2 October 2026 from retained Lean 4.28.0 results. Lean was not rerun; the original native acquisition date is unavailable.
+Rendered on 2 October 2026 from retained Lean 4.28.0 results, before the statement skeleton was added above the steps. Lean was not rerun; the original native acquisition date is unavailable.
 
 ## Run locally
 

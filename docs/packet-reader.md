@@ -1,7 +1,7 @@
 # Exact composition packet client
 
 The `/packet` route reads saved outputs of the Definograph composition checker.
-It uses the existing guided sequence, logical overview and application/equality
+It uses the existing statement skeleton, guided sequence and application/equality
 figures. The ordinary Lean source reader and versioned editor adapter retain
 their existing routes and execution contracts.
 

@@ -8,8 +8,8 @@ current product specification.
 
 ## Objective and implementation rules
 
-- Help a reader understand the statement. The default is a visual sequence with
-  its logical overview alongside. Numerical exploration is secondary.
+- Help a reader understand the statement. The default is the statement's
+  skeleton followed by a visual sequence. Numerical exploration is secondary.
 - Extend deterministic decomposition and composition of shared primitives.
   Do not add dispatch on a theorem name, corpus case ID, user record name, or
   field spelling to make an example pass. Specialized mathematical lenses need

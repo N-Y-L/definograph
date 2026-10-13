@@ -1,6 +1,6 @@
 # Roadmap
 
-The objective is to help a reader understand mathematical statements from their formal definitions and context. The primary presentation is a visual sequence with a logical overview alongside it. Interaction and numerical examples are secondary. Abstract mathematics must not require coordinates.
+The objective is to help a reader understand mathematical statements from their formal definitions and context. The primary presentation is the statement's skeleton followed by a visual sequence. Interaction and numerical examples are secondary. Abstract mathematics must not require coordinates.
 
 The current program is a research prototype. Direct record reflection, checked aliases, scoped reading, and a few specialized views are implemented. Explicit definition exposure, positional focus, direct field inspection, type inspection and one-layer logical inspection now share a bounded replayable history. Prefix-specific provenance and supply readings retain their evidence and conditions. The general architecture is not complete: the broader shared-decomposition and nested-law gate below remains unmet, and explanatory value still needs evaluation before expanding the catalogue of mathematical lenses. See [the architecture decision](design/architecture-decision.md) for the adopted design and its first vertical slice, [the architecture reset](design/architecture-reset.md) for the earlier contracts, and [the code map](architecture.md) for the baseline.
 
