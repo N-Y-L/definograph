@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "sourceCommit": "747631072c57c118a409d4e16280d29a33e05a20",
+  "sourceCommit": "e5527ba39f998b0a0babdf8734e0ef56626e418c",
   "upstreamManifest": {
     "path": "deps.json",
-    "sha256": "51c3b76a50c5e6aef83dfbd4ff2ec8146523d504a1c5ffa14db75f5ed9ee5641"
+    "sha256": "0322dd21b77170c4c7366b70f7b735b1ce1b7ee7867a7ff68964e6e61783a66a"
   },
   "leanVersion": "4.28.0",
   "entryModule": "SourceCapture",
@@ -21,7 +21,7 @@
       "module": "ExprReferenceGraph",
       "source": "src/ExprReferenceGraph.lean",
       "upstreamSource": "lean/library/ExprReferenceGraph.lean",
-      "sha256": "b6fa200cdeb20793d45ad9ae27b32525f6d73514a5da365a53886d52048b8323",
+      "sha256": "0eac1006494a6cd658da89cb0bb404e951dc025ac3b98bcf794fb2f358d753d3",
       "imports": [
         "Lean"
       ]
@@ -67,7 +67,7 @@
       "module": "CompositionBase",
       "source": "src/CompositionBase.lean",
       "upstreamSource": "lean/library/CompositionBase.lean",
-      "sha256": "99f815e0b4c25a38a2885ad0e2765021e151f104c795d4e03ed3c3f413279ad9",
+      "sha256": "fee4ad4afcbc5f326d771c392182f10cd5c799a78163b6ba1b980a28fd91d2ef",
       "imports": [
         "Lean",
         "DerivedViewSyntax",
@@ -136,7 +136,7 @@
       "module": "ComponentAdmission",
       "source": "src/ComponentAdmission.lean",
       "upstreamSource": "lean/admission/ComponentAdmission.lean",
-      "sha256": "745a014edd5a969787bbf91beaea14a8c844730e9989d5f86b9bfa3a812d5561",
+      "sha256": "51281e1a2714b060fc42269869fd54747f8bbe3d7e6b8dec7847d3abe658fe34",
       "imports": [
         "SourceBoundary"
       ]

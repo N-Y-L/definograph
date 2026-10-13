@@ -17,18 +17,18 @@ theorem forall_decode (C : CTel n) (t : Core n) :
     dec (C.close t) = closeForall (CTel.items C) (dec t) := by
   induction C with
   | nil => rfl
-  | port C a A ih => simpa [CTel.close, CTel.items, closeForall, dec,
+  | port C a A ih => simpa only [CTel.close, CTel.items, closeForall, dec,
       CoreExprBridge.decode, Array.foldr_push] using ih (.pi a A t)
-  | letE C nm nd A v ih => simpa [CTel.close, CTel.items, closeForall, dec,
+  | letE C nm nd A v ih => simpa only [CTel.close, CTel.items, closeForall, dec,
       CoreExprBridge.decode, Array.foldr_push] using ih (.letE nm nd A v t)
 
 theorem lambda_decode (C : CTel n) (t : Core n) :
     dec (ctelLam C t) = closeLam (CTel.items C) (dec t) := by
   induction C with
   | nil => rfl
-  | port C a A ih => simpa [ctelLam, CTel.items, closeLam, dec,
+  | port C a A ih => simpa only [ctelLam, CTel.items, closeLam, dec,
       CoreExprBridge.decode, Array.foldr_push] using ih (.lam a A t)
-  | letE C nm nd A v ih => simpa [ctelLam, CTel.items, closeLam, dec,
+  | letE C nm nd A v ih => simpa only [ctelLam, CTel.items, closeLam, dec,
       CoreExprBridge.decode, Array.foldr_push] using ih (.letE nm nd A v t)
 
 def checkContextWith (run : Check) (nm : Name) (ls : List Name) (C : CTel n) : MetaM Checks := do

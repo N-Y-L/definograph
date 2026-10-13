@@ -1309,7 +1309,7 @@ theorem Tmpl.uses_depth {Γ : List Nat} {n : Nat} : ∀ {e : Nat} (t : Tmpl Γ n
     have := ih z hz
     simp only [List.length_cons, List.filter_cons]
     simp at this ⊢
-    omega
+    exact ⟨by omega, this.2⟩
   | letE nm nd ty v b ih =>
     intro y hy
     simp only [Tmpl.uses, List.mem_map] at hy
@@ -1317,7 +1317,7 @@ theorem Tmpl.uses_depth {Γ : List Nat} {n : Nat} : ∀ {e : Nat} (t : Tmpl Γ n
     have := ih z hz
     simp only [List.length_cons, List.filter_cons]
     simp at this ⊢
-    omega
+    exact ⟨by omega, this.2⟩
 
 /-- Selection paths to holes are prefix-free: a hole is a leaf of the selection. -/
 theorem followSel_prefix_free : ∀ (s : BSel) (p q : List Step) (i : Nat) (s' : BSel),

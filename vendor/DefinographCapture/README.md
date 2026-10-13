@@ -1,7 +1,7 @@
 # Definograph source capture dependency
 
 This is the exact `SourceCapture` import closure from source commit
-`747631072c57c118a409d4e16280d29a33e05a20` of the separately maintained
+`e5527ba39f998b0a0babdf8734e0ef56626e418c` of the separately maintained
 Definograph foundation. That source repository remains authoritative.
 `UPSTREAM.json` records its `deps.json` identity, original source paths,
 SHA-256 hashes, direct imports, and dependency order. The 26 files retain their

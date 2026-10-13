@@ -117,7 +117,10 @@ theorem run_append (initial : Values Γ) (first : Extension Γ Δ) (rest : Exten
     run initial (first.append rest) = run (run initial first) rest := by
   induction rest with
   | done => rfl
-  | snoc rest node ih => simp only [Extension.append, run, ih]
+  | snoc rest node ih =>
+    show pushValues (run initial (first.append rest)) (evalNode (run initial (first.append rest)) node)
+      = pushValues (run (run initial first) rest) (evalNode (run (run initial first) rest) node)
+    rw [ih]
 
 theorem run_lift (initial : Values Γ) (code : Extension Γ Δ) (r : Ref Γ k) :
     run initial code (code.lift r) = initial r := by
