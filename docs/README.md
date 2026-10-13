@@ -15,6 +15,7 @@ different levels of progress.
 | [TNF specification](design/tnf-specification.md) | Round-1 design specification that the decision amends |
 | [Architecture reset](design/architecture-reset.md) | Earlier proposal and 0.7 findings; superseded by the decision where they differ |
 | [Roadmap](roadmap.md) | Next general capabilities and acceptance criteria |
+| [Reading research](reading-research.md) | Checked sources on recognizing structure in a drawing, misreading statements, proved statements that miss the intention, and existing tools |
 | [Lean contract](lean-contract.md) | Standalone extraction, expression metadata, kernel checks, setup, and limits |
 | [Editor integration](editor-integration.md) | Actual project context, source selection, execution trust, and host limits |
 | [Editor source snapshots](editor-source-snapshots.md) | Exact original/prepared frames, chosen occurrence checks, saved records and revision invalidation |
@@ -26,6 +27,7 @@ different levels of progress.
 | [Guided reading](guided-reading.md) | Ordered constructions and retained logical context |
 | [Coverage corpus](coverage-corpus.md) | Hand-reviewed expectations and what their results do not measure |
 | [Verification](verification.md) | Dated local results, environments, and unverified workflows |
+| [Axiom policy](../scripts/axiom-policy.json) | The axioms the proved core may use, its listed exceptions and its certificate theorems; checked by `npm run test:axioms` |
 | [Contributing](../CONTRIBUTING.md) / [agent guide](../AGENTS.md) | Change workflow, isolation, and handoff rules |
 
 Contract documents grew alongside the implementation and may retain historical

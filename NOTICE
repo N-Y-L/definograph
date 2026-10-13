@@ -51,6 +51,13 @@ and visual style informed the semantic-document and renderer boundaries.
 https://penrose.cs.cmu.edu/examples
 https://penrose.cs.cmu.edu/docs/ref
 
+The published research listed in docs/reading-research.md informed the design
+rules for recognizable drawings, the catalogue of misreadings and the axiom
+policy. Freek Wiedijk's "Pollack-inconsistency" names the property behind the
+rule that a drawing reads back to its view. The website's typography follows
+reading.css of https://n-y-l.github.io/anyon-playground/ (Copyright (c) 2026
+Neil Yuanting Li, MIT License).
+
 These are credited sources of design inspiration. No Manim or Penrose code,
 scene assets, video assets, or styles were copied or vendored; neither runtime
 is included. No third-party diagram implementation is vendored into this repository.
