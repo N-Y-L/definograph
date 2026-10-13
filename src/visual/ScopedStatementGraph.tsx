@@ -7,7 +7,7 @@ import type { ReadingDocument, ReadingNode } from '../reading/types';
 import type { ReadingRegion } from '../reading/presentation';
 import { binderDisambiguators, type ScopedClauseGraph, type ScopedStatementGraphModel } from '../reading/scoped-graph';
 import type { SemanticDocument } from '../semantic/types';
-import { readingObjectColor } from './object-identity';
+import { useIdentityColor } from './object-identity';
 import { layoutScopedGraph } from './scoped-graph-layout';
 import './scoped-statement-graph.css';
 
@@ -26,6 +26,7 @@ function activate(event: KeyboardEvent<SVGGElement>, action: () => void) {
 }
 
 function ClauseDiagram({ graph, ...selection }: Selection & { graph: ScopedClauseGraph }) {
+  const colorOf = useIdentityColor();
   const text = useDiagramText();
   const marker = `scoped-result-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const labels = new Map(graph.nodes.map(node => [node.id, scopedGraphMathDisplay(node, graph)]));
@@ -51,7 +52,7 @@ function ClauseDiagram({ graph, ...selection }: Selection & { graph: ScopedClaus
         };
         return <g key={node.id} className={`ssg-node ssg-node-${node.kind}${relation?.fidelity === 'structural' ? ' ssg-symbolic' : ''}${selected ? ' ssg-selected' : ''}`}
           data-graph-node={node.id} data-reading-object={object?.id} data-reading-relation={relation?.id} data-source-node={graph.nodeId}
-          style={object ? { '--ssg-object': readingObjectColor(object.id) } as CSSProperties : undefined}
+          style={object ? { '--ssg-object': colorOf(object.id) } as CSSProperties : undefined}
           role="button" tabIndex={0} aria-label={`Inspect ${source}`} aria-pressed={object ? selected : undefined} onClick={action} onKeyDown={event => activate(event, action)}>
           <title>{source}</title>
           <rect x={position.x} y={position.y} width={position.width} height={position.height} rx={object ? 18 : 7}/>

@@ -4,7 +4,7 @@ import { useDiagramText } from '../components/use-diagram-text';
 import { MathLabel } from '../components/MathLabel';
 import { expressionDisplayNode, expressionMathDisplay, identifierMathDisplay, mathDisplay, sourceMathDisplay, withMathProse, type MathDisplay, type MathDisplayNode } from '../notation/math-display';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
-import { readingObjectColor } from '../visual/object-identity';
+import { useIdentityColor } from '../visual/object-identity';
 import { compileGraphConstraint, type GraphConstraintModel, type GraphEndpoint, type GraphPalette } from './model';
 import { layoutGraphAdjacency, layoutGraphRule, type GraphLabelPlacement } from './graph-constraint-layout';
 import './graphs.css';
@@ -21,12 +21,14 @@ const short = (value: string, length = 48) => value.length > length ? `${value.s
 const swatches = ['#4b86a0', '#cb9951', '#8e73b2', '#62a08d', '#b97986', '#869548', '#bf8d72', '#7687b5'];
 
 function ObjectControl({ object, ...interaction }: Interaction & { object: SemanticObject }) {
-  return <button type="button" className={`gc-object${interaction.selectedObjectId === object.id ? ' gc-selected' : ''}`} data-reading-object={object.id} style={{ '--gc-object': readingObjectColor(object.id) } as CSSProperties} aria-label={`${object.label}${object.type ? ` : ${object.type}` : ''}`} title={`${object.label}${object.type ? ` : ${object.type}` : ''}`} aria-pressed={interaction.selectedObjectId === object.id} onClick={() => interaction.onObjectSelect?.(object.id)}>{short(object.label, 72)}</button>;
+  const colorOf = useIdentityColor();
+  return <button type="button" className={`gc-object${interaction.selectedObjectId === object.id ? ' gc-selected' : ''}`} data-reading-object={object.id} style={{ '--gc-object': colorOf(object.id) } as CSSProperties} aria-label={`${object.label}${object.type ? ` : ${object.type}` : ''}`} title={`${object.label}${object.type ? ` : ${object.type}` : ''}`} aria-pressed={interaction.selectedObjectId === object.id} onClick={() => interaction.onObjectSelect?.(object.id)}>{short(object.label, 72)}</button>;
 }
 function SvgIdentity({ object, children, ...interaction }: Interaction & { object?: SemanticObject; children: ReactNode }) {
+  const colorOf = useIdentityColor();
   const actionable = object && interaction.onObjectSelect;
   const activate = (event: KeyboardEvent<SVGGElement>) => { if (actionable && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); interaction.onObjectSelect!(object.id); } };
-  return <g className={`gc-svg-object${object && interaction.selectedObjectId === object.id ? ' gc-selected' : ''}`} data-reading-object={object?.id} style={object ? { '--gc-object': readingObjectColor(object.id) } as CSSProperties : undefined} role={actionable ? 'button' : 'group'} aria-label={object?.label} aria-pressed={actionable ? interaction.selectedObjectId === object.id : undefined} tabIndex={actionable ? 0 : undefined} onKeyDown={activate} onClick={() => object && interaction.onObjectSelect?.(object.id)}>{object && <title>{`${object.label}${object.type ? ` : ${object.type}` : ''}`}</title>}{children}</g>;
+  return <g className={`gc-svg-object${object && interaction.selectedObjectId === object.id ? ' gc-selected' : ''}`} data-reading-object={object?.id} style={object ? { '--gc-object': colorOf(object.id) } as CSSProperties : undefined} role={actionable ? 'button' : 'group'} aria-label={object?.label} aria-pressed={actionable ? interaction.selectedObjectId === object.id : undefined} tabIndex={actionable ? 0 : undefined} onKeyDown={activate} onClick={() => object && interaction.onObjectSelect?.(object.id)}>{object && <title>{`${object.label}${object.type ? ` : ${object.type}` : ''}`}</title>}{children}</g>;
 }
 function DiagramLabel({ id, placement, className, fontSize = 14, children }: { id: string; placement: GraphLabelPlacement; className?: string; fontSize?: number; children: string | MathDisplay }) {
   return typeof children === 'string'

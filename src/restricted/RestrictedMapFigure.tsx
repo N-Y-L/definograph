@@ -6,7 +6,7 @@ import { expressionDisplayNode, expressionMathDisplay, mathDisplay, sourceMathDi
 import { typesetStatement } from '../notation/render';
 import { layoutRestrictedMap, type RestrictedLabelBox, type RestrictedRegionLayout } from './restricted-map-layout';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
-import { readingObjectColor } from '../visual/object-identity';
+import { useIdentityColor } from '../visual/object-identity';
 import { compileRestrictedMap, type RestrictedMapStructure, type RestrictedRegion } from './model';
 import './restricted.css';
 
@@ -21,19 +21,21 @@ type Interaction = Pick<RestrictedMapFigureProps, 'selectedObjectId' | 'onObject
 const short = (value: string, length = 40) => value.length > length ? `${value.slice(0, length - 1)}…` : value;
 
 function ObjectControl({ object, ...interaction }: Interaction & { object: SemanticObject }) {
+  const colorOf = useIdentityColor();
   return <button type="button" className={`rm-object${interaction.selectedObjectId === object.id ? ' rm-selected' : ''}`} data-reading-object={object.id}
-    style={{ '--rm-object': readingObjectColor(object.id) } as CSSProperties}
+    style={{ '--rm-object': colorOf(object.id) } as CSSProperties}
     title={`${object.label}${object.type ? ` : ${object.type}` : ''}`} aria-label={`${object.label}${object.type ? ` : ${object.type}` : ''}`}
     aria-pressed={interaction.selectedObjectId === object.id} onClick={() => interaction.onObjectSelect?.(object.id)}>{short(object.label, 96)}</button>;
 }
 
 function SvgIdentity({ object, children, ...interaction }: Interaction & { object?: SemanticObject; children: ReactNode }) {
+  const colorOf = useIdentityColor();
   const actionable = object && interaction.onObjectSelect;
   const activate = (event: KeyboardEvent<SVGGElement>) => {
     if (actionable && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); interaction.onObjectSelect!(object.id); }
   };
   return <g className={`rm-svg-object${object && interaction.selectedObjectId === object.id ? ' rm-selected' : ''}`} data-reading-object={object?.id}
-    style={object ? { '--rm-object': readingObjectColor(object.id) } as CSSProperties : undefined}
+    style={object ? { '--rm-object': colorOf(object.id) } as CSSProperties : undefined}
     role={actionable ? 'button' : 'group'} aria-label={object?.label} aria-pressed={actionable ? interaction.selectedObjectId === object.id : undefined}
     tabIndex={actionable ? 0 : undefined} onKeyDown={activate} onClick={() => object && interaction.onObjectSelect?.(object.id)}>
     {object && <title>{`${object.label}${object.type ? ` : ${object.type}` : ''}`}</title>}{children}

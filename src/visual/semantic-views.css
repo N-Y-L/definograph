@@ -109,8 +109,8 @@
 .sv-conditions { border-top: 1px solid light-dark(#edf0f3, #4e6174); margin-top: 13px; padding-top: 10px; }
 .sv-conditions p { margin: 0 0 4px; font-size: 11px; line-height: 1.65; color: var(--muted); }
 .sv-empty { padding: 32px 20px; background: light-dark(#f8fafb, #162127); border: 1px dashed light-dark(#d7e0e6, #4b6577); border-radius: 10px; font-size: 13px; color: light-dark(#7c8b97, #b0b9c1); line-height: 1.8; text-align: center; }
-.sv-choice-legend { display: flex; flex-wrap: wrap; gap: 18px; padding-bottom: 20px; font-size: 11px; color: var(--muted); }
-.sv-choice-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sv-choice-legend { display: grid; gap: 6px; padding-bottom: 20px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.sv-choice-legend span { display: flex; align-items: baseline; gap: 9px; }
 .sv-choice-legend b { font-family: Georgia, serif; font-weight: 400; color: light-dark(#5e7b7a, #9eb0af); font-size: 18px; }
 .sv-choices { list-style: none; margin: 0; padding: 0; }
 .sv-choice { position: relative; display: flex; align-items: flex-start; gap: 15px; padding-bottom: 15px; }
@@ -125,7 +125,6 @@
 .sv-choice-existential .sv-choice-symbol { color: light-dark(#5a917a, #9cbdaf); }
 .sv-choice-name { color: light-dark(#344f5f, #85959f); font-size: 15px !important; font-weight: 550 !important; border: none; background: transparent; padding: 0; text-align: left; cursor: pointer; line-height: 1.6; overflow-wrap: anywhere; }
 .sv-choice-name span { font-size: 12px; font-weight: 400; color: var(--muted); }
-.sv-choice-explanation { color: var(--muted); font-size: 12px; line-height: 1.75; margin: 10px 0; }
 .sv-choice-dependencies { display: flex; flex-direction: column; gap: 7px; border-top: 1px solid light-dark(#e8eeeb, #526f61); margin-top: 13px; padding-top: 11px; }
 .sv-dependency-tokens { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .sv-fixed-choice { font-size: 11px; line-height: 1.7; margin: 10px 0 0; color: light-dark(#5f7a6c, #9fafa7); }

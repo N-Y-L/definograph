@@ -1,0 +1,38 @@
+/* The statement's skeleton. A row governs exactly the rows inside its frame. Every nested frame steps in by the same
+   amount from the row that governs it, at every depth, and no rule may reduce that step: equal indentation would draw
+   a child as a sibling. */
+.statement-skeleton { margin:0 0 26px; padding-bottom:18px; border-bottom:1px solid var(--sr-line); font-family:var(--sr-serif); color:var(--sr-ink); }
+.sk-region { min-width:min-content; }
+/* The scroll frame keeps a witness's outer margin inside it, so its height is the same whether or not it scrolls. */
+.statement-skeleton > .figure-scroll { display:flow-root; }
+/* The outermost frame is as wide as its widest row, so a frame's outline shows what it holds. */
+.statement-skeleton > .figure-scroll > .sk-region { width:fit-content; max-width:100%; }
+.sk-children { margin-left:16px; padding-left:6px; border-left:1px solid var(--line-structure); }
+.sk-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 12px; width:100%; min-width:180px; padding:3px 8px; border:0; border-radius:2px; background:none; color:inherit; text-align:left; line-height:1.4; cursor:pointer; overflow-wrap:anywhere; }
+.sk-row:hover,.sk-row.sk-selected { background:var(--state-selected-bg); }
+.sk-mark { flex:none; min-width:16px; font-size:21px; text-align:center; }
+.sk-words { font:12px/1.5 system-ui,sans-serif; color:var(--sr-muted); }
+.sk-binder { display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:0 6px; min-width:0; }
+.sk-name { font-size:21px; color:light-dark(var(--object-color),color-mix(in srgb,var(--object-color) 60%,#fff)); border-bottom:1px solid transparent; }
+.sk-name.sk-object-selected { border-bottom-color:currentColor; }
+.sk-type { font:13px/1.5 system-ui,sans-serif; color:var(--sr-muted); }
+/* The formal clause is the largest text of the skeleton, and no relation figure draws text larger. */
+.sk-clause > .sk-row { font-size:23px; line-height:1.35; }
+/* An arbitrary choice opens a rail; a witness is boxed together with everything it governs and set in bold. The two
+   differ by frame and weight, so quantifier order shows as which frame is inside which. */
+.sk-existential { margin:4px 0; padding:0 6px 4px 0; border:2px solid var(--sr-ink); }
+.sk-existential > .sk-row .sk-mark,.sk-existential > .sk-row .sk-name { font-weight:700; }
+.sk-existential > .sk-children { border-left-color:transparent; }
+/* What is negated hangs from a rail as heavy as a witness's box and dashed, so it is not taken for an assertion. */
+.sk-negation > .sk-children { padding-left:5px; border-left:2px dashed var(--sr-ink); }
+/* The Given marks are one column and the hypotheses the next. The conclusion steps in under the hypotheses, never
+   under the marks, so it is always further in than the hypotheses that govern it. */
+.sk-implication { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:baseline; }
+.sk-given { display:contents; }
+.sk-given > .sk-row { width:auto; min-width:0; padding-right:4px; font:12px/1.5 system-ui,sans-serif; color:var(--sr-muted); }
+.sk-given > .sk-region,.sk-given > .sk-stub,.sk-implication > .sk-children { grid-column:2; }
+.sk-stub { display:block; margin:3px 0; padding:4px 8px; border:1px dashed var(--line-fold); border-radius:2px; background:none; color:var(--sr-accent); font:12px/1.5 system-ui,sans-serif; text-align:left; cursor:pointer; overflow-wrap:anywhere; }
+@container(max-width:650px) {
+  .sk-clause > .sk-row { font-size:22px; }
+  .sk-name,.sk-mark { font-size:20px; }
+}

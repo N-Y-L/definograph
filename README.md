@@ -8,7 +8,7 @@ Definograph is an experimental research implementation. It does not yet explain 
 
 ## See the reader
 
-- **Follow the logic.** Read quantifiers, assumptions and conclusions in sequence, with the whole statement alongside.
+- **Follow the logic.** The whole statement is drawn once as nested frames, above the steps; then read quantifiers, assumptions and conclusions in sequence.
 - **Trace an object.** Highlight its visible occurrences and inspect maps, inputs and relationships.
 - **Inspect structure.** Read direct record fields and laws. In VS Code, [inspect a definition](docs/editor-definition-exposure.md#inspect-from-the-statement) with its actual arguments and scope, then return to the same reading step. Bounded histories retain the recorded checks.
 - **Explore supported examples.** View selected set, graph, restricted-map and metric relations. Numerical samples remain separate from the statement's assertions.

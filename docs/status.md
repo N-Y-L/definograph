@@ -70,7 +70,7 @@ See the [reader relation table](reader-relations.md) for these bounded readings.
 | Typed and logical structure | Exact exported expression identities, binder order, quantifier dependencies, assumptions, branches, typed objects, and unresolved applications |
 | Generic record reflection | Up to 16 direct fields with checked projections and instantiated types; supplementary field laws remain in the owning object's scope; unfamiliar record/field names need no recognizer |
 | Checked definition views | Bounded type-head aliases and proposition previews, explicit bounded expansion, original names and expressions retained |
-| Compositional readings | Maps, applications, dependent signatures, relationships, logical regions, a visual sequence, and a linked overview |
+| Compositional readings | Maps, applications, dependent signatures, relationships, logical regions, a visual sequence, and the statement's skeleton above it |
 | Optional mathematical lenses | Sets, audited metric regions, graph constraints, and restricted maps within their documented contracts |
 | Optional construction graph | Existing source-scoped operations and distinct port occurrences within logical frames; guided/containment remains the default, and dense graphs scroll locally |
 | Readable notation | Optional pinned native statement notation, separately associated native Lean inspection-result text, and bounded typed frontend KaTeX plot labels; source fallbacks and identities remain available |

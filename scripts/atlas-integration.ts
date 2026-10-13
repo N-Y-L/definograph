@@ -14,18 +14,23 @@ import { planReadingPresentation, visibleReadingNodes, type ReadingRegion } from
 import { compileTypedConstruction } from '../src/constructions/model.ts';
 import type { ReadingDocument } from '../src/reading/types.ts';
 import type { StatementReadingViewProps } from '../src/visual/StatementReadingView.tsx';
+import { assignIdentityColors, IDENTITY_PALETTE, NEUTRAL_INK } from '../src/visual/object-identity.ts';
+import type { SkeletonRow } from '../src/visual/skeleton-readback.ts';
+import { examples } from '../src/examples.ts';
+import { corpusCases } from '../corpus/cases.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backend = createWorkerBackend({ rootDir });
 // Vite handles the renderer's TSX and local CSS in-process. No browser or listener is needed.
 const ssr = await createServer({ configFile: false, root: rootDir, appType: 'custom',
   server: { middlewareMode: true, watch: null, hmr: false, ws: false } });
-interface Compiled { analysis: Analysis; document: SemanticDocument; reading: ReadingDocument; html: string }
+interface Compiled { analysis: Analysis; document: SemanticDocument; reading: ReadingDocument; html: string; skeleton: SkeletonRow }
 interface Case { name: string; source: string; options?: AnalysisOptions; body?: boolean; check?: (result: Compiled) => void }
 const flatten = (node: StatementNode): StatementNode[] => [node, ...node.children.flatMap(flatten)];
 const objectName = (document: SemanticDocument, id: string) => document.objects.find(o => o.id === id)?.label;
 const orderedChoices = (reading: ReadingDocument) => reading.quantifierGroups.flatMap(group => group.binders.map(binder => [group.kind, binder.name]));
 let StatementReadingView: ComponentType<StatementReadingViewProps>;
+let assertSkeletonReadsBack: (document: SemanticDocument, reading: ReadingDocument, html: string) => SkeletonRow;
 
 function htmlFor(document: SemanticDocument, reading: ReadingDocument): string {
   return renderToStaticMarkup(createElement(StatementReadingView, { document, reading,
@@ -62,7 +67,36 @@ function assertPresentation(reading: ReadingDocument): void {
     }
   }
 }
-async function compile(test: Pick<Case, 'source' | 'options' | 'body'>): Promise<Compiled> {
+/** No two objects of a statement share a hue; only binder-introduced objects have one; every drawn object uses it. */
+function assertIdentityColours(document: SemanticDocument, html: string): void {
+  const colours = assignIdentityColors(document);
+  assert.equal(new Set(colours.values()).size, colours.size, 'Two objects of one statement share an identity colour');
+  assert.deepEqual([...assignIdentityColors(document)], [...colours], 'The colour assignment must be deterministic');
+  for (const [id, colour] of colours) {
+    const role = document.objects.find(object => object.id === id)?.binder?.role;
+    assert.ok(role && role !== 'assumption' && role !== 'auxiliary', `${id} has a colour without being introduced by a binder`);
+    assert.ok((IDENTITY_PALETTE as readonly string[]).includes(colour));
+  }
+  // A field law is a nested reading: it keeps the statement's hues and may give its own binders only unused ones.
+  const unused = new Set<string>(IDENTITY_PALETTE.filter(colour => ![...colours.values()].includes(colour)));
+  const drawn = new Map<string, string>();
+  for (const [element] of html.matchAll(/<[^<>]*\sdata-reading-object="[^<>]*>/g)) {
+    const id = /data-reading-object="([^"]*)"/.exec(element)![1]!, colour = /style="--[a-z-]+:([^";]*)/.exec(element)?.[1];
+    if (!colour) continue;
+    assert.equal(drawn.get(id) ?? colour, colour, `${id} is drawn in two colours`);
+    drawn.set(id, colour);
+    if (colours.has(id)) assert.equal(colour, colours.get(id), `${id} is not drawn in its assigned colour`);
+    else assert.ok(colour === NEUTRAL_INK || unused.has(colour), `${id} is drawn in a colour that belongs to another object of the statement`);
+  }
+}
+/** The rows that enclose a skeleton row, outermost first. */
+function enclosingRows(row: SkeletonRow, nodeId: string, path: SkeletonRow[] = []): SkeletonRow[] | undefined {
+  if (row.nodeIds.includes(nodeId)) return path;
+  for (const child of row.children) { const found = enclosingRows(child.row, nodeId, [...path, row]); if (found) return found; }
+}
+/** Structure without labels: what renaming bound variables must leave unchanged. */
+const unlabelled = (row: SkeletonRow): unknown => [row.kind, row.binder, row.nodeIds, row.names.length, row.children.map(child => [child.edge, unlabelled(child.row)])];
+async function draw(test: Pick<Case, 'source' | 'options' | 'body'>): Promise<Compiled> {
   const result = await backend.analyze(test.source, undefined, test.options);
   assert.equal(result.ok, true, String(result.error ?? 'Native Lean rejected the fixture'));
   const original = result as unknown as Analysis;
@@ -70,6 +104,12 @@ async function compile(test: Pick<Case, 'source' | 'options' | 'body'>): Promise
     ? { ...original, tree: original.definitionTree, expression: original.definitionTree.expression } : original;
   const document = compileSemanticDocument(analysis), reading = compileReading(document);
   const html = htmlFor(document, reading);
+  const skeleton = assertSkeletonReadsBack(document, reading, html);
+  assertIdentityColours(document, html);
+  return { analysis, document, reading, html, skeleton };
+}
+async function compile(test: Pick<Case, 'source' | 'options' | 'body'>): Promise<Compiled> {
+  const { analysis, document, reading, html, skeleton } = await draw(test);
   assertPresentation(reading);
   for (const region of allRegions(planReadingPresentation(reading).root)) {
     assert.ok(html.includes(`data-source-nodes="${region.sourceNodeIds.join(' ')}"`), `The atlas omitted or reassigned a logical region: ${region.id}`);
@@ -104,7 +144,7 @@ async function compile(test: Pick<Case, 'source' | 'options' | 'body'>): Promise
       assert.equal(document.relations.find(r => r.id === connection.toRelationId)?.scopeId, group.scopeId);
     }
   }
-  return { analysis, document, reading, html };
+  return { analysis, document, reading, html, skeleton };
 }
 
 const cases: Case[] = [
@@ -241,6 +281,7 @@ const cases: Case[] = [
 let passed = 0, failed = 0;
 try {
   ({ StatementReadingView } = await ssr.ssrLoadModule('/src/visual/StatementReadingView.tsx'));
+  ({ assertSkeletonReadsBack } = await ssr.ssrLoadModule('/src/visual/statement-skeleton.test-fixtures.ts'));
   for (const test of cases) {
     try {
       const result = await compile(test);
@@ -267,6 +308,24 @@ try {
         return { types: construction.types.map(t => [t.id, t.objectId]), maps: construction.maps.map(m => [m.objectId, m.domainId, m.codomainId]), members: construction.members.map(m => [m.objectId, m.typeId]) };
       };
       assert.deepEqual(topology(first), topology(renamed));
+      assert.deepEqual(unlabelled(renamed.skeleton), unlabelled(first.skeleton), 'Renaming bound variables must leave the skeleton unchanged apart from labels');
+      assert.notDeepEqual(renamed.skeleton.names, first.skeleton.names);
+    }],
+    ['the two quantifier orders differ in the clause row\'s chain of enclosing binder rows', async () => {
+      const chain = async (id: string) => {
+        const { skeleton, reading } = await draw({ source: examples.find(example => example.id === id)!.source });
+        return enclosingRows(skeleton, reading.panels[0]!.nodeId)!.map(row => `${row.binder} ${row.names.join(' ')}`);
+      };
+      assert.deepEqual(await chain('depends'), ['forall x', 'exists y']);
+      assert.deepEqual(await chain('fixed'), ['exists y', 'forall x']);
+    }],
+    ['every example and standalone corpus statement reads back from its skeleton, with colours that never collide', async () => {
+      const statements = [...examples.map(example => example.source), ...corpusCases.filter(corpus => corpus.mode === 'standalone').map(corpus => corpus.source)];
+      for (const source of statements) {
+        const { document, skeleton } = await draw({ source });
+        assert.ok(skeleton.nodeIds.includes(document.tree.id), 'The outermost row must be the statement itself');
+      }
+      assert.ok(statements.length >= 30);
     }],
     ['a selected deep clause retains every ancestor beyond the normal display budget', async () => {
       let tree: StatementNode = { id: 'deep-leaf', kind: 'predicate', label: 'True', lean: 'True', expression: { kind: 'const', name: 'True' }, children: [] };

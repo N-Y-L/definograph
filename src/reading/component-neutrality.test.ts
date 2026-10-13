@@ -9,6 +9,7 @@ import { GuidedReading } from '../visual/GuidedReading';
 import { SemanticView } from '../visual/SemanticView';
 import { StatementReadingView } from '../visual/StatementReadingView';
 import { TypedConstructionFigure } from '../constructions/TypedConstructionFigure';
+import { assertSkeletonReadsBack } from '../visual/statement-skeleton.test-fixtures';
 import { compileTypedConstruction } from '../constructions/model';
 import { compileReading } from './compiler';
 import { compileReadingCues } from './cues';
@@ -33,6 +34,7 @@ function prepare(input: PositionalStructuralInput, target: 'term' | 'type' = 'te
   if (!compiled.document) throw new Error(compiled.reason);
   const document = compiled.document, reading = compileReading(document), plan = compileReadingCues(reading, document);
   const html = renderToStaticMarkup(createElement(StatementReadingView, { document, reading }));
+  assertSkeletonReadsBack(document, reading, html);
   return { compiled, document, reading, plan, html };
 }
 

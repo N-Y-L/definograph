@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Binder, Expr, StatementNode } from '../core/types';
 import { compileSemanticDocument } from '../semantic';
 import type { SemanticDocument } from '../semantic/types';
+import { assertSkeletonReadsBack } from '../visual/statement-skeleton.test-fixtures';
 import { compileReading } from './index';
 
 const constant = (name: string): Expr => ({ kind: 'const', name });
@@ -12,7 +13,12 @@ const app = (name: string, args: Expr[], extra: Partial<Extract<Expr, { kind: 'a
 const leaf = (id: string, expression: Expr = constant('Unknown.proposition')): StatementNode => ({ id, kind: 'predicate', label: id, lean: `${id} : Prop`, expression, children: [] });
 const node = (id: string, kind: StatementNode['kind'], children: StatementNode[], binder?: Binder): StatementNode => ({ id, kind, label: id, lean: `${id} source`, expression: constant('True'), children, binder });
 const semantic = (tree: StatementNode) => compileSemanticDocument({ source: 'test source', tree, expression: tree.expression });
-const read = (tree: StatementNode, selectedNodeId?: string) => compileReading(semantic(tree), { selectedNodeId });
+/** Every fixture of these tests is also drawn, and its skeleton must read back to the region tree. */
+function read(tree: StatementNode, selectedNodeId?: string) {
+  const document = semantic(tree), reading = compileReading(document, { selectedNodeId });
+  assertSkeletonReadsBack(document, reading);
+  return reading;
+}
 const sourceNodes = (tree: StatementNode): StatementNode[] => [tree, ...tree.children.flatMap(sourceNodes)];
 
 describe('whole-statement logical reading', () => {

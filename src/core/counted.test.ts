@@ -29,7 +29,6 @@ const EXCEPTIONS: [string, string][] = [
   ['editor/source-snapshot.ts', 'bad(`string exceeds ${maximum} characters`'],                            // validation limits of 36 or more
   ['packets/StructuralReading.tsx', "unused.' : drawing.contextDeclarationIds.length ? `All ${drawing.contextDeclarationIds.length} context entries"],
   ['visual/DistanceProfileView.tsx', "'the 1 coordinate' : `all ${profile.dimension} coordinates"],      // the branch for two or more (twice)
-  ['visual/GuidedReading.tsx', "=== 1 ? 'Given' : `${assumptions.length} assumptions"],                  // the branch for two or more
 ];
 it('writes no count before a fixed plural noun in src/editor, src/packets and src/visual', () => {
   const found: string[] = [];

@@ -30,7 +30,7 @@ Each cue contains:
 
 Cues use the same scope-preserving regions as the atlas. Within one atomic clause, ordered application dependencies supply a construction sequence. [Boolean set constructions](set-constructions.md) also retain their operand identities and expose intermediate operations before their enclosing relation. Do not flatten a disjunction into successive required facts, move a witness before its permitted dependencies, or expose an inner predicate as an assertion of its unknown wrapper. An equality cue compares its two expressions; it does not certify their equality.
 
-The current renderer reuses the browser diagrams and keeps the surrounding logic and overview visible. It requires neither autoplay nor chosen coordinates. Motion is currently limited to a short progress-indicator transition, disabled under reduced-motion preferences; animated object transforms and correspondence-preserving motion remain future work.
+The current renderer reuses the browser diagrams and keeps the surrounding logic visible, with [the statement skeleton](guided-reading.md#the-statement-skeleton) above the step. It requires neither autoplay nor chosen coordinates. Motion is currently limited to a short progress-indicator transition, disabled under reduced-motion preferences; animated object transforms and correspondence-preserving motion remain future work.
 
 The cue plan is checked against these semantic requirements:
 
@@ -39,6 +39,8 @@ The cue plan is checked against these semantic requirements:
 3. Reversing `∀ x, ∃ y` to `∃ y, ∀ x` changes introduction order and permitted dependence.
 4. OR, iff, negation, nested antecedents, and unknown wrappers retain their enclosing roles throughout playback.
 5. Guided and complete static reading retain the same semantic objects and enclosing logical context; reduced-motion preferences do not change mathematical content. Any future animated renderer must meet the same requirement.
+
+Identity colour follows the same rule as identity itself: it is assigned per statement from Lean-derived object IDs, to binder-introduced objects only, in order of introduction, from seven hues that also differ in lightness, and never twice in one statement. [Guided reading](guided-reading.md#identity-colour) gives the contract. Two objects that print alike never share a hue, and a compound expression has none. Past the seventh object of a statement, objects are drawn in neutral ink and are told apart by their labels.
 
 Coordinated highlighting inside the optional mathematical notation needs a further provenance contract: LaTeX fragments linked to expression IDs. LeanTeX currently returns a string, so matching letters in that string is not a reliable way to identify bound objects.
 

@@ -15,6 +15,7 @@ import { compileInterpretationReport, type InterpretationReport } from '../src/s
 import type { SemanticDocument } from '../src/semantic/types.ts';
 import { compileReading, compileReadingCues } from '../src/reading/index.ts';
 import { compileTypedConstruction } from '../src/constructions/model.ts';
+import { assignIdentityColors, IDENTITY_PALETTE } from '../src/visual/object-identity.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const selectedIds = process.argv.slice(2);
@@ -89,6 +90,13 @@ function invariantChecks(document: SemanticDocument): void {
     assert.ok(scope, 'Every cue needs its semantic scope');
     assert.deepEqual(cue.assumptionNodeIds, scope.assumptionNodeIds, 'Guidance must retain local assumptions');
     assert.deepEqual(cue.branchPath, reading.sequence.find(step => step.nodeId === cue.nodeId)!.branchPath);
+  }
+  const colours = assignIdentityColors(document);
+  assert.equal(new Set(colours.values()).size, colours.size, 'Two objects of one statement share an identity colour');
+  assert.deepEqual([...assignIdentityColors(document)], [...colours], 'The colour assignment must be deterministic');
+  for (const [id, colour] of colours) {
+    const role = document.objects.find(object => object.id === id)?.binder?.role;
+    assert.ok(role && role !== 'assumption' && role !== 'auxiliary' && (IDENTITY_PALETTE as readonly string[]).includes(colour), 'Only a binder-introduced object takes an identity colour');
   }
 }
 

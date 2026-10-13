@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { ReadingCue, ReadingCuePlan } from '../reading/cues';
 import type { ReadingDocument } from '../reading/types';
-import type { SemanticDocument } from '../semantic/types';
-import { readingObjectColor } from './object-identity';
+import type { SemanticDocument, SemanticObject } from '../semantic/types';
+import { useIdentityColor } from './object-identity';
 import './guided-reading.css';
 import { counted } from '../core/counted';
 
@@ -16,6 +16,11 @@ interface Props {
   children: ReactNode;
 }
 
+function ScopeObject({ object, onObjectSelect }: { object: SemanticObject; onObjectSelect?: (id: string) => void }) {
+  const color = useIdentityColor()(object.id);
+  return <button type="button" data-reading-object={object.id} style={{ '--object-color': color } as CSSProperties} title={`${object.label} : ${object.type}`} onClick={() => onObjectSelect?.(object.id)}>{object.binder?.role === 'universal' ? '∀ ' : object.binder?.role === 'existential' ? '∃ ' : ''}{object.label}<span> : {object.type}</span></button>;
+}
+
 /** Navigation changes attention, never the mathematical scope of the diagram. */
 export function GuidedReading({ plan, cue, reading, document, onChoose, onObjectSelect, children }: Props) {
   const component = document.presentation?.kind === 'component';
@@ -27,6 +32,9 @@ export function GuidedReading({ plan, cue, reading, document, onChoose, onObject
     ? (nodes.get(part.nodeId)?.children ?? []).filter((_, index) => index !== part.edge.index) : []);
   const assumptions = cue.assumptionNodeIds.flatMap(id => nodes.has(id) ? [nodes.get(id)!] : []);
   const inScope = cue.contextObjectIds.flatMap(id => objects.has(id) && objects.get(id)!.binder && objects.get(id)!.binder!.role !== 'assumption' && objects.get(id)!.binder!.role !== 'auxiliary' && !(cue.intent === 'introduce' && cue.focusObjectIds.includes(id)) ? [objects.get(id)!] : []);
+  // The statement's skeleton, drawn above the steps, already shows the scope, the assumptions and the sibling clauses
+  // with the current row marked. Here they are one closed disclosure whose label counts what it holds.
+  const folded = [[inScope.length, 'in scope'], [assumptions.length, 'given'], [siblings.length, 'alongside']].flatMap(([count, word]) => count ? [` · ${count} ${word}`] : []).join('');
   function step(offset: number) { const next = plan.cues[index + offset]; if (next) onChoose(next); }
   return <section className="reading-guide" aria-label="Guided visual sequence">
     <nav className="rg-navigation" aria-label="Reading steps" onKeyDown={event => {
@@ -37,14 +45,16 @@ export function GuidedReading({ plan, cue, reading, document, onChoose, onObject
       <div className="rg-buttons"><span className="rg-count">{index + 1} / {plan.cues.length}</span><button type="button" aria-label="Previous reading step" disabled={index <= 0} onClick={() => step(-1)}>←</button><button type="button" aria-label="Next reading step" disabled={index >= plan.cues.length - 1} onClick={() => step(1)}>Next <span aria-hidden="true">→</span></button></div>
     </nav>
     <div className="rg-progress" aria-hidden="true"><span style={{ width: `${100 * (index + 1) / plan.cues.length}%` }}/></div>
-    <div className="rg-envelope" aria-label={component ? 'Enclosing expression context' : 'Enclosing mathematical context'}>
-      {inScope.length > 0 && <div className="rg-in-scope"><span className="rg-context-label">In scope</span>{inScope.map(object => <button key={object.id} type="button" data-reading-object={object.id} style={{ '--object-color': readingObjectColor(object.id) } as CSSProperties} title={`${object.label} : ${object.type}`} onClick={() => onObjectSelect?.(object.id)}>{object.binder?.role === 'universal' ? '∀ ' : object.binder?.role === 'existential' ? '∃ ' : ''}{object.label}<span> : {object.type}</span></button>)}</div>}
-      {path.length > 0 && <ol className="rg-logical-path">{path.map((part, ordinal) => <li key={`${part.nodeId}:${ordinal}`} data-logic-role={part.edge.role}>{part.edge.role === 'alternative' ? `Alternative ${part.edge.index + 1} · either or both may hold` : part.edge.role === 'conjunct' ? `Condition ${part.edge.index + 1} · required together` : part.edge.role === 'negated' ? 'Under negation' : part.edge.role === 'assumption' ? 'Given assumption' : part.edge.role === 'conclusion' ? 'Conditional conclusion' : part.edge.role === 'equivalence-left' ? 'First equivalent condition' : 'Second equivalent condition'}</li>)}</ol>}
-      {assumptions.length > 0 && <details className="rg-assumptions" open><summary>{assumptions.length === 1 ? 'Given' : `${assumptions.length} assumptions in scope`}</summary><ul>{assumptions.map(node => <li key={node.id}><code>{node.lean}</code></li>)}</ul></details>}
-      {siblings.length > 0 && <details className="rg-assumptions" open><summary>Alongside this clause</summary><p>Other conjuncts at their enclosing logical position:</p><ul>{siblings.map(node => <li key={node.id}><code>{node.lean}</code></li>)}</ul></details>}
-    </div>
+    <h2 className="sr-only" aria-live="polite" aria-atomic="true">{cue.title}</h2>
+    {path.length > 0 && <ol className="rg-logical-path">{path.map((part, ordinal) => <li key={`${part.nodeId}:${ordinal}`} data-logic-role={part.edge.role}>{part.edge.role === 'alternative' ? `Alternative ${part.edge.index + 1} · either or both may hold` : part.edge.role === 'conjunct' ? `Condition ${part.edge.index + 1} · required together` : part.edge.role === 'negated' ? 'Under negation' : part.edge.role === 'assumption' ? 'Given assumption' : part.edge.role === 'conclusion' ? 'Conditional conclusion' : part.edge.role === 'equivalence-left' ? 'First equivalent condition' : 'Second equivalent condition'}</li>)}</ol>}
+    <details className="rg-about">
+      <summary>About this step{folded}</summary>
+      <p>{cue.detail}</p>
+      {inScope.length > 0 && <div className="rg-in-scope"><span className="rg-context-label">In scope</span>{inScope.map(object => <ScopeObject key={object.id} object={object} onObjectSelect={onObjectSelect}/>)}</div>}
+      {assumptions.length > 0 && <div className="rg-listed"><span className="rg-context-label">Given</span><ul>{assumptions.map(node => <li key={node.id}><code>{node.lean}</code></li>)}</ul></div>}
+      {siblings.length > 0 && <div className="rg-listed"><span className="rg-context-label">Alongside this clause</span><ul>{siblings.map(node => <li key={node.id}><code>{node.lean}</code></li>)}</ul></div>}
+    </details>
     {document.objects.some(object => object.binder?.role === 'auxiliary') && <p className="rg-context-label">Recorded entries labelled separately remain in the captured scope. The choice list is not a complete dependency analysis.</p>}
-    <header className="rg-heading" aria-live="polite" aria-atomic="true"><span className="rg-stage-kind">{cue.role === 'auxiliary' ? 'Recorded context' : cue.stage.kind === 'contained' ? 'Inside the expression' : cue.intent === 'introduce' ? component ? 'Parameters and definitions' : 'Objects and choices' : cue.intent === 'apply' ? 'Construction' : cue.intent === 'compare' ? 'Compare' : component ? 'Expression structure' : cue.intent === 'logic' ? 'Logical structure' : 'Condition'}</span><h2>{cue.title}</h2><p>{cue.detail}</p></header>
     <div className="rg-stage" data-cue-id={cue.id} data-cue-node={cue.nodeId} data-cue-scope={cue.scopeId} data-cue-kind={cue.stage.kind}>{children}</div>
     {plan.truncated && <p className="rg-limit">The guide has reached its display bound. {counted(plan.omittedCueCount, 'further step')} {plan.omittedCueCount === 1 ? 'remains' : 'remain'} in the full {component ? 'visual reading' : 'statement'} below.</p>}
   </section>;

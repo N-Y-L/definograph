@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Binder, Expr, StatementNode } from '../core/types';
 import { compileSemanticDocument } from '../semantic';
+import { assertSkeletonReadsBack } from '../visual/statement-skeleton.test-fixtures';
 import { compileReading, compileReadingCues } from './index';
 
 const constant = (name: string): Expr => ({ kind: 'const', name });
@@ -14,6 +15,7 @@ const node = (id: string, kind: StatementNode['kind'], children: StatementNode[]
 const prepare = (tree: StatementNode) => {
   const document = compileSemanticDocument({ source: 'test source', tree, expression: tree.expression });
   const reading = compileReading(document);
+  assertSkeletonReadsBack(document, reading);
   return { document, reading, plan: compileReadingCues(reading, document) };
 };
 const deepFreeze = <T>(value: T): T => {

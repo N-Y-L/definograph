@@ -158,7 +158,7 @@ The statement-first release passes strict TypeScript, the production build, and 
 | `npm run test:lean` | 45 | Real Lean elaboration, kernel checks, instance audits, signatures/bodies, and rejection of executable input |
 | `npm run test:integration` | 15 | All 14 interface examples through the actual worker plus combined geometry/dependency behavior |
 | `npm run test:semantic` | 21 | Typed object/relationship recognition, scope, partial applications, and declaration behavior |
-| `npm run test:reading` | 20 | Whole-statement sequence and overview, negation, alternatives, both iff directions, witnesses, abstract composition, and dependent morphism families |
+| `npm run test:reading` | 20 | Whole-statement sequence, negation, alternatives, both iff directions, witnesses, abstract composition, and dependent morphism families |
 | `npm run test:notation` | 21 | Actual LeanTeX output through strict KaTeX, binder order, logical grouping, definition bodies/signatures, custom instances, fallback recovery, and aggregate response limits |
 
 The default UI was checked in the in-app browser for symbolic geometry, abstract sets, an equation between composed maps, fixed-before-universal witness order, and negation inside a disjunction. No numerical sliders appear in the default reading; the separate exploration action retains the numerical views. Mathematical notation rendered from real worker output with local fonts. Mobile-width DOM checks at a browser-reported 500 pixels showed no horizontal document overflow. Deep overview indentation was capped after the desktop screenshot exposed narrow text columns. No console errors appeared in the final exercised workflows.

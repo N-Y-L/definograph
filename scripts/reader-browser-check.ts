@@ -346,6 +346,33 @@ const presentationState = () => evaluate(`(() => ({
   prefixes: ['provenance','supplier'].map(kind => { const section = document.querySelector('section.source-' + kind + '[data-' + kind + '-route]'); return ['route','prefix','step'].map(key => section?.getAttribute('data-' + kind + '-' + key)); }),
   hash: location.hash, messages: window.__hostMessages
 }))()`);
+/** Every statement reading on the page as the browser lays it out: each skeleton row against the row that governs
+ * it, each hypothesis against its conclusion, and the on-screen size of every visible text (font size times the
+ * scale of its SVG) against the skeleton's clause row. These routes draw binder strips and relation figures; the
+ * metric, graph and restricted-map figures still scale with the column and are not on them. */
+const readingLayouts = (scope = '') => evaluate<any[]>(`[...document.querySelectorAll(${JSON.stringify(`${scope}.statement-reading-view`)})].filter(view => view.checkVisibility() && !view.parentElement.closest('.statement-reading-view')).map(view => {
+  const block = view.firstElementChild, rows = [...block.querySelectorAll('[data-skeleton-row]')], left = el => el.getBoundingClientRect().left;
+  const scale = el => { const svg = el.closest('svg'); return svg && svg.viewBox.baseVal.width ? svg.getBoundingClientRect().width / svg.viewBox.baseVal.width : 1; };
+  const clause = Math.max(0, ...[...block.querySelectorAll('.sk-clause > .sk-row')].map(el => parseFloat(getComputedStyle(el).fontSize)));
+  const texts = [...view.querySelectorAll('*')].filter(el => el.checkVisibility() && !el.closest('.sr-only, details:not([open]) > :not(summary)') && [...el.childNodes].some(node => node.nodeType === 3 && node.textContent.trim()));
+  const title = view.querySelector('.reading-guide > h2')?.getBoundingClientRect();
+  return { first: block.matches('section.statement-skeleton'), rows: rows.length, kinds: [...new Set(rows.map(row => row.getAttribute('data-skeleton-kind')))].sort(),
+    outside: rows.filter(row => { const parent = row.parentElement.closest('[data-skeleton-row]'); return parent && !(left(row) > left(parent)); }).map(row => row.getAttribute('data-skeleton-row')),
+    hypotheses: block.querySelectorAll('.sk-given').length,
+    beyond: [...block.querySelectorAll('.sk-implication')].flatMap(implication => { const conclusion = implication.querySelector(':scope > .sk-children > [data-skeleton-row]');
+      return [...implication.querySelectorAll(':scope > .sk-given > [data-skeleton-row]')].filter(hypothesis => !(left(hypothesis) < left(conclusion))).map(hypothesis => hypothesis.getAttribute('data-skeleton-row')); }),
+    current: block.querySelectorAll('[aria-current]').length, title: !!title && (title.width > 1 || title.height > 1), clause,
+    labels: [...new Set([...view.querySelectorAll('.sr-relation-figure .sr-object-label')].filter(el => el.checkVisibility() && !el.closest('details:not([open]) > :not(summary)')).map(el => Math.round(parseFloat(getComputedStyle(el).fontSize) * scale(el) * 10) / 10))],
+    larger: clause ? texts.map(el => ({ size: Math.round(parseFloat(getComputedStyle(el).fontSize) * scale(el) * 10) / 10, text: el.textContent.trim().slice(0, 24) })).filter(item => item.size > clause + .05) : [] };
+})`);
+function assertReadingLayout(view: any) {
+  assert.ok(view.first && view.rows > 0, 'the statement skeleton is the first block of the reading');
+  assert.deepEqual(view.outside, [], 'every skeleton row sits strictly inside its parent row');
+  assert.deepEqual(view.beyond, [], 'no hypothesis is drawn as far in as the conclusion it governs');
+  assert.equal(view.current, 1, 'exactly one skeleton row is marked as the current step');
+  assert.equal(view.title, false, 'the step title is not drawn a second time under the selector');
+  if (view.clause) assert.deepEqual(view.larger, [], 'no text of the reading is drawn larger than the skeleton clause row');
+}
 async function presentationShot(name: string) {
   const shot = await page<{ data: string }>('Page.captureScreenshot', { format: 'png' });
   await writeFile(path.join(out!, name), Buffer.from(shot.data, 'base64'));
@@ -373,6 +400,9 @@ for (const width of [1272, 400]) {
   for (const [fixture, captured, axiom] of [['sorried', sorriedPresentation, 'sorryAx'], ['negated', negatedPresentation, 'none recorded']] as const) {
     if (m2Only && fixture !== 'sorried') continue;
     const reading = await presentationEnd(captured), before = await presentationState();
+    const drawn = await readingLayouts();
+    assert.ok(drawn.length > 0, `${fixture}: a statement reading is on the page`);
+    for (const view of drawn) { assertReadingLayout(view); presentationChecks.push({ check: 'skeleton', fixture, width, source: 'retained real corpus', ...view }); }
     if (!m2Only) {
     const link = reading.links.find(item => item.status === 'supplier');
     assert.ok(link, `${fixture}: nonvacuous supply link`);
@@ -400,7 +430,7 @@ for (const width of [1272, 400]) {
     }
     if (fixture === 'sorried') {
       // The guided stage and full reading are distinct routes. Closed details can still return positive geometry.
-      const surface = 'section.continuation-step .occurrence-guided-target[data-occurrence-target="term"] > .statement-reading-view > .sr-atlas-layout > .sr-atlas-main > .sr-reading-surface';
+      const surface = 'section.continuation-step .occurrence-guided-target[data-occurrence-target="term"] > .statement-reading-view > .sr-reading-surface';
       const disclosure = `${surface} > details.sr-complete-reading`, summary = `${disclosure} > summary`;
       const routes = { guided: `${surface} > .reading-guide > .rg-stage`, full: `${disclosure} > .sr-reading-content` };
       const nameIn = (route: keyof typeof routes) => `[...document.querySelectorAll(${JSON.stringify(routes[route] + ' .sr-binder-auxiliary > .sr-binder-name > strong')})].filter(el => el.textContent === '_example')`;
@@ -529,6 +559,48 @@ assert.ok(await clickText('[aria-label="Exposure comparison side"] button', 'Bef
 assert.ok(await evaluate<boolean>(`!Array.from(document.querySelectorAll('section.source-head-exposure button')).some(el => /Inspect type|Read logical structure/.test(el.textContent))`), 'seed actions belong to after exposure');
 assert.equal((await hostMessages()).length, beforeSwitch, 'comparison selection causes no request');
 }
+// The two quantifier orders and one hypothesis, as Lean exported them for real selections, drawn in the main panel.
+// The browser must lay the witness's box inside the arbitrary choice's frame for one order and around it for the
+// other, and put a conclusion further in than its hypothesis.
+const shapes = report.skeletonShapes = [] as Record<string, unknown>[];
+if (!m2Only) for (const width of [1272, 400]) {
+  await setWidth(width);
+  for (const label of ['universal then existential', 'existential then universal', 'proposition object then implication'] as const) {
+    const captured = acceptanceRows.filter((candidate: any) => candidate.label === label && candidate.response.ok && candidate.response.tree).at(-1);
+    assert.ok(captured, `a real guided export is required: ${label}`);
+    const id = String(requestId++), capturedOrigin = captured.parent.origin;
+    const capturedDocument = { ...capturedOrigin.document, fileName: new URL(capturedOrigin.document.uri).pathname, selection: capturedOrigin.selection };
+    // The host separates the guided export from the source attachments in the same way (extension/src/extension.ts).
+    const { sourceSnapshot: _snapshot, sourceSnapshotOrigin: _origin, sourceDecomposition: _record, sourceDecompositionPresentation: _presentation, selectionClass, ...guided } = captured.response;
+    await evaluate(`window.postMessage(${JSON.stringify({ type: 'statementlens.status', requestId: id, phase: 'analyzing', document: capturedDocument })}, '*'); true`); await settle(100);
+    await evaluate(`window.postMessage(${JSON.stringify({ type: 'statementlens.analysis', requestId: id, document: capturedDocument, analysis: guided, selectionClass })}, '*'); true`); await settle(700);
+    const main = '#statement-reading ';
+    const steps = await evaluate<number>(`document.querySelector(${JSON.stringify(`${main}.rg-position select`)})?.options.length ?? 0`);
+    assert.ok(steps > 1, `${label}: the guided reading is drawn in the main panel`);
+    for (const step of [0, steps - 1]) {
+      await evaluate(`(() => { const select = document.querySelector(${JSON.stringify(`${main}.rg-position select`)});
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, select.options[${step}].value); select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+      await settle(400);
+      const [view] = await readingLayouts(main);
+      assert.ok(view, `${label}: a statement reading is in the main panel`);
+      assertReadingLayout(view);
+      assert.ok(view.rows >= 4, `${label}: the context entry, both choices or the hypothesis, and the clause are all drawn`);
+      const frames = await evaluate<any>(`(() => { const block = document.querySelector(${JSON.stringify(`${main}.statement-skeleton`)}), witness = block.querySelector('.sk-existential'), arbitrary = block.querySelector('.sk-universal');
+        const inside = (inner, outer) => { const a = inner.getBoundingClientRect(), b = outer.getBoundingClientRect(); return a.left > b.left && a.right <= b.right && a.top > b.top && a.bottom <= b.bottom; };
+        return { witness: !!witness, arbitrary: !!arbitrary, witnessInside: !!witness && !!arbitrary && inside(witness, arbitrary), witnessAround: !!witness && !!arbitrary && inside(arbitrary, witness),
+          witnessBorder: witness ? getComputedStyle(witness).borderTopWidth : null, arbitraryBorder: arbitrary ? getComputedStyle(arbitrary).borderTopWidth : null }; })()`);
+      if (label === 'proposition object then implication') assert.equal(view.hypotheses, 1, 'the hypothesis is drawn as a Given row');
+      else {
+        assert.deepEqual([frames.witnessInside, frames.witnessAround], label === 'universal then existential' ? [true, false] : [false, true], `${label}: which frame is inside which`);
+        assert.deepEqual([frames.witnessBorder, frames.arbitraryBorder], ['2px', '0px'], 'a witness is boxed and an arbitrary choice is not');
+      }
+      // These three statements end in an inline comparison; where a route does draw a relation figure, its labels keep their own size.
+      if (width === 1272) assert.ok(view.labels.every((size: number) => size === 18), 'a relation figure label is drawn at its own 18px in a wide column');
+      shapes.push({ label, width, step: step + 1, steps, ...view, ...frames });
+    }
+  }
+}
+assert.equal(shapes.length, m2Only ? 0 : 12, 'both orders and the hypothesis were laid out at both widths, on the first and the last step');
 const finalMessages = await hostMessages();
 report.hostMessages = finalMessages; report.consoleErrors = consoleErrors; report.finishedAt = new Date().toISOString();
 report.summary = { scope: m2Only ? 'M2 only; prefix, reading, F1/F3 and action phases skipped' : 'full', M2: presentationChecks.filter(item => item.check === 'M2').length, interactions: interactions.length, allInteractionsOk: interactions.every(item => item.ok), hostMessagesTotal: finalMessages.length, differentialChecks: differential.length + readings.length, differentialAllMatch: differential.every(item => item.match) && readings.every(item => item.differentialMatch), overflowAtAnyWidth: layouts.some(item => item.overflow), consoleErrors: consoleErrors.length, chainEndsRead: readings.length };

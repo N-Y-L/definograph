@@ -1,7 +1,6 @@
 .definition-reading-layout { min-width: 0; }
 .definition-reading-layout.is-inspecting { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); align-items: start; gap: 24px; }
 .definition-reading-layout > * { min-width: 0; }
-.definition-reading-layout.is-inspecting .sr-atlas-layout { grid-template-columns: minmax(0, 1fr); }
 .definition-workspace { border:1px solid var(--border); border-radius:14px; background:var(--surface); padding: 20px; min-width: 0; overflow-wrap: anywhere; }
 .definition-workspace > header { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 12px; }
 .definition-workspace h2 { font-size: 1.15rem; margin: 5px 0 12px; }

@@ -19,10 +19,11 @@ Fixed-environment input       Trusted Lean editor selection
         identities, scopes, relations, unknown portions
                   │
         reading/compiler.ts + reading/cues.ts
-        sequence and logical overview
+        reading tree and step sequence
                   │
         visual/StatementReadingView.tsx
-        generic constructions + specialized figures
+        statement skeleton, generic constructions
+        + specialized figures
         optional scoped construction graph
 ```
 

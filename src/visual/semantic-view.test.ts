@@ -28,6 +28,16 @@ describe('semantic view interpretation labels', () => {
     expect(html).not.toContain('aria-label="z, ℝ"');
   });
 
+  it('states each explanation once, in the legend beside its mark, and not on every card', () => {
+    const repeated = { ...document, choices: [...document.choices, { ...document.choices[1]!, id: 'second-witness', objectId: 'z', binderId: 'bz' }] };
+    const html = renderToStaticMarkup(createElement(SemanticView, { document: repeated, view: { ...view, objectIds: ['x', 'y', 'z'] } }));
+    expect(html.match(/class="sv-choice /g)).toHaveLength(3);
+    const legend = html.match(/<div class="sv-choice-legend">(.*?)<\/div>/)![1]!;
+    expect(legend).toBe('<span><b>↦</b> A parameter of this definition.</span><span><b>∃</b> May use the earlier parameter.</span>');
+    expect(html.split('May use the earlier parameter.')).toHaveLength(2);
+    expect(html).not.toContain('sv-choice-explanation');
+  });
+
   it('keeps relation context and explicit mathematical roles in a symbolic diagram', () => {
     const membership = { id: 'membership', kind: 'membership' as const, label: 'belongs to', ports: [{ role: 'element', objectId: 'x' }, { role: 'set', objectId: 'y' }], expression: { kind: 'const' as const, name: 'Set.Mem' }, scopeId: 'scope', nodeId: 'root', pluginId: 'sets', fidelity: 'symbolic' as const, provenance: { nodeId: 'root', expressionPath: '', origin: 'elaborated-expression' as const }, conditions: [] };
     const html = renderToStaticMarkup(createElement(SemanticView, { document: { ...document, relations: [membership] }, view: { ...view, kind: 'relation-map', relationIds: ['membership'] } }));

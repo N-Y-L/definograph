@@ -1,6 +1,38 @@
 # Guided construction reading
 
-The default reader presents one mathematical step at a time, with the complete logical overview alongside. Previous, Next, and the step selector change the focus. There is no timed playback. The full static visual statement remains available below the sequence, and the representation is usable with reduced motion.
+The reader opens with the statement's skeleton: the whole statement drawn once as nested scope frames. Below it, one mathematical step is shown at a time. Previous, Next, and the step selector change the focus, and selecting a row of the skeleton does the same. There is no timed playback. The full static visual statement remains available below the sequence, and the representation is usable with reduced motion.
+
+## The statement skeleton
+
+The skeleton is drawn from the region tree that the step sequence and the full reading already share (`planReadingPresentation` in `src/reading/presentation.ts`). It adds no meaning and infers nothing. Its only text is a node's Lean text, a binder's name and type, and the role words the full reading uses.
+
+- **One row** per group of adjacent binders, per hypothesis, per connective and per clause. A clause row shows the formal clause as Lean prints it wherever the node has Lean text; a row is never empty, and one without any text shows its region kind. The clause row is set larger than every instruction and no smaller than any text of a relation figure. It is not yet the largest text on every step: the metric, graph and restricted-map figures still scale with the column, and a few arrow glyphs are set larger.
+- **A row governs exactly the rows inside its frame.** The body of a binder group, the conclusion under its hypotheses, and the parts of a connective each step in by the same amount under a rail, at every depth. Equal indentation would draw a child as a sibling, so no depth removes the step.
+- **An arbitrary choice opens a rail. A witness is boxed** together with everything it governs, and its mark and name are bold. The two differ by frame and weight, not by glyph or hue alone, so `∀ x, ∃ y, x < y` is a box inside a rail and `∃ y, ∀ x, x < y` is a rail inside a box.
+- **A hypothesis** stands beside a small Given mark. The marks are one column and the hypotheses the next. The conclusion steps in under the hypotheses, so it is always further in than the hypotheses that govern it.
+- **What is negated** hangs from a dashed rail as heavy as a witness's box, so it is not taken for an assertion. Conjunction and alternatives still share one frame and differ by glyph and word.
+- **A region beyond the display bound** is one stub that names its first row and counts the rows it stands for. Selecting it brings it into view.
+
+The drawing reads back. `readSkeleton` in `src/visual/skeleton-readback.ts` recovers, from the rendered markup alone, each row's kind, its source nodes, its ordered children with their edges, and the role mark it prints; the result must equal the region tree, stubs included, and each quantifier and connective row must carry its own mark. Unit tests require this of every fixture the reading tests use, and `npm run test:atlas` requires it of every example and standalone corpus statement exported by Lean. The feature that separates the two quantifier orders is named in those tests: the chain of binder rows that enclose the clause row. This is a tested property of the TypeScript renderer, not a theorem; nothing checks it at run time.
+
+The optional Construction graph and the collapsed full reading still draw the same tree when they are opened.
+
+## Identity colour
+
+Hue carries object identity and nothing else. A statement's colours are assigned once (`assignIdentityColors` in `src/visual/object-identity.ts`) and every figure of that reading uses the same assignment.
+
+- Only an object that a binder introduces takes a hue. Hypotheses, recorded context entries and compound expressions such as `f x` or `A ∪ B` are drawn in neutral ink.
+- Hues are given in order of first introduction, the statement's own binders before a binder local to one expression, from seven hues that also differ in lightness. The darkest hue is the nearest to ink on a thin glyph and is given last. A hue is never used twice in a statement. Neutral ink is not a hue: from the eighth object on, objects share it and are told apart by their labels.
+- A field law read inside a statement keeps the statement's hues and gives its own binders only hues still unused.
+- Colour is never the only carrier: every coloured thing keeps its label.
+
+## The step sequence
+
+A step is named once, in the step selector; no caption repeats it. Under the selector one closed disclosure, **About this step**, holds the longer explanation, the objects in scope, the assumptions the step stands under and its sibling clauses. Its label counts them, for example "About this step · 5 in scope · 1 given". The skeleton already draws all of these with the current row marked, so they are not repeated in view. The step's position among the connectives stays in view as one line beside the figure, because a figure does not yet show whether its clause is assumed, negated or concluded.
+
+A step on a connective has no figure of its own: it is the marked row of the skeleton and the rows inside its frame. In a chain of hypotheses one Given row is marked, the selected hypothesis or otherwise the first.
+
+A relation figure is drawn at one unit per CSS pixel from the left edge of the column, so a label is the same size in every relation figure and is never stretched with the column. A narrower column shrinks the figure to three quarters at most and then scrolls.
 
 In the VS Code reader, **Inspect a definition in this statement** keeps the
 current clause and ordered context alongside the inspection. **Return to

@@ -6,7 +6,7 @@ import { MathLabel } from '../components/MathLabel';
 import { expressionMathDisplay, identifierMathDisplay, type MathDisplay } from '../notation/math-display';
 import type { SemanticObject } from '../semantic/types';
 import type { ConstructionMap, ConstructionMember, ConstructionType, TypedConstruction } from '../constructions/model';
-import { readingObjectColor } from '../visual/object-identity';
+import { useIdentityColor } from '../visual/object-identity';
 import type { StructuralField, StructuralObjectModel } from './types';
 import './decomposition.css';
 
@@ -37,16 +37,18 @@ export function startsClosed(model: StructuralObjectModel): boolean {
 }
 
 function ObjectControl({ id, label, title, ...interaction }: Interaction & { id?: string; label: string; title?: string }) {
+  const colorOf = useIdentityColor();
   return id ? <button className={`sd-object${interaction.selectedObjectId === id ? ' sd-selected' : ''}`} type="button" data-reading-object={id}
-    style={{ '--sd-object': readingObjectColor(id) } as CSSProperties} title={title ?? label} aria-label={title ?? label} aria-pressed={interaction.selectedObjectId === id}
+    style={{ '--sd-object': colorOf(id) } as CSSProperties} title={title ?? label} aria-label={title ?? label} aria-pressed={interaction.selectedObjectId === id}
     onClick={() => interaction.onObjectSelect?.(id)}>{short(label, 96)}</button> : <span className="sd-type-label" title={title ?? label}>{short(label, 72)}</span>;
 }
 
 function SvgObject({ id, label, children, ...interaction }: Interaction & { id?: string; label: string; children: ReactNode }) {
+  const colorOf = useIdentityColor();
   const actionable = id && interaction.onObjectSelect;
   const activate = (event: KeyboardEvent<SVGGElement>) => { if (actionable && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); interaction.onObjectSelect!(id); } };
   return <g className={`sd-svg-object${id && interaction.selectedObjectId === id ? ' sd-selected' : ''}`} data-reading-object={id}
-    style={id ? { '--sd-object': readingObjectColor(id) } as CSSProperties : undefined} role={actionable ? 'button' : 'group'} tabIndex={actionable ? 0 : undefined}
+    style={id ? { '--sd-object': colorOf(id) } as CSSProperties : undefined} role={actionable ? 'button' : 'group'} tabIndex={actionable ? 0 : undefined}
     aria-label={label} aria-pressed={actionable ? interaction.selectedObjectId === id : undefined} onKeyDown={activate} onClick={() => id && interaction.onObjectSelect?.(id)}><title>{label}</title>{children}</g>;
 }
 

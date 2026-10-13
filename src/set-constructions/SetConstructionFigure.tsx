@@ -4,7 +4,7 @@ import { useDiagramText } from '../components/use-diagram-text';
 import { MathLabel } from '../components/MathLabel';
 import { expressionMathDisplay, sourceMathDisplay, withMathProse } from '../notation/math-display';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
-import { readingObjectColor } from '../visual/object-identity';
+import { useIdentityColor } from '../visual/object-identity';
 import { compileSetConstruction, type SetConstructionModel, type SetTerm } from './model';
 import './set-constructions.css';
 
@@ -20,10 +20,12 @@ type Interaction = Pick<SetConstructionFigureProps, 'selectedObjectId' | 'onObje
 const symbol = { union: '∪', intersection: '∩', difference: '∖', complement: 'ᶜ' };
 const short = (value: string, limit = 42) => value.length > limit ? `${value.slice(0, limit - 1)}…` : value;
 function ObjectLabel({ object, ...interaction }: Interaction & { object: SemanticObject }) {
-  return <button type="button" className={`sc-object${interaction.selectedObjectId === object.id ? ' sc-selected' : ''}`} data-reading-object={object.id} style={{ '--sc-object': readingObjectColor(object.id) } as CSSProperties} title={`${object.label}${object.type ? ` : ${object.type}` : ''}`} aria-label={`${object.label}${object.type ? ` : ${object.type}` : ''}`} aria-pressed={interaction.selectedObjectId === object.id} onClick={() => interaction.onObjectSelect?.(object.id)}>{short(object.label, 80)}</button>;
+  const colorOf = useIdentityColor();
+  return <button type="button" className={`sc-object${interaction.selectedObjectId === object.id ? ' sc-selected' : ''}`} data-reading-object={object.id} style={{ '--sc-object': colorOf(object.id) } as CSSProperties} title={`${object.label}${object.type ? ` : ${object.type}` : ''}`} aria-label={`${object.label}${object.type ? ` : ${object.type}` : ''}`} aria-pressed={interaction.selectedObjectId === object.id} onClick={() => interaction.onObjectSelect?.(object.id)}>{short(object.label, 80)}</button>;
 }
 
 function MembershipRegions({ model, ...interaction }: Interaction & { model: SetConstructionModel }) {
+  const colorOf = useIdentityColor();
   const prefix = `sc-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const text = useDiagramText();
   const ambient = model.ambientExpression ? withMathProse(expressionMathDisplay(model.ambientExpression, model.ambientType), 'Type ')
@@ -42,9 +44,9 @@ function MembershipRegions({ model, ...interaction }: Interaction & { model: Set
       region.bits.forEach((inside, bit) => { if (inside) regionShape = <g clipPath={`url(#${prefix}-in-${bit})`}>{regionShape}</g>; });
       return <g key={index} data-membership-bits={region.bits.map(bit => bit ? '1' : '0').join('')} aria-label={model.atoms.map((atom, bit) => `${region.bits[bit] ? 'in' : 'outside'} ${atom.label}`).join(', ')}>{regionShape}</g>;
     })}
-    {circles.map((circle, index) => <circle key={index} cx={circle.x} cy={circle.y} r={circle.r} className="sc-set-boundary" style={{ '--sc-object': readingObjectColor(model.atoms[index].id) } as CSSProperties} fill="none" strokeWidth="1.4" strokeDasharray="5 3"/>)}
+    {circles.map((circle, index) => <circle key={index} cx={circle.x} cy={circle.y} r={circle.r} className="sc-set-boundary" style={{ '--sc-object': colorOf(model.atoms[index].id) } as CSSProperties} fill="none" strokeWidth="1.4" strokeDasharray="5 3"/>)}
     </g>
-  </svg></FigureScroll><div className="sc-region-key">{model.atoms.map((atom, index) => <div key={atom.id}><span className="sc-set-swatch" style={{ '--sc-object': readingObjectColor(atom.id) } as CSSProperties} aria-hidden="true"/><span className="sc-region-index">{model.atoms.length === 3 ? ['upper left', 'upper right', 'lower'][index] : model.atoms.length === 2 ? ['left', 'right'][index] : 'set'}</span><ObjectLabel object={atom} {...interaction}/></div>)}</div></div>;
+  </svg></FigureScroll><div className="sc-region-key">{model.atoms.map((atom, index) => <div key={atom.id}><span className="sc-set-swatch" style={{ '--sc-object': colorOf(atom.id) } as CSSProperties} aria-hidden="true"/><span className="sc-region-index">{model.atoms.length === 3 ? ['upper left', 'upper right', 'lower'][index] : model.atoms.length === 2 ? ['left', 'right'][index] : 'set'}</span><ObjectLabel object={atom} {...interaction}/></div>)}</div></div>;
 }
 
 function ConstructionStep({ term, objects, ...interaction }: Interaction & { term: SetTerm; objects: ReadonlyMap<string, SemanticObject> }) {

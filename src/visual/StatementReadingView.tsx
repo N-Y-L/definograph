@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import type { ReadingBinder, ReadingDocument, ReadingNode, ReadingPanel } from '../reading/types';
+import type { ReadingDocument, ReadingNode, ReadingPanel } from '../reading/types';
 import { planReadingPresentation, visibleReadingNodes, type ReadingPresentation, type ReadingRegion } from '../reading/presentation';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
 import { TypedConstructionFigure } from '../constructions';
@@ -11,7 +11,7 @@ import type { StructuralField } from '../decomposition/types';
 import { compileReading } from '../reading/compiler';
 import { compileSetConstruction, SetConstructionFigure } from '../set-constructions';
 import { compactLabel } from './layout';
-import { FigureScroll, useFrameOverflow } from '../components/FigureScroll';
+import { FigureScroll } from '../components/FigureScroll';
 import { useDiagramText } from '../components/use-diagram-text';
 import { MathLabel } from '../components/MathLabel';
 import { expressionDisplayNode, mathDisplay, sourceMathDisplay, type MathDisplay } from '../notation/math-display';
@@ -54,19 +54,9 @@ export interface StatementReadingViewProps {
   renderGeometry?: (panel: ReadingPanel) => ReactNode;
 }
 
-import { readingObjectColor } from './object-identity';
-export { readingObjectColor } from './object-identity';
-const roleText: Record<ReadingBinder['role'], string> = { universal: 'For every', existential: 'There is', parameter: 'Given parameter', lambda: 'For input', assumption: 'Assuming', definition: 'Define', auxiliary: 'Recorded context entry' };
-const roleSymbol: Record<ReadingBinder['role'], string> = { universal: '∀', existential: '∃', parameter: '↦', lambda: '↦', assumption: '⇒', definition: ':=', auxiliary: '·' };
-const componentMode = (document: SemanticDocument): boolean => document.presentation?.kind === 'component';
-const ambientNodes = (nodes: readonly ReadingNode[], document: SemanticDocument): boolean => nodes.every(node => document.presentation?.contextNodeIds?.includes(node.id));
-function componentBinderTitle(nodes: readonly ReadingNode[], document: SemanticDocument): string {
-  if (nodes[0]?.binder?.role === 'auxiliary') return 'Recorded context entries';
-  if (nodes.some(node => node.id === document.presentation?.logicalRootNodeId))
-    return nodes[0]?.binder?.role === 'existential' ? 'Candidate within the existential statement' : 'For every';
-  return nodes[0]?.binder?.role === 'definition' ? ambientNodes(nodes, document) ? 'Context definitions' : 'Local definitions'
-    : ambientNodes(nodes, document) ? 'Names in scope' : 'Function inputs';
-}
+import { assignIdentityColors, IdentityColorProvider, NEUTRAL_INK, useIdentityColor, useIdentityColors } from './object-identity';
+import { ambientNodes, binderGroupTitle, componentMode, connectiveWords, roleSymbol } from './region-words';
+import { StatementSkeleton } from './StatementSkeleton';
 type Maps = { objects: Map<string, SemanticObject>; relations: Map<string, SemanticRelation>; panels: Map<string, ReadingPanel> };
 type RenderContext = StatementReadingViewProps & Maps & { visibleNodes: Set<string>; presentation: ReadingPresentation; focusObjectIds?: ReadonlySet<string> };
 
@@ -77,7 +67,7 @@ function keyActivate(event: KeyboardEvent<SVGGElement>, action?: () => void) {
 function FigureObject({ id, ctx, children, title }: { id?: string; ctx: RenderContext; children: ReactNode; title?: string }) {
   const object = id ? ctx.objects.get(id) : undefined;
   const actionable = Boolean(object && ctx.onObjectSelect);
-  const color = id ? readingObjectColor(id) : '#82918f';
+  const color = useIdentityColor()(id);
   return <g className={`sr-figure-object${id && ctx.focusObjectIds?.has(id) ? ' sr-cue-object' : ''}${id === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} style={{ '--object-color': color } as CSSProperties} data-reading-object={id} role={actionable ? 'button' : 'group'} tabIndex={actionable ? 0 : undefined} aria-label={object ? `${object.label}${object.type ? ` : ${object.type}` : ''}` : title} aria-pressed={actionable ? id === ctx.selectedObjectId : undefined} onClick={() => { if (id) ctx.onObjectSelect?.(id); }} onKeyDown={event => keyActivate(event, actionable && id ? () => ctx.onObjectSelect?.(id) : undefined)}>
     <title>{`${title ?? object?.label ?? ''}${object?.type ? ` : ${object.type}` : ''}`}</title>{children}
   </g>;
@@ -102,6 +92,12 @@ function FigureArrow({ from, to }: { from: [number, number]; to: [number, number
   const a = head(.5), b = head(-.5);
   return <><path d={`M ${from[0]} ${from[1]} L ${to[0]} ${to[1]}`} className="sr-map-arrow"/><path d={`M ${a[0]} ${a[1]} L ${to[0]} ${to[1]} L ${b[0]} ${b[1]}`} className="sr-map-arrow"/></>;
 }
+
+/** One unit of a relation figure is one CSS pixel, so a label is the same size in every figure. A narrower column
+ * shrinks the figure to three quarters at most; below that it scrolls (FigureScroll). */
+/** The comparison sign of a relation figure, in figure units: no larger than the skeleton's clause row. */
+const COMPARISON_SIZE = 22;
+const figureSize = (width: number, height: number): CSSProperties => ({ width, maxWidth: '100%', minWidth: width * .75, height: 'auto', aspectRatio: `${width} / ${height}` });
 
 function port(relation: SemanticRelation, role: string): string | undefined { return relation.ports.find(candidate => candidate.role === role)?.objectId; }
 function producedBy(id: string | undefined, relations: readonly SemanticRelation[]) { return id ? relations.find(relation => relation.ports.some(p => ['output', 'result', 'region', 'distance', 'color', 'target vertex'].includes(p.role) && p.objectId === id)) : undefined; }
@@ -137,10 +133,10 @@ function MeasuredRelationFigure({ relation, relations, ctx }: { relation: Semant
     const operator = numericOperator(relation.expression);
     const symbol = operator === 'eq' || operator === 'ne' || operator === 'lt' || operator === 'le'
       ? mathDisplay({ kind: 'symbol', symbol: operator }, relation.label) : sourceMathDisplay(relation.label);
-    const layout = layoutRelationComparison(firstSize, secondSize, text.size('symbol', symbol.source, 27));
+    const layout = layoutRelationComparison(firstSize, secondSize, text.size('symbol', symbol.source, COMPARISON_SIZE));
     ({ width, height } = layout);
     const box = (id: string | undefined, label: MathDisplay, key: string, slot: typeof layout.left) => <FigureObject id={id} ctx={ctx}><rect x={slot.x} y={slot.y} width={slot.width} height={slot.height} rx="23" className="sr-expression-box"/>{name(key, label, slot.labelX, slot.labelY)}</FigureObject>;
-    body = <>{box(first, firstLabel, 'first', layout.left)}<MathLabel label={symbol} labelKey="symbol" x={layout.symbolX} y={layout.symbolY} fontSize={27} className="sr-comparison-symbol"/>{box(second, secondLabel, 'second', layout.right)}</>;
+    body = <>{box(first, firstLabel, 'first', layout.left)}<MathLabel label={symbol} labelKey="symbol" x={layout.symbolX} y={layout.symbolY} fontSize={COMPARISON_SIZE} className="sr-comparison-symbol"/>{box(second, secondLabel, 'second', layout.right)}</>;
   } else {
     const layout = layoutContainedRelation(firstSize, secondSize, nested);
     ({ width, height } = layout);
@@ -148,7 +144,7 @@ function MeasuredRelationFigure({ relation, relations, ctx }: { relation: Semant
   }
   const caption = comparison ? relation.kind === 'equality' ? 'The displayed expressions are required to satisfy this relation' : 'Order condition on the displayed expressions'
     : nested ? 'Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion.' : 'Membership condition · the named element belongs to the region';
-  return <figure className={`sr-relation-figure sr-figure-${relation.kind}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={{ minWidth: width * .75, height: 'auto', aspectRatio: `${width} / ${height}` }} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
+  return <figure className={`sr-relation-figure sr-figure-${relation.kind}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={figureSize(width, height)} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
 
 function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
@@ -205,10 +201,10 @@ function GenericRelationFigure({ relation, relations, ctx }: { relation: Semanti
     const leftPath = expressionMapPath(port(relation, 'left')!, relations), rightPath = expressionMapPath(port(relation, 'right')!, relations);
     const left = flow(leftPath, 'left'), right = flow(rightPath, 'right');
     const operator = numericOperator(relation.expression), symbol = operator === 'eq' || operator === 'ne' ? mathDisplay({ kind: 'symbol', symbol: operator }, relation.label) : sourceMathDisplay(relation.label);
-    const symbolSize = text.size('comparison', symbol.source, 27), outputX = Math.max(left.outputX, right.outputX);
+    const symbolSize = text.size('comparison', symbol.source, COMPARISON_SIZE), outputX = Math.max(left.outputX, right.outputX);
     const rightY = left.height + symbolSize.height + 48;
     width = outputX + Math.max(left.width - left.outputX, right.width - right.outputX); height = rightY + right.height;
-    body = <><g transform={`translate(${outputX - left.outputX} 0)`}>{left.draw()}</g><g transform={`translate(${outputX - right.outputX} ${rightY})`}>{right.draw()}</g><MathLabel label={symbol} labelKey="comparison" x={outputX} y={left.height + 24 + symbolSize.ascent} fontSize={27} className="sr-comparison-symbol"/><path d={`M${outputX} ${left.height - 4} V${left.height + 16} M${outputX} ${rightY - 16} V${rightY + 4}`} className="sr-role-connection"/></>;
+    body = <><g transform={`translate(${outputX - left.outputX} 0)`}>{left.draw()}</g><g transform={`translate(${outputX - right.outputX} ${rightY})`}>{right.draw()}</g><MathLabel label={symbol} labelKey="comparison" x={outputX} y={left.height + 24 + symbolSize.ascent} fontSize={COMPARISON_SIZE} className="sr-comparison-symbol"/><path d={`M${outputX} ${left.height - 4} V${left.height + 16} M${outputX} ${rightY - 16} V${rightY + 4}`} className="sr-role-connection"/></>;
     caption = `Compare the outputs of these map paths${relation.label === '≠' ? ': they are required to differ' : ': they are required to agree'}.${leftPath.collapsed || rightPath.collapsed ? ' Further nested inputs retain their expression labels.' : ''}`;
   } else if (['membership', 'subset', 'image', 'preimage'].includes(relation.kind)) {
     const membership = relation.kind === 'membership', nested = relation.kind === 'subset';
@@ -257,15 +253,16 @@ function GenericRelationFigure({ relation, relations, ctx }: { relation: Semanti
     body = <>{shaped(centerId, 'head', center, centerShape, 'box', (width - centerShape.width) / 2, 16)}{shapes.map((shape, i) => { const left = x; x += shape.width + 24; return <g key={`${others[i].role}:${i}`}><path d={`M${width / 2} ${16 + centerShape.height} L${left + shape.width / 2} ${rowY + shape.pointY! - 10}`} className="sr-role-connection"/>{shaped(others[i].objectId, `argument:${i}`, labels[i], shape, 'point', left, rowY)}</g>; })}</>;
     caption = componentMode(ctx.document) ? 'Argument structure of this expression' : relation.fidelity === 'structural' ? 'Argument structure only · this expression has no interpreted geometric meaning' : `${relation.label} · a property required of the displayed object`;
   }
-  return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={{ minWidth: width * .75, height: 'auto', aspectRatio: `${width} / ${height}` }} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
+  return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={figureSize(width, height)} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
 
 function BinderStrip({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: RenderContext }) {
+  const colorOf = useIdentityColor();
   return <div className="sr-binder-strip" aria-label={componentMode(ctx.document) ? "Parameters and definitions in source order" : "Binders and definitions in statement order"}>{nodes.map(node => {
     const binder = node.binder!;
     return <div key={node.id} className={`sr-binder sr-binder-${binder.role}`}>
       {binder.role === 'auxiliary' && <span className="sr-binder-dependency">{contextEntryTitle(binder)}</span>}
-      <button type="button" className={`sr-binder-name${binder.objectId === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} style={{ '--object-color': readingObjectColor(binder.objectId ?? binder.binderId) } as CSSProperties} data-reading-object={binder.objectId} onClick={() => binder.objectId ? ctx.onObjectSelect?.(binder.objectId) : ctx.onNodeSelect?.(node.id)} aria-pressed={binder.objectId === ctx.selectedObjectId} title={`${binder.name} : ${binder.type}`}><strong>{binder.name}</strong><span className="sr-binder-colon">:</span><span>{binder.type}</span></button>
+      <button type="button" className={`sr-binder-name${binder.objectId === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} style={{ '--object-color': colorOf(binder.objectId) } as CSSProperties} data-reading-object={binder.objectId} onClick={() => binder.objectId ? ctx.onObjectSelect?.(binder.objectId) : ctx.onNodeSelect?.(node.id)} aria-pressed={binder.objectId === ctx.selectedObjectId} title={`${binder.name} : ${binder.type}`}><strong>{binder.name}</strong><span className="sr-binder-colon">:</span><span>{binder.type}</span></button>
       {binder.definition && <span className="sr-definition-value">:= <code>{formatExpression(binder.definition.value)}</code></span>}
       {binder.role === 'existential' && <span className="sr-binder-dependency">{binder.dependsOn.length ? `may use ${binder.dependsOn.map(id => ctx.objects.get(id)?.label ?? id).join(', ')}` : 'independent of later choices'}</span>}
     </div>;
@@ -278,7 +275,8 @@ function SourceButton({ node, ctx, children }: { node: ReadingNode; ctx: RenderC
 
 function InlineObject({ id, ctx }: { id: string; ctx: RenderContext }) {
   const object = ctx.objects.get(id);
-  return <button type="button" className={`sr-inline-object${id === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} data-reading-object={id} style={{ '--object-color': readingObjectColor(id) } as CSSProperties} onClick={() => ctx.onObjectSelect?.(id)} title={object?.type} aria-label={`${object?.label ?? id}${object?.type ? ` : ${object.type}` : ''}`}>{object?.label ?? id}</button>;
+  const color = useIdentityColor()(id);
+  return <button type="button" className={`sr-inline-object${id === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} data-reading-object={id} style={{ '--object-color': color } as CSSProperties} onClick={() => ctx.onObjectSelect?.(id)} title={object?.type} aria-label={`${object?.label ?? id}${object?.type ? ` : ${object.type}` : ''}`}>{object?.label ?? id}</button>;
 }
 
 function ContainedExpressions({ panel, ctx }: { panel: ReadingPanel; ctx: RenderContext }) {
@@ -378,39 +376,21 @@ function AtlasRegion({ region, ctx, depth = 0, lead }: { region: ReadingRegion; 
   if (region.kind === 'binders') {
     const binders = region.binders.filter(node => ctx.visibleNodes.has(node.id));
     const role = region.node.binder!.role;
-    body = <><div className="sr-object-introduction"><RegionHeader region={region} ctx={ctx} lead={lead} symbol={roleSymbol[role]} title={role === 'auxiliary' ? 'Recorded context entries' : componentMode(ctx.document) ? componentBinderTitle(binders, ctx.document) : role === 'universal' ? 'For every' : role === 'existential' ? 'A witness is required' : role === 'definition' ? 'Local definitions' : 'Parameters'}/><BinderStrip nodes={binders} ctx={ctx}/><BinderFigures nodes={binders} ctx={ctx}/>{binders.length < region.binders.length && <button type="button" className="sr-show-more" onClick={() => ctx.onNodeSelect?.(region.binders[binders.length].id)}>Read the next {counted(region.binders.length - binders.length, 'binder')}</button>}</div>{region.body && <AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/>}</>;
+    body = <><div className="sr-object-introduction"><RegionHeader region={region} ctx={ctx} lead={lead} symbol={roleSymbol[role]} title={binderGroupTitle(region.binders, ctx.document)}/><BinderStrip nodes={binders} ctx={ctx}/><BinderFigures nodes={binders} ctx={ctx}/>{binders.length < region.binders.length && <button type="button" className="sr-show-more" onClick={() => ctx.onNodeSelect?.(region.binders[binders.length].id)}>Read the next {counted(region.binders.length - binders.length, 'binder')}</button>}</div>{region.body && <AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/>}</>;
   } else if (region.kind === 'implication') {
     body = <div className="sr-implication-regions"><section className="sr-given-region" aria-label="Given assumptions"><h3 className="sr-role-heading">Given</h3><div className="sr-region-stack">{region.assumptions.map(assumption => <AtlasRegion key={assumption.id} region={assumption} ctx={ctx} depth={depth + 1}/>)}</div><HypothesisStructures nodeIds={region.sourceNodeIds} ctx={ctx}/></section><section className="sr-then-region" aria-label="Then the conclusion is required">{region.conclusion.kind !== 'binders' && <h3 className="sr-role-heading"><span aria-hidden="true">→</span> Then</h3>}<AtlasRegion region={region.conclusion} ctx={ctx} depth={depth + 1} lead={region.conclusion.kind === 'binders' ? 'Then' : undefined}/></section></div>;
   } else if (region.kind === 'all') {
-    body = <><RegionHeader region={region} ctx={ctx} symbol="∧" title="Together" detail="Every condition below is required."/><div className="sr-conjuncts">{region.children.map(child => <AtlasRegion key={child.id} region={child} ctx={ctx} depth={depth + 1}/>)}</div></>;
+    body = <><RegionHeader region={region} ctx={ctx} {...connectiveWords.all} detail="Every condition below is required."/><div className="sr-conjuncts">{region.children.map(child => <AtlasRegion key={child.id} region={child} ctx={ctx} depth={depth + 1}/>)}</div></>;
   } else if (region.kind === 'alternatives') {
-    body = <><RegionHeader region={region} ctx={ctx} symbol="∨" title="At least one alternative" detail="Either or both may hold."/><div className="sr-alternatives">{region.children.map((child, index) => <section key={child.id} className="sr-alternative" aria-label={`Alternative ${index + 1}`}><h3 className="sr-branch-label">Alternative {index + 1}</h3><AtlasRegion region={child} ctx={ctx} depth={depth + 1}/></section>)}</div></>;
+    body = <><RegionHeader region={region} ctx={ctx} {...connectiveWords.alternatives} detail="Either or both may hold."/><div className="sr-alternatives">{region.children.map((child, index) => <section key={child.id} className="sr-alternative" aria-label={`Alternative ${index + 1}`}><h3 className="sr-branch-label">Alternative {index + 1}</h3><AtlasRegion region={child} ctx={ctx} depth={depth + 1}/></section>)}</div></>;
   } else if (region.kind === 'equivalence') {
-    body = <><RegionHeader region={region} ctx={ctx} symbol="↔" title="Equivalent conditions" detail="Each condition implies the other."/><div className="sr-equivalent-conditions">{region.children.map((child, index) => <section key={child.id}><h3 className="sr-branch-label">{index === 0 ? 'First' : 'Second'} equivalent condition</h3><AtlasRegion region={child} ctx={ctx} depth={depth + 1}/></section>)}</div><div className="sr-equivalence-directions">{region.node.directions?.map(direction => <button type="button" key={direction.id} onClick={() => ctx.onNodeSelect?.(direction.conclusionNodeId)}>{direction.label}</button>)}</div></>;
+    body = <><RegionHeader region={region} ctx={ctx} {...connectiveWords.equivalence} detail="Each condition implies the other."/><div className="sr-equivalent-conditions">{region.children.map((child, index) => <section key={child.id}><h3 className="sr-branch-label">{index === 0 ? 'First' : 'Second'} equivalent condition</h3><AtlasRegion region={child} ctx={ctx} depth={depth + 1}/></section>)}</div><div className="sr-equivalence-directions">{region.node.directions?.map(direction => <button type="button" key={direction.id} onClick={() => ctx.onNodeSelect?.(direction.conclusionNodeId)}>{direction.label}</button>)}</div></>;
   } else if (region.kind === 'negation') {
-    body = <><RegionHeader region={region} ctx={ctx} symbol="¬" title="Not" detail="Negation applies to the entire enclosed condition."/><div className="sr-negated-body" aria-label="Under negation"><AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/></div></>;
+    body = <><RegionHeader region={region} ctx={ctx} {...connectiveWords.negation} detail="Negation applies to the entire enclosed condition."/><div className="sr-negated-body" aria-label="Under negation"><AtlasRegion region={region.body} ctx={ctx} depth={depth + 1}/></div></>;
   } else if (region.kind === 'structure') {
     body = <><RegionHeader region={region} ctx={ctx} title={region.node.phrase}/>{region.children.map(child => <AtlasRegion key={child.id} region={child} ctx={ctx} depth={depth + 1}/>)}</>;
   } else body = <Clause node={region.node} ctx={ctx}/>;
   return <section className={`sr-atlas-region sr-region-${region.kind}${focused ? ' sr-region-focused' : ''}${depth > 3 ? ' sr-deep-region' : ''}`} data-reading-step={region.id} data-reading-region={region.kind} data-source-nodes={region.sourceNodeIds.join(' ')} data-component-region={componentMode(ctx.document) ? ambientNodes([region.node], ctx.document) ? 'context' : 'expression' : undefined}>{componentMode(ctx.document) && region.sourceNodeIds.includes(ctx.document.presentation!.targetNodeId!) && <p className="sr-heading-lead" data-component-target={ctx.document.presentation!.target}>{ctx.componentTitle ?? (ctx.document.presentation!.target === 'type' ? 'Inferred type' : 'Selected term')} begins here.</p>}{body}</section>;
-}
-
-function overviewTitle(region: ReadingRegion, document: SemanticDocument): string {
-  if (region.kind === 'binders' && region.node.binder?.role === 'auxiliary') return region.binders.map(node => contextEntryTitle(node.binder!)).join('; ');
-  if (componentMode(document) && region.kind === 'binders') return `${componentBinderTitle(region.binders, document)}: ${region.binders.map(node => node.binder!.name).join(', ')}`;
-  if (region.kind === 'binders') return `${roleText[region.node.binder!.role]} ${region.binders.map(node => node.binder!.name).join(', ')}`;
-  if (region.kind === 'implication') return 'Given → conclusion';
-  if (region.kind === 'all') return 'All conditions';
-  if (region.kind === 'alternatives') return 'At least one alternative';
-  if (region.kind === 'equivalence') return 'Both directions';
-  if (region.kind === 'negation') return 'Not';
-  return compactLabel(region.node.phrase || region.node.lean, 70);
-}
-
-function LogicOverview({ region, ctx, depth = 0 }: { region: ReadingRegion; ctx: RenderContext; depth?: number }): ReactNode {
-  if (!region.sourceNodeIds.some(id => ctx.visibleNodes.has(id))) return <button type="button" className="sr-overview-more" onClick={() => ctx.onNodeSelect?.(region.id)}>{compactLabel(overviewTitle(region, ctx.document), 44)}…</button>;
-  const children: { region: ReadingRegion; role?: string }[] = region.kind === 'binders' ? region.body ? [{ region: region.body }] : [] : region.kind === 'implication' ? [...region.assumptions.map(assumption => ({ region: assumption, role: 'Given' })), { region: region.conclusion, role: 'Then' }] : region.kind === 'negation' ? [{ region: region.body, role: 'Negated' }] : region.kind === 'clause' ? [] : region.children.map((child, index) => ({ region: child, role: region.kind === 'alternatives' ? `Alternative ${index + 1}` : region.kind === 'equivalence' ? `${index === 0 ? 'First' : 'Second'} condition` : undefined }));
-  return <div className={`sr-overview-node${depth > 3 ? ' sr-overview-deep' : ''}`}><button type="button" className={region.sourceNodeIds.includes(ctx.reading.selection.nodeId) ? 'sr-overview-selected' : ''} onClick={() => ctx.onNodeSelect?.(region.id)} title={region.node.lean}>{overviewTitle(region, ctx.document)}</button>{children.length > 0 && <div className="sr-overview-children">{children.map(child => <div key={child.region.id}>{child.role && <span className="sr-overview-edge-label">{child.role}</span>}<LogicOverview region={child.region} ctx={ctx} depth={depth + 1}/></div>)}</div>}</div>;
 }
 
 function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
@@ -430,18 +410,10 @@ function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
     const localContext = ctx.document.scopes.find(scope => scope.id === cue.scopeId)?.context ?? [];
     body = <>{cue.stage.kind === 'construction' && <p className="rg-construction-context">Constructing part of <span title={node.lean}>{compactLabel(node.phrase || node.lean, 180)}</span></p>}{cue.stage.kind === 'contained' && <p className="rg-local-binders">Part of <code>{node.lean}</code>.{componentMode(ctx.document) || relation?.fidelity === 'structural' ? ' This part retains its expression scope.' : ' This inner relation is not asserted separately.'}{group?.role === 'local-expression' && <> Local context: {localContext.join(' · ') || 'binders apply only inside this expression'}.</>}</p>}{relation && <RelationFigure relation={relation} relations={relations} ctx={focused}/>}</>;
   } else if (cue.intent === 'logic') {
-    const grouped = cue.sourceNodeIds.flatMap(id => { const source = ctx.reading.nodes.find(candidate => candidate.id === id); return source?.kind === 'implies' ? [source] : []; });
-    const children = node.kind === 'implies' && grouped.length ? [...grouped.map(source => source.children[0]), grouped.at(-1)!.children[1]] : node.children;
-    body = <><div className="rg-logic-children">{children.map((child, index) => <div className="rg-logic-child" key={child.id}><span>{node.kind === 'implies' ? index < children.length - 1 ? 'Given' : 'Then' : node.kind === 'or' ? `Alternative ${index + 1}` : node.kind === 'not' ? 'Negated condition' : node.kind === 'iff' ? `${index === 0 ? 'First' : 'Second'} condition` : `Condition ${index + 1}`}</span><button type="button" onClick={() => ctx.onNodeSelect?.(child.id)} title={child.lean}>{compactLabel(child.phrase || child.lean, 180)}</button></div>)}</div><HypothesisStructures nodeIds={cue.sourceNodeIds} ctx={focused}/></>;
+    // The step is the marked row of the skeleton and the rows inside its frame; nothing repeats them here.
+    body = <HypothesisStructures nodeIds={cue.sourceNodeIds} ctx={focused}/>;
   } else body = <Clause node={node} ctx={focused}/>;
   return <>{body}<details className="rg-source-context"><summary>Lean fragment and source context</summary><code>{node.lean}</code></details></>;
-}
-
-/** The whole-statement overview scrolls within its own height: always named (a complementary landmark), and a Tab stop
- * only while it overflows (FigureScroll rule). Its own component, so an overflow change re-renders only the aside. */
-function Overview({ name, children }: { name: string; children: ReactNode }) {
-  const [overview, overflow] = useFrameOverflow<HTMLElement>(true);
-  return <aside ref={overview} className="sr-overview" aria-label={name} tabIndex={overflow ? 0 : undefined}>{children}</aside>;
 }
 
 export function StatementReadingView(props: StatementReadingViewProps) {
@@ -453,6 +425,8 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   const [nodeLimit, setNodeLimit] = useState(100);
   const previousSelection = useRef(reading.selection.nodeId);
   const [traces, setTraces] = useState<{ id: string; path: string }[]>([]);
+  const inherited = useIdentityColors();
+  const colors = useMemo(() => assignIdentityColors(semantic, inherited), [semantic, inherited]);
   const maps = useMemo<Maps>(() => ({ objects: new Map(semantic.objects.map(object => [object.id, object])), relations: new Map(semantic.relations.map(relation => [relation.id, relation])), panels: new Map(reading.panels.map(panel => [panel.id, panel])) }), [semantic, reading]);
   const presentation = useMemo(() => planReadingPresentation(reading, { boundaryNodeIds: componentMode(semantic) && semantic.presentation?.targetNodeId ? [semantic.presentation.targetNodeId] : [] }), [reading, semantic]);
   const cuePlan = useMemo(() => compileReadingCues(reading, semantic), [reading, semantic]);
@@ -514,5 +488,10 @@ export function StatementReadingView(props: StatementReadingViewProps) {
       if (cue) chooseCue(cue);
       else { const relation = maps.relations.get(id); if (relation) { chooseNode(relation.nodeId); props.onSourceSelect?.(id); } }
     }}/>;
-  return <div className="statement-reading-view"><div className="sr-atlas-layout"><div className="sr-atlas-main"><div className="sr-reading-intro"><span className="sr-reading-label">Visual reading</span><span className="sr-schematic-label">Symbolic schematics · no numerical choices</span></div><div ref={surface} className="sr-reading-surface">{scopedGraph && <nav className="ssg-mode" aria-label="Reading presentation"><button type="button" aria-pressed={showGraph} onClick={() => setReadingMode('graph')}>Construction graph</button><button type="button" aria-pressed={!showGraph} onClick={() => setReadingMode('guided')}>Guided reading</button></nav>}{showGraph ? graphical : guided}<details ref={complete} className="sr-complete-reading"><summary>{componentMode(semantic) ? 'Full visual reading' : 'Full visual statement'}</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ '--trace-color': readingObjectColor(selectedObjectId) } as CSSProperties}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label={componentMode(semantic) ? 'Ordered visual reading of the expression' : 'Ordered visual reading of the statement'}><AtlasRegion region={presentation.root} ctx={ctx}/></div></details></div>{reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {counted(reading.nodes.length, componentMode(semantic) ? 'expression node' : 'logical node')}, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {counted(Math.min(100, reading.nodes.length - visibleNodes.size), 'node')}</button></div>}<p className="sr-reading-note">{componentMode(semantic) ? 'Schematics follow expression structure and its context. Shapes and spacing carry no additional meaning.' : 'Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.'}</p></div><Overview name={componentMode(semantic) ? 'Expression and context' : 'Whole statement'}><div className="sr-overview-heading">{componentMode(semantic) ? 'Expression and context' : 'Whole statement'}</div><LogicOverview region={presentation.root} ctx={ctx}/></Overview></div></div>;
+  return <IdentityColorProvider value={colors}><div className="statement-reading-view">
+    <StatementSkeleton root={presentation.root} document={semantic} visibleNodes={visibleNodes} activeRegionId={activeCue?.regionId ?? presentation.nodeToRegionId[reading.selection.nodeId]} activeNodeId={reading.selection.nodeId} selectedObjectId={selectedObjectId} onNodeSelect={chooseNode}/>
+    <div ref={surface} className="sr-reading-surface">{scopedGraph && <nav className="ssg-mode" aria-label="Reading presentation"><button type="button" aria-pressed={showGraph} onClick={() => setReadingMode('graph')}>Construction graph</button><button type="button" aria-pressed={!showGraph} onClick={() => setReadingMode('guided')}>Guided reading</button></nav>}{showGraph ? graphical : guided}<details ref={complete} className="sr-complete-reading"><summary>{componentMode(semantic) ? 'Full visual reading' : 'Full visual statement'}</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ '--trace-color': colors.get(selectedObjectId) ?? NEUTRAL_INK } as CSSProperties}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label={componentMode(semantic) ? 'Ordered visual reading of the expression' : 'Ordered visual reading of the statement'}><AtlasRegion region={presentation.root} ctx={ctx}/></div></details></div>
+    {reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {counted(reading.nodes.length, componentMode(semantic) ? 'expression node' : 'logical node')}, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {counted(Math.min(100, reading.nodes.length - visibleNodes.size), 'node')}</button></div>}
+    <p className="sr-reading-note">Symbolic schematics · no numerical choices. {componentMode(semantic) ? 'Schematics follow expression structure and its context. Shapes and spacing carry no additional meaning.' : 'Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.'}</p>
+  </div></IdentityColorProvider>;
 }
