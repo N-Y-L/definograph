@@ -185,6 +185,7 @@ changed display paths require their own verification.
 | `npm test` | Unit and renderer contracts, including checked fixtures; no live Lean worker |
 | `npm run test:server` | Local HTTP/IPC, process lifecycle, cancellation, request boundaries, and mocked workers |
 | `npm run check:extension` | Type checking, mocked controller/lifecycle checks, and local VSIX packaging; no editor installation |
+| `npm run test:axioms` | Every constant of the compiled proved core against the axiom allowlist in `scripts/axiom-policy.json`, a negative control that must be rejected, and a kernel replay with `leanchecker`; requires the built native engine. `--no-replay` skips the replay |
 | `node --import tsx scripts/host-journey.ts` | Real macOS VS Code development-host inspection clicks, exact command fields, native process counts, cancellation, refusal recovery and Reveal |
 | `npm run test:structure-export` | Actual native field reflection, type aliases, bounds, source isolation, and response trimming |
 | `npm run test:decomposition` | Unfamiliar and renamed user records through native extraction, shared semantics, and the production reader |

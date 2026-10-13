@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "allowedAxioms": ["propext", "Quot.sound"],
+  "ratchetedAxiom": "Classical.choice",
+  "ratchetExceptions": [
+    { "name": "AxiomAuditFixture.clean", "kind": "proof" },
+    { "name": "AxiomAuditFixture.plantedChoiceListedAsStatement", "kind": "statement" }
+  ],
+  "certificates": [
+    { "name": "AxiomAuditFixture.cleanCertificate", "axioms": [] },
+    { "name": "AxiomAuditFixture.regressedCertificate", "axioms": [] },
+    { "name": "AxiomAuditFixture.missingCertificate", "axioms": [] },
+    { "name": "AxiomAuditFixture.clean", "axioms": ["Classical.choice"] }
+  ],
+  "expectedTheoremConstants": 1
+}

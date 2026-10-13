@@ -42,8 +42,11 @@ user's formal project. Native setup can read an existing matching cache or
 explicitly download into this repository's isolated cache.
 
 Do not add axioms, `sorry`, or relaxed placeholder checks to make a visualization
-succeed. Never log or commit an editor user's buffer as a diagnostic artifact
-without a task-specific reason.
+succeed. The one exception is `scripts/fixtures/axiom-audit/AxiomAuditFixture.lean`,
+a negative control that plants a `sorry`, a `native_decide` and an axiom so that
+`npm run test:axioms` can show it rejects them; nothing imports it. Never log or
+commit an editor user's buffer as a diagnostic artifact without a task-specific
+reason.
 
 ## Change and verification workflow
 

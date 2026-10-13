@@ -1,0 +1,59 @@
+--- a/lean/admission/ComponentAdmission.lean
++++ b/lean/admission/ComponentAdmission.lean
+@@ -17,18 +17,18 @@
+     dec (C.close t) = closeForall (CTel.items C) (dec t) := by
+   induction C with
+   | nil => rfl
+-  | port C a A ih => simpa [CTel.close, CTel.items, closeForall, dec,
++  | port C a A ih => simpa only [CTel.close, CTel.items, closeForall, dec,
+       CoreExprBridge.decode, Array.foldr_push] using ih (.pi a A t)
+-  | letE C nm nd A v ih => simpa [CTel.close, CTel.items, closeForall, dec,
++  | letE C nm nd A v ih => simpa only [CTel.close, CTel.items, closeForall, dec,
+       CoreExprBridge.decode, Array.foldr_push] using ih (.letE nm nd A v t)
+ 
+ theorem lambda_decode (C : CTel n) (t : Core n) :
+     dec (ctelLam C t) = closeLam (CTel.items C) (dec t) := by
+   induction C with
+   | nil => rfl
+-  | port C a A ih => simpa [ctelLam, CTel.items, closeLam, dec,
++  | port C a A ih => simpa only [ctelLam, CTel.items, closeLam, dec,
+       CoreExprBridge.decode, Array.foldr_push] using ih (.lam a A t)
+-  | letE C nm nd A v ih => simpa [ctelLam, CTel.items, closeLam, dec,
++  | letE C nm nd A v ih => simpa only [ctelLam, CTel.items, closeLam, dec,
+       CoreExprBridge.decode, Array.foldr_push] using ih (.letE nm nd A v t)
+ 
+ def checkContextWith (run : Check) (nm : Name) (ls : List Name) (C : CTel n) : MetaM Checks := do
+--- a/lean/library/CompositionBase.lean
++++ b/lean/library/CompositionBase.lean
+@@ -1309,7 +1309,7 @@
+     have := ih z hz
+     simp only [List.length_cons, List.filter_cons]
+     simp at this ⊢
+-    omega
++    exact ⟨by omega, this.2⟩
+   | letE nm nd ty v b ih =>
+     intro y hy
+     simp only [Tmpl.uses, List.mem_map] at hy
+@@ -1317,7 +1317,7 @@
+     have := ih z hz
+     simp only [List.length_cons, List.filter_cons]
+     simp at this ⊢
+-    omega
++    exact ⟨by omega, this.2⟩
+ 
+ /-- Selection paths to holes are prefix-free: a hole is a leaf of the selection. -/
+ theorem followSel_prefix_free : ∀ (s : BSel) (p q : List Step) (i : Nat) (s' : BSel),
+--- a/lean/library/ExprReferenceGraph.lean
++++ b/lean/library/ExprReferenceGraph.lean
+@@ -117,7 +117,10 @@
+     run initial (first.append rest) = run (run initial first) rest := by
+   induction rest with
+   | done => rfl
+-  | snoc rest node ih => simp only [Extension.append, run, ih]
++  | snoc rest node ih =>
++    show pushValues (run initial (first.append rest)) (evalNode (run initial (first.append rest)) node)
++      = pushValues (run (run initial first) rest) (evalNode (run (run initial first) rest) node)
++    rw [ih]
+ 
+ theorem run_lift (initial : Values Γ) (code : Extension Γ Δ) (r : Ref Γ k) :
+     run initial code (code.lift r) = initial r := by
