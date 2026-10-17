@@ -62,10 +62,11 @@ describe('graph constraint model', () => {
     expect(model.explanation).toContain('only if the vertex type is empty');
     const rendered = html(result);
     expect(rendered).toContain('edge rule is vacuous');
-    expect(rendered).toContain('Empty vertex type required');
+    expect(rendered).toContain('<strong>Holds only for an empty vertex type</strong>');
     expect(rendered).not.toContain('data-graph-endpoint=');
     expect(rendered).not.toContain('data-palette-label=');
     expect(html(coloring(literal(0)))).toContain('has an empty vertex type');
+    expect(html(coloring(literal(0)))).toContain('<strong>By its type, the vertex type is empty</strong>');
   });
 
   it('does not confuse a one-color bound with one vertex or a chosen graph', () => {

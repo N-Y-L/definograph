@@ -1,9 +1,10 @@
 import type { SemanticDocument, SemanticRelation, SemanticScope } from '../semantic/types';
 import { contextEntryTitle } from '../core/context-entry';
 import { planReadingPresentation, type ReadingRegion } from './presentation';
+import { roleChains, type RoleChain } from './roles';
 import type { ReadingBinder, ReadingDocument, ReadingNode, ReadingPanel, ReadingQuantifierGroup } from './types';
 
-export const READING_CUE_VERSION = '1.0.0' as const;
+export const READING_CUE_VERSION = '1.1.0' as const;
 export type ReadingCueIntent = 'introduce' | 'logic' | 'apply' | 'compare' | 'condition' | 'inspect';
 export type ReadingCueRole = 'statement' | 'expression' | 'parameter' | 'definition' | 'auxiliary' | 'arbitrary' | 'witness' | 'candidate' | 'assumption' | 'conclusion' | 'conjunct' | 'alternative' | 'equivalence-left' | 'equivalence-right' | 'negated' | 'result' | 'contained';
 export interface ReadingCue {
@@ -23,6 +24,9 @@ export interface ReadingCue {
   readonly ancestorNodeIds: readonly string[];
   readonly assumptionNodeIds: readonly string[];
   readonly branchPath: ReadingQuantifierGroup['branchPath'];
+  /** The role edges of the cue's region in the region tree the skeleton draws, outermost first. The guided figure is
+   * drawn inside one frame per position. Unlike branchPath, a hypothesis chain is one implication here. */
+  readonly roleChain: RoleChain;
   readonly contextLabels: readonly string[];
   readonly title: string;
   readonly detail: string;
@@ -109,6 +113,7 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
   const nodes = new Map(reading.nodes.map(node => [node.id, node]));
   const steps = new Map(reading.sequence.map(step => [step.nodeId, step]));
   const presentation = planReadingPresentation(reading, { boundaryNodeIds: component && targetNodeId ? [targetNodeId] : [] });
+  const chains = roleChains(presentation.root);
   const cues: ReadingCue[] = [];
   const omittedNodeIds = new Set<string>();
   const diagnostics = unique([...document.diagnostics, ...reading.diagnostics]);
@@ -139,9 +144,11 @@ export function compileReadingCues(reading: ReadingDocument, document: SemanticD
         kind: node.kind, label: node.phrase, objectIds: [], assumptionNodeIds: assumptions, context: node.context };
     }
     const roles = surroundingRoles(step.branchPath);
+    const roleChain = chains.get(regionId);
+    if (!roleChain) throw new Error(`Cue region ${regionId} is not a region of the reading.`);
     return { nodeId: node.id, regionId, sourceNodeIds, panelId: panel?.id, scopeId,
       scopePath: scopePath(scope), ancestorNodeIds: step.ancestorNodeIds, assumptionNodeIds: scope.assumptionNodeIds,
-      branchPath: step.branchPath, contextLabels: contextLabels(node, scope, step.branchPath),
+      branchPath: step.branchPath, roleChain, contextLabels: contextLabels(node, scope, step.branchPath),
       role: roles.at(-1) ?? (component ? 'expression' : 'statement'), roles, contextObjectIds: scope.objectIds.filter(id => objects.has(id)), binders: [] as readonly ReadingBinder[] };
   };
   const emit = (draft: Draft, groupObjects: readonly string[] = []): void => {

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFigureRoles } from '../src/visual/role-readback.ts';
 
 /** Extract the outer active guide from production React SSR. Supplementary
  * field laws have their own complete readers, so an inner details marker is
@@ -16,3 +17,12 @@ export function activeReadingGuide(html: string): string {
   }
   assert.fail('The production active guide must have a balanced outer section');
 }
+
+/** The role chains the active guided step's figure is framed by, read back from the markup alone: one chain per leaf
+ * of the outer reading, each a list of [role, index] pairs, outermost first. Field laws read inside a figure are
+ * readings of their own and are left out. */
+export function stageRoleChains(html: string): [string, number][][] {
+  return readFigureRoles(html).filter(figure => figure.depth === 0).map(figure => figure.chain.map(({ role, index }) => [role, index]));
+}
+/** The same pairs for a cue's own chain. */
+export const cueRoleChain = (cue: { roleChain: readonly { edge: string; index: number }[] }): [string, number][] => cue.roleChain.map(({ edge, index }) => [edge, index]);

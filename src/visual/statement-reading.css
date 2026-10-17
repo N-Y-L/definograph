@@ -89,7 +89,8 @@
 .sr-negated-body { padding-left:19px; border-left:2px solid light-dark(#a58b81, #c9b9b3); }
 .sr-region-negation > .sr-region-heading .sr-region-symbol { color:light-dark(#866355, #b6a199); }
 .sr-deep-region .sr-alternatives,.sr-deep-region .sr-equivalent-conditions { grid-template-columns:1fr; }
-.sr-symbolic-clause { padding:14px 0 13px 17px; border-left:2px solid light-dark(#c6ccd3, #54606d); }
+/* A clause kept symbolically is set off by a top rule: a left rail around a figure belongs to a role frame. */
+.sr-symbolic-clause { padding:13px 0; border-top:1px solid light-dark(#c6ccd3, #54606d); }
 .sr-symbolic-clause code { display:block; font-size:13px; line-height:1.7; color:light-dark(#3f5366, #8c98a3); white-space:pre-wrap; overflow-wrap:anywhere; }
 .sr-symbolic-clause p,.sr-local-note { font-size:11px; color:var(--sr-muted); line-height:1.65; margin:9px 0 0; }
 .sr-folded-region { padding:9px 0; border-top:1px dashed var(--sr-line); }
@@ -113,7 +114,8 @@
 .sr-contained-expressions > summary { color:var(--sr-accent); font-size:12px; line-height:1.6; cursor:pointer; }
 .sr-contained-expressions > summary > span { color:var(--sr-muted); font-size:11px; margin-left:9px; }
 .sr-contained-note { color:light-dark(#626f7d, #a1a9b1); font-size:12px; line-height:1.6; margin:10px 0 15px; }
-.sr-contained-group { padding:0 0 16px 14px; border-left:1px dashed light-dark(#b9c2cd, #515f71); }
+/* A local expression scope is a scope like a binder's: the neutral 1px solid rail, never the dashes of a negation. */
+.sr-contained-group { padding:0 0 16px 14px; border-left:1px solid var(--line-structure); }
 .sr-contained-group .sr-relation-figure + .sr-relation-figure { margin-top:19px; }
 .sr-contained-group > .sr-local-note { padding:0 0 10px; }
 /* A scalar premise reads as one mathematical line rather than a diagram panel. */

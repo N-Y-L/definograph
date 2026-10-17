@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createElement, type ComponentType, type ReactNode } from 'react';
+import { createElement, type ComponentType } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createServer } from 'vite';
 import { createWorkerBackend } from '../server/worker.ts';
@@ -11,14 +11,18 @@ import { compileSemanticDocument } from '../src/semantic/index.ts';
 import type { SemanticDocument } from '../src/semantic/types.ts';
 import { compileReading, compileReadingCues, type ReadingCue, type ReadingCuePlan, type ReadingDocument } from '../src/reading/index.ts';
 import type { StatementReadingViewProps } from '../src/visual/StatementReadingView.tsx';
+import { createReadingCueSelection } from '../src/visual/reading-cue-selection.ts';
+import { cueRoleChain, stageRoleChains } from './ssr-reading.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backend = createWorkerBackend({ rootDir });
 const ssr = await createServer({ configFile: false, root: rootDir, appType: 'custom', server: { middlewareMode: true, watch: null, hmr: false, ws: false } });
 interface Compiled { analysis: Analysis; document: SemanticDocument; reading: ReadingDocument; plan: ReadingCuePlan }
 interface Case { name: string; source: string; options?: AnalysisOptions; body?: boolean; check: (result: Compiled) => void }
-interface GuideProps { plan: ReadingCuePlan; cue: ReadingCue; reading: ReadingDocument; document: SemanticDocument; onChoose: (cue: ReadingCue) => void; children: ReactNode }
-let GuidedReading: ComponentType<GuideProps>, StatementReadingView: ComponentType<StatementReadingViewProps>;
+let StatementReadingView: ComponentType<StatementReadingViewProps>;
+/** The role oracle (src/visual/role-marks.test-fixtures.ts): the frames, the kind of figure and its mark, worked out from
+ * the region tree apart from the renderer. Loaded through Vite because it draws the reader. */
+let assertStageReadsBack: (document: SemanticDocument, reading: ReadingDocument, html: string) => { cue?: ReadingCue };
 const introductions = (plan: ReadingCuePlan) => plan.cues.filter(cue => cue.intent === 'introduce');
 const relationKinds = (plan: ReadingCuePlan) => plan.cues.filter(cue => cue.stage.relationKind).map(cue => cue.stage.relationKind);
 const relation = (result: Compiled, cue: ReadingCue) => result.document.relations.find(relation => relation.id === cue.stage.relationId)!;
@@ -50,11 +54,14 @@ function assertPlan(result: Compiled): void {
     const available = new Set([...cue.contextObjectIds, ...cue.focusObjectIds, ...group?.objectIds ?? []]);
     assert.ok(cue.retainedObjectIds.every(id => available.has(id)), 'Object continuity cannot escape the current scope');
     if (cue.stage.kind === 'contained') assert.ok(cue.detail.includes('not a separate assertion'));
-    const html = renderToStaticMarkup(createElement(GuidedReading, { plan, cue, reading, document, onChoose: () => undefined, children: createElement('div', { 'data-fixture-stage': cue.id }) }));
-    assert.ok(html.includes(`data-cue-scope="${cue.scopeId}"`));
-    for (const part of cue.branchPath.filter(part => !['body', 'result'].includes(part.edge.role))) {
-      assert.ok(html.includes(`data-logic-role="${part.edge.role}"`), `The staged view detached its ${part.edge.role} envelope`);
-    }
+    // The step as the guide draws it. Its frames, the kind of its figure and its mark must be what the region tree gives,
+    // worked out apart from the renderer, and a step off a connective draws exactly one figure. The cue's own chain must
+    // agree with the frames as well.
+    const selected = compileReading(document, { selectedNodeId: cue.nodeId });
+    const html = renderToStaticMarkup(createElement(StatementReadingView, { document, reading: selected, selectedCue: createReadingCueSelection(document, cue) }));
+    assert.ok(html.includes(`data-cue-id="${cue.id}" data-cue-node="${cue.nodeId}" data-cue-scope="${cue.scopeId}"`));
+    assert.equal(assertStageReadsBack(document, selected, html).cue?.id, cue.id);
+    for (const chain of stageRoleChains(html)) assert.deepEqual(chain, cueRoleChain(cue), `The staged view detached its ${cueRoleChain(cue).map(([role]) => role).join(' › ')} envelope`);
     if (scope.context.some(context => context === 'Within a function body' || context === 'Within a quantified expression')) {
       assert.ok(cue.contextLabels.some(context => context === 'Within a function body' || context === 'Within a quantified expression'));
     }
@@ -95,7 +102,8 @@ const cases: Case[] = [
       assert.equal(cue.assumptionNodeIds.length, 1);
       const reading = compileReading(result.document, { selectedNodeId: cue.nodeId });
       const html = renderToStaticMarkup(createElement(StatementReadingView, { reading, document: result.document }));
-      assert.ok(html.includes('data-logic-role="negated"') && html.includes('data-logic-role="alternative"') && html.includes('data-logic-role="conclusion"'));
+      assertStageReadsBack(result.document, reading, html);
+      assert.deepEqual(stageRoleChains(html), [[['conclusion', 0], ['negated', 0], ['alternative', index]]]);
     });
   } },
   { name: 'iff sides and nested antecedents do not become global assumptions', source: '∀ (P Q R S : Prop), ((P → Q) → R) ↔ ¬S', check: ({ plan, reading }) => {
@@ -174,8 +182,8 @@ const run = async (name: string, check: () => void | Promise<void>) => {
   catch (error) { failed++; console.error(`FAIL ${name}: ${error instanceof Error ? error.message : String(error)}`); }
 };
 try {
-  ({ GuidedReading } = await ssr.ssrLoadModule('/src/visual/GuidedReading.tsx'));
   ({ StatementReadingView } = await ssr.ssrLoadModule('/src/visual/StatementReadingView.tsx'));
+  ({ assertStageReadsBack } = await ssr.ssrLoadModule('/src/visual/role-marks.test-fixtures.ts'));
   for (const test of cases) await run(test.name, async () => { const result = await compile(test.source, test.options, test.body); assertPlan(result); test.check(result); });
   await run('renaming binders preserves the guided construction topology', async () => {
     const first = await compile('∀ (X : Type) (f : X → X) (x : X), f x = x');

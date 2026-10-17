@@ -150,6 +150,13 @@ describe('exact-natural consumer integration', () => {
     if (drawing.ok) expect(readStructuralDrawing(drawing.value)).toEqual({ ok: true, value: { expression: captured.syntax, externalContext: [] } });
   });
 
+  it('reads retained premises as premises, which mark nothing as required, and the derived consequence as a statement', async () => {
+    // The retained record holds the input laws the construction assumes; only the derived consequence states a goal.
+    const packet = await consumerPacket(2);
+    expect(renderToStaticMarkup(createElement(PacketReading, { packet }))).toContain('<div class="statement-reading-view" data-role-root="premise">');
+    expect(renderToStaticMarkup(createElement(PacketReading, { packet, initialRole: 'derived' }))).toContain('<div class="statement-reading-view" data-role-root="statement">');
+  });
+
   it('renders large projection, literal, name, universe and external-index fields as exact decimal data', () => {
     const numeric: JsonValue = ['num', name('component'), ['nat', adjacent]];
     const raw: JsonValue = ['proj', numeric, ['nat', large], ['app', ['const', numeric, [['param', numeric]]], ['lit', ['natVal', ['nat', adjacent]]]]];

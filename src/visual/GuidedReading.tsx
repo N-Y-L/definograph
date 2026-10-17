@@ -27,7 +27,6 @@ export function GuidedReading({ plan, cue, reading, document, onChoose, onObject
   const index = plan.cues.indexOf(cue);
   const nodes = new Map(reading.nodes.map(node => [node.id, node]));
   const objects = new Map(document.objects.map(object => [object.id, object]));
-  const path = cue.branchPath.filter(part => !['body', 'result'].includes(part.edge.role));
   const siblings = cue.branchPath.flatMap(part => part.edge.role === 'conjunct'
     ? (nodes.get(part.nodeId)?.children ?? []).filter((_, index) => index !== part.edge.index) : []);
   const assumptions = cue.assumptionNodeIds.flatMap(id => nodes.has(id) ? [nodes.get(id)!] : []);
@@ -46,7 +45,6 @@ export function GuidedReading({ plan, cue, reading, document, onChoose, onObject
     </nav>
     <div className="rg-progress" aria-hidden="true"><span style={{ width: `${100 * (index + 1) / plan.cues.length}%` }}/></div>
     <h2 className="sr-only" aria-live="polite" aria-atomic="true">{cue.title}</h2>
-    {path.length > 0 && <ol className="rg-logical-path">{path.map((part, ordinal) => <li key={`${part.nodeId}:${ordinal}`} data-logic-role={part.edge.role}>{part.edge.role === 'alternative' ? `Alternative ${part.edge.index + 1} · either or both may hold` : part.edge.role === 'conjunct' ? `Condition ${part.edge.index + 1} · required together` : part.edge.role === 'negated' ? 'Under negation' : part.edge.role === 'assumption' ? 'Given assumption' : part.edge.role === 'conclusion' ? 'Conditional conclusion' : part.edge.role === 'equivalence-left' ? 'First equivalent condition' : 'Second equivalent condition'}</li>)}</ol>}
     <details className="rg-about">
       <summary>About this step{folded}</summary>
       <p>{cue.detail}</p>
@@ -55,7 +53,8 @@ export function GuidedReading({ plan, cue, reading, document, onChoose, onObject
       {siblings.length > 0 && <div className="rg-listed"><span className="rg-context-label">Alongside this clause</span><ul>{siblings.map(node => <li key={node.id}><code>{node.lean}</code></li>)}</ul></div>}
     </details>
     {document.objects.some(object => object.binder?.role === 'auxiliary') && <p className="rg-context-label">Recorded entries labelled separately remain in the captured scope. The choice list is not a complete dependency analysis.</p>}
-    <div className="rg-stage" data-cue-id={cue.id} data-cue-node={cue.nodeId} data-cue-scope={cue.scopeId} data-cue-kind={cue.stage.kind}>{children}</div>
+    {/* The step's figure carries its standing in its own role frames (CueFigure); the stage is where they are read back. */}
+    <div className="rg-stage" data-role-surface="" data-cue-id={cue.id} data-cue-node={cue.nodeId} data-cue-scope={cue.scopeId} data-cue-kind={cue.stage.kind}>{children}</div>
     {plan.truncated && <p className="rg-limit">The guide has reached its display bound. {counted(plan.omittedCueCount, 'further step')} {plan.omittedCueCount === 1 ? 'remains' : 'remain'} in the full {component ? 'visual reading' : 'statement'} below.</p>}
   </section>;
 }

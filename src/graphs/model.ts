@@ -111,7 +111,7 @@ export function compileGraphConstraint(document: SemanticDocument, relation: Sem
     const left = port('left vertex'), right = port('right vertex');
     if (!left || !right) return;
     return { ...base, kind, endpoints: [actual(left), actual(right)], sameEndpoint: left.id === right.id,
-      title: 'Adjacency condition', explanation: 'The condition requires these named vertices to be adjacent in this graph. Read it within its enclosing assumptions, alternatives, or negation.' };
+      title: 'Adjacency condition', explanation: 'This condition says these named vertices are adjacent in this graph.' };
   }
   const endpoints: readonly [GraphEndpoint, GraphEndpoint] = [slot(1), slot(2)];
   if (kind === 'colorable') {
@@ -128,12 +128,12 @@ export function compileGraphConstraint(document: SemanticDocument, relation: Sem
     if (!coloring || !colors) return;
     const paletteModel = palette(colors, false);
     return { ...base, kind, endpoints, sameEndpoint: false, coloring, palette: paletteModel, ...(vertex && value ? { application: { vertex, value } } : {}),
-      title: vertex ? 'Apply the proper coloring' : 'A proper coloring', explanation: paletteModel.count === '0' ? 'A coloring into the empty palette has an empty vertex type. There are no endpoints to assign; the edge rule is vacuous.' : 'This typed coloring assigns a label to each vertex. For every adjacent pair, its two assigned labels must differ.' };
+      title: vertex ? 'Apply the proper coloring' : 'A proper coloring', explanation: paletteModel.count === '0' ? 'A coloring into the empty palette has an empty vertex type. There are no endpoints to assign; the edge rule is vacuous.' : 'This typed coloring assigns a label to each vertex. By its type, the two labels of every adjacent pair differ.' };
   }
   const targetGraph = port('target graph'), map = port('map');
   if (!targetGraph || !map) return;
   const mapKind = relation.graphMapKind === 'embedding' ? 'embedding' : relation.graphMapKind === 'homomorphism' ? 'homomorphism' : undefined;
   return { ...base, kind, endpoints, sameEndpoint: false, targetGraph, map, mapKind, ...(vertex && value ? { application: { vertex, value } } : {}),
     title: mapKind === 'embedding' ? 'A graph embedding' : 'An edge-preserving graph map',
-    explanation: mapKind === 'embedding' ? 'Adjacency is preserved and reflected, and distinct vertices have distinct images.' : mapKind === 'homomorphism' ? 'Every source edge must map to a target edge. Other vertex pairs may share an image; injectivity is not required.' : 'Every source edge must map to a target edge. Any additional properties remain in the source type.' };
+    explanation: mapKind === 'embedding' ? 'Adjacency is preserved and reflected, and distinct vertices have distinct images.' : mapKind === 'homomorphism' ? 'By its type, every source edge maps to a target edge. Other vertex pairs may share an image; injectivity is not required.' : 'By its type, every source edge maps to a target edge. Any additional properties remain in the source type.' };
 }

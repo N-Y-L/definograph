@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Binder, Expr, StatementNode } from '../core/types';
 import { compileSemanticDocument } from '../semantic';
-import { assertSkeletonReadsBack } from '../visual/statement-skeleton.test-fixtures';
+import { assertStageReadsBack } from '../visual/role-marks.test-fixtures';
+import { assertSkeletonReadsBack, renderReading } from '../visual/statement-skeleton.test-fixtures';
 import { compileReading, compileReadingCues } from './index';
 
 const constant = (name: string): Expr => ({ kind: 'const', name });
@@ -16,6 +17,7 @@ const prepare = (tree: StatementNode) => {
   const document = compileSemanticDocument({ source: 'test source', tree, expression: tree.expression });
   const reading = compileReading(document);
   assertSkeletonReadsBack(document, reading);
+  assertStageReadsBack(document, reading, renderReading(document, reading));
   return { document, reading, plan: compileReadingCues(reading, document) };
 };
 const deepFreeze = <T>(value: T): T => {
@@ -176,6 +178,19 @@ describe('source-linked construction stages', () => {
     expect(laterCue.retainedObjectIds).not.toContain(localObject.id);
     expect(laterCue.contextObjectIds).not.toContain(localObject.id);
     expect(plan.cues.every(cue => cue.focusRelationIds.every(id => document.relations.some(relation => relation.id === id && relation.scopeId === cue.scopeId && relation.nodeId === cue.nodeId)))).toBe(true);
+  });
+
+  it('carries on every cue the role chain of its region, which merges a hypothesis chain as the skeleton does', () => {
+    // A ⊆ B → x ∈ A → x ∈ B, the shape of the sets example.
+    const { plan } = prepare(node('nx', 'forall', [node('if', 'implies', [leaf('inclusion'), node('then', 'implies', [leaf('member-A'), leaf('member-B')])])], bind('x')));
+    const chain = (id: string) => plan.cues.filter(cue => cue.nodeId === id).map(cue => cue.roleChain.map(position => `${position.edge} ${position.index}`));
+    expect(chain('nx')).toEqual([[]]);
+    expect(chain('inclusion')).toEqual([['assumption 0']]);
+    expect(chain('member-A')).toEqual([['assumption 1']]);
+    expect(chain('member-B')).toEqual([['conclusion 0']]);
+    // The raw branch path, kept for its consumers, still reads the second hypothesis as inside the first conclusion.
+    expect(plan.cues.find(cue => cue.nodeId === 'member-A')!.branchPath.map(part => part.edge.role)).toEqual(['body', 'conclusion', 'assumption']);
+    expect(plan.schemaVersion).toBe('1.1.0');
   });
 
   it('retains every source clause, including opaque leaves without recognized relations', () => {

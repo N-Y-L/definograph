@@ -30,9 +30,30 @@ Hue carries object identity and nothing else. A statement's colours are assigned
 
 ## The step sequence
 
-A step is named once, in the step selector; no caption repeats it. Under the selector one closed disclosure, **About this step**, holds the longer explanation, the objects in scope, the assumptions the step stands under and its sibling clauses. Its label counts them, for example "About this step · 5 in scope · 1 given". The skeleton already draws all of these with the current row marked, so they are not repeated in view. The step's position among the connectives stays in view as one line beside the figure, because a figure does not yet show whether its clause is assumed, negated or concluded.
+A step is named once, in the step selector; no caption repeats it. Under the selector one closed disclosure, **About this step**, holds the longer explanation, the objects in scope, the assumptions the step stands under and its sibling clauses. Its label counts them, for example "About this step · 5 in scope · 1 given". The skeleton already draws all of these with the current row marked, so they are not repeated in view. Where the step stands is drawn on its figure, as the next section says.
 
-A step on a connective has no figure of its own: it is the marked row of the skeleton and the rows inside its frame. In a chain of hypotheses one Given row is marked, the selected hypothesis or otherwise the first.
+A step on a connective has no figure of its own: it is the marked row of the skeleton and the rows inside its frame. In a chain of hypotheses one Given row is marked, the selected hypothesis or otherwise the first. The only figure such a step draws is the laws carried by the objects its hypotheses introduce, when there are any.
+
+## Where a figure stands
+
+Each step's figure is drawn inside one frame for each logical role on the way to its clause, so that an assumed or negated clause does not look asserted. The figure inside is the same whatever its role; only the frames change. The roles are read from the region tree the skeleton draws (`roleChains` in `src/reading/roles.ts`), so the figure and the skeleton always agree. In `A ⊆ B → x ∈ A → x ∈ B`, for example, `x ∈ A` is the second hypothesis of one chain, as the skeleton draws it, and not a hypothesis inside a conclusion.
+
+- **A frame** has a rail on its left and a label at its top, set in ink and weight so that it reads as the frame's name. The rail answers one question, where the clause stands, and the label says which connective puts it there:
+  - Given, a hypothesis: a 3px double rail.
+  - Then, a conclusion under hypotheses: a 1px solid rail, the skeleton's plain rail.
+  - ¬ Not, what is negated: a 2px dashed rail, as in the skeleton.
+  - ∨ Alternative k, ↔ Side k of an equivalence, and ⋯ Part k of an unread structure: a 2px dotted rail. None of these is asserted or denied on its own.
+- **A binder body and a conjunct add no frame.** They stand where their parent stands.
+- **No frame uses hue.** Every rail is ink or the neutral structure line, and every frame steps in by the same 15px.
+- **The innermost element prints at most one glyph.** A clause the statement requires carries `⊢`, Lean's mark for what is to be proved; its accessible name is "Required". A clause is required when the reading is a statement and every frame around it, if any, is Then. A binder's introduction carries its ∀ or ∃. The glyph stands beside the clause heading or the binder strip, so the figure below keeps the same place whether or not it is required. A construction inside a clause and the laws of hypothesis objects print no mark: the step's own sentence says what they are ("Constructing part of" the clause, quoted in Lean, or "Under these hypotheses"), and a word printed under a frame's label would read as one phrase with it. None of these carries `⊢`.
+- **Nothing is required in an expression, a law or a retained premise.** A fragment read in component mode does not assert a theorem, a field law read inside a figure holds by its type, and the retained premises of a saved composition are assumed by it, so none of them marks a clause `⊢`. A field law starts its own frames.
+- **Figure words describe the condition and never assert it.** A caption says what the condition says ("this condition places the named element in the region"), and the frames say whether it is assumed, required or denied. The clause heading still shows the clause's own phrase, such as "x belongs to A".
+
+Only a frame draws a left rail around a figure. A note or a symbolic clause inside a figure is set off by a top rule or by spacing, and a local expression scope keeps the plain 1px rail of a scope, the same rail as Then and every other neutral scope.
+
+The frames read back. `readFigureRoles` in `src/visual/role-readback.ts` recovers, from the rendered markup alone, each figure's chain of frames with their labels, its kind and mark, and the standing of its reading; it refuses a frame around no figure and a frame or figure drawn inside another figure of the same reading. Unit tests require that this equals what is worked out separately from the region tree and the shown step (`src/visual/role-marks.test-fixtures.ts`), with its own copy of the labels, of the kind of figure each step draws and of the rule for `⊢`: at every step of the role-mark fixtures, and at the shown step of every fixture the reading and cue tests draw. A frame that printed the wrong label, a `⊢` under a hypothesis, or a whole clause drawn as a part, fails them. The native suites for cues, graph readings and restricted maps run the same check on real Lean exports at every step they draw; `npm run test:atlas` does not yet read the frames back. The tests also name the feature that separates an assumed figure from a required figure of the same clause: with the frames and the mark taken away, the two figures are the same markup. This is a tested property of the TypeScript renderer, not a theorem; nothing checks it at run time.
+
+The skeleton, the full visual statement and the construction graph do not yet use these frames. The skeleton prints no `⊢`, and the full reading and the graph still draw negation and alternatives with their own rails and colours.
 
 Motion is limited to a short transition of the progress indicator, turned off under a reduced-motion preference. Objects are not animated, and no step needs playback or chosen coordinates.
 

@@ -7,6 +7,7 @@ import { compileReading } from '../reading';
 import { planReadingPresentation } from '../reading/presentation';
 import { scopedFixture } from '../reading/scoped-graph.test-fixtures';
 import { compileSemanticDocument } from '../semantic';
+import { ROLE_MARKS } from './role-marks';
 import { readSkeleton, type SkeletonRow } from './skeleton-readback';
 import { StatementReadingView } from './StatementReadingView';
 import { skeletonFrames } from './StatementSkeleton';
@@ -208,7 +209,7 @@ const css = (file: string) => readFileSync(new URL(file, import.meta.url), 'utf8
 function cssRules(source: string) {
   return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap(match => match[1]!.split(',').map(selector => ({ selector: selector.trim(), declarations: match[2]!.replace(/\s+/g, ' ').trim() })));
 }
-const nestedFrames = /\.sk-children\b|\.sk-given\b|\.sr-negated-body\b|\.sr-alternative\b(?!s)|\.sr-equivalent-conditions\s*>\s*section\b/;
+const nestedFrames = /\.sk-children\b|\.sk-given\b|\.sr-negated-body\b|\.sr-alternative\b(?!s)|\.sr-equivalent-conditions\s*>\s*section\b|\[data-role-frame\]|\.role-frame\b/;
 /** Rules that take the left step or rail away from a frame that holds nested children. */
 function flatteningRules(source: string): string[] {
   const zero = (value: string) => /^0(?:px|em|rem)?$/.test(value.trim());
@@ -241,7 +242,7 @@ function shrinkingTracks(source: string): string[] {
 const pixels = (declarations: string, property: string) => Number(new RegExp(`(?:^|;)\\s*${property}:\\s*([\\d.]+)px`).exec(declarations)?.[1] ?? 0);
 
 describe('reader stylesheets', () => {
-  const sheets = ['statement-skeleton.css', 'statement-reading.css', 'guided-reading.css', 'scoped-statement-graph.css'].map(css);
+  const sheets = ['statement-skeleton.css', 'statement-reading.css', 'guided-reading.css', 'scoped-statement-graph.css', 'role-marks.css'].map(css);
 
   it('give every nested frame the same nonzero step and rail at every depth', () => {
     const frame = cssRules(sheets[0]!).find(rule => rule.selector === '.sk-children')!;
@@ -296,6 +297,42 @@ describe('reader stylesheets', () => {
     // Without its own formatting context the frame loses a witness's outer margin while it does not scroll and gains
     // it when it does, so crossing that width changes the height under the reader.
     expect(cssRules(sheets[0]!).find(rule => rule.selector === '.statement-skeleton > .figure-scroll')!.declarations).toBe('display:flow-root;');
+  });
+
+  it('give each role one rail, in ink only, distinct across standings, as the mark table says', () => {
+    const rules = cssRules(css('role-marks.css')).filter(rule => rule.selector.startsWith('[data-role-frame]'));
+    const ruleOf = (edge: string) => { const found = rules.filter(rule => rule.selector === `[data-role-frame][data-role="${edge}"]`); expect(found, edge).toHaveLength(1); return found[0]!.declarations; };
+    const style = (edge: string) => /border-left:\s*[\d.]+px (solid|double|dashed|dotted) /.exec(ruleOf(edge))?.[1];
+    for (const [edge, mark] of Object.entries(ROLE_MARKS)) expect(style(edge), edge).toBe(mark.rail);
+    // One rule per role and no other: given, then, not and the three that are neither asserted nor denied on their own.
+    expect(rules.map(rule => rule.selector).sort()).toEqual(Object.keys(ROLE_MARKS).map(edge => `[data-role-frame][data-role="${edge}"]`).sort());
+    expect(new Set(['assumption', 'conclusion', 'negated', 'alternative'].map(style)).size).toBe(4);
+    expect(new Set(['alternative', 'side', 'part'].map(style))).toEqual(new Set(['dotted']));
+    // The Given rail is wide enough to show two lines, and the Not rail is the skeleton's.
+    expect(ruleOf('assumption')).toMatch(/border-left:3px double var\(--sr-ink\)/);
+    expect(ruleOf('negated')).toMatch(/border-left:2px dashed var\(--sr-ink\)/);
+    // No role rule carries hue: no colour or background, and every rail is ink or the neutral structure line.
+    expect(rules.filter(rule => /(?:^|;)\s*(?:color|background(?:-color)?)\s*:/.test(rule.declarations))).toEqual([]);
+    expect(rules.every(rule => /border-left:[^;]*var\(--(?:sr-ink|line-structure)\)/.test(rule.declarations))).toBe(true);
+    // Every frame steps in by the same amount, rail included.
+    const step = (edge: string) => pixels(ruleOf(edge), 'padding-left') + Number(/border-left:\s*([\d.]+)px/.exec(ruleOf(edge))![1]);
+    expect(new Set(Object.keys(ROLE_MARKS).map(step))).toEqual(new Set([15]));
+  });
+
+  it('let only a frame draw a left rail, and draw no line of logical path beside the figure', () => {
+    // A left rail inside a figure would read as one more role frame. The frames that may draw one: the skeleton's and
+    // the full reading's (not yet drawn with the role frames), the construction graph's, a local expression scope's
+    // neutral rail, and the role frames.
+    const frames = /^(?:\.sk-children|\.sk-negation > \.sk-children|\.sr-alternative|\.sr-equivalent-conditions > section|\.sr-negated-body|\.sr-contained-group|\.ssg-frame|\.ssg-frame-equivalence|\[data-role-frame\]\[data-role="[a-z]+"\])$/;
+    const rails = (source: string) => cssRules(source).filter(rule => rule.declarations.split(';').some(declaration => {
+      const [property, value = ''] = declaration.split(':').map(part => part.trim());
+      return property === 'border-left' && !/^(?:0(?:px)?\b|none\b)/.test(value) || (property === 'border-left-style' && value !== 'none') || (property === 'border-left-width' && !/^0(?:px)?$/.test(value));
+    })).map(rule => rule.selector);
+    const readerSheets = [...sheets, ...['../graphs/graphs.css', '../restricted/restricted.css', '../set-constructions/set-constructions.css', '../decomposition/decomposition.css', '../constructions/constructions.css', '../statement-geometry/metric-statement.css'].map(css)];
+    expect(readerSheets.flatMap(rails).filter(selector => !frames.test(selector))).toEqual([]);
+    // The rules this replaced are caught.
+    expect(rails('.rg-local-binders { border-left:2px solid #b9c5cd; } .gc-one-color{border-left:2px solid #b8cdd1;padding-left:12px}')).toEqual(['.rg-local-binders', '.gc-one-color']);
+    expect(sheets.join('\n')).not.toMatch(/rg-logical-path/);
   });
 
   it('put a conclusion under its hypotheses and what is negated under a heavy dashed rail', () => {

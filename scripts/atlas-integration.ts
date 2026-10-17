@@ -204,7 +204,7 @@ const cases: Case[] = [
     assert.ok(panel.relationIds.some(id => document.relations.find(r => r.id === id)?.kind === 'membership'));
     assert.ok(html.includes('Inside this expression'));
     assert.ok(html.includes('not separate assertions'));
-    assert.ok(html.indexOf('Inside this expression') < html.indexOf('Membership condition · the named element belongs'), 'Membership must appear inside the subordinate detail, not replace F');
+    assert.ok(html.indexOf('Inside this expression') < html.indexOf('Membership condition · this condition places the named element'), 'Membership must appear inside the subordinate detail, not replace F');
   } },
   { name: 'quantified proposition arguments keep their inner relation scope', source: '∀ (F : Prop → Prop), F (∀ x : ℝ, x ∈ Metric.ball 0 1)', check: ({ document, reading }) => {
     const panel = reading.panels[0]!;

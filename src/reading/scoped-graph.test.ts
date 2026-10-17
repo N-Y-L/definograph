@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { compileReading } from './compiler';
+import { planReadingPresentation } from './presentation';
 import { compileScopedStatementGraph } from './scoped-graph';
 import { ScopedStatementGraph } from '../visual/ScopedStatementGraph';
 import { call, constant, fixture, frame, leaf, scopedFixture, variable } from './scoped-graph.test-fixtures';
@@ -137,5 +138,11 @@ describe('source-scoped operation composition', () => {
     expect(graph.nodes).toEqual([]);
     expect(graph.edges).toEqual([]);
     expect(graph.relationIds.length).toBeGreaterThan(20);
+  });
+
+  it('draws its frames from the presentation the view passes, so they are the skeleton\'s regions', () => {
+    const value = scopedFixture(), presentation = planReadingPresentation(value.reading);
+    expect(compileScopedStatementGraph(value.document, value.reading, presentation)!.root).toBe(presentation.root);
+    expect(value.model.root).toEqual(presentation.root);
   });
 });

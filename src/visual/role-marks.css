@@ -1,0 +1,15 @@
+/* Role frames. The left rail of a frame says where the figure inside stands, and only a frame draws a left rail around
+   a figure. One rule per role, in ink only: hue carries object identity and nothing else. Every frame steps in by
+   the same 15px, rail included, so a deeper frame is always further in. */
+.role-frame { min-width:0; padding:3px 0 4px 13px; }
+/* A label is set in ink and weight, so that it reads as the frame's name and not as the start of the sentence below. */
+.role-label { display:block; margin:0 0 8px; font:600 12px/1.5 system-ui,sans-serif; color:var(--sr-ink); }
+[data-role-frame][data-role="assumption"] { padding-left:12px; border-left:3px double var(--sr-ink); }
+[data-role-frame][data-role="conclusion"] { padding-left:14px; border-left:1px solid var(--line-structure); }
+[data-role-frame][data-role="negated"] { padding-left:13px; border-left:2px dashed var(--sr-ink); }
+[data-role-frame][data-role="alternative"],[data-role-frame][data-role="side"],[data-role-frame][data-role="part"] { padding-left:13px; border-left:2px dotted var(--sr-ink); }
+/* The leaf's glyph (⊢, or a binder's own mark) floats beside the first line, the clause heading or the binder strip, so
+   the figure below keeps the same place and width whether the clause is required or not. */
+.role-leaf { min-width:0; display:flow-root; }
+.role-figure { min-width:0; }
+.role-mark { float:left; margin:0 10px 0 0; font:600 22px/1 var(--sr-serif); color:var(--sr-ink); }

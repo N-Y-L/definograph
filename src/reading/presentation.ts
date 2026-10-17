@@ -14,6 +14,21 @@ export interface ReadingPresentation {
   readonly nodeToRegionId: Readonly<Record<string, string>>;
 }
 
+/** The edge from a region to each region it holds. */
+export type RegionEdge = 'body' | 'assumption' | 'conclusion' | 'negated' | 'conjunct' | 'alternative' | 'side' | 'part';
+export interface RegionPart { readonly edge: RegionEdge; readonly region: ReadingRegion }
+/** The regions a region holds, in source order, each with its edge. Every view that walks the region tree walks it
+ * with this, so the skeleton and the role chains name the same edges. */
+export function regionParts(region: ReadingRegion): RegionPart[] {
+  switch (region.kind) {
+    case 'binders': return region.body ? [{ edge: 'body', region: region.body }] : [];
+    case 'implication': return [...region.assumptions.map(assumption => ({ edge: 'assumption' as const, region: assumption })), { edge: 'conclusion', region: region.conclusion }];
+    case 'negation': return [{ edge: 'negated', region: region.body }];
+    case 'clause': return [];
+    default: return region.children.map(child => ({ edge: region.kind === 'all' ? 'conjunct' as const : region.kind === 'alternatives' ? 'alternative' as const : region.kind === 'equivalence' ? 'side' as const : 'part' as const, region: child }));
+  }
+}
+
 /** A selected fragment remains connected to every enclosing logical region. */
 export function visibleReadingNodes(reading: ReadingDocument, limit: number): Set<string> {
   const protectedIds = new Set([reading.selection.nodeId, ...reading.selection.ancestorNodeIds, ...reading.selection.assumptionNodeIds]);

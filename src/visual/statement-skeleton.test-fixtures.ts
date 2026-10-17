@@ -10,7 +10,8 @@ import { StatementReadingView } from './StatementReadingView';
 /** What a drawn skeleton must say: kind, source nodes and ordered children of every region, written here from the
  * region tree alone and independently of the renderer. A region outside the visible set is one counted stub. */
 export interface RegionView { kind: string; nodeIds: readonly string[]; folded?: number; children: { edge: string; row: RegionView }[] }
-function children(region: ReadingRegion): { edge: string; region: ReadingRegion }[] {
+/** The edges of the region tree, written here apart from the renderer's regionParts; the role oracle walks them too. */
+export function regionEdges(region: ReadingRegion): { edge: string; region: ReadingRegion }[] {
   if (region.kind === 'binders') return region.body ? [{ edge: 'body', region: region.body }] : [];
   if (region.kind === 'implication') return [...region.assumptions.map(assumption => ({ edge: 'assumption', region: assumption })), { edge: 'conclusion', region: region.conclusion }];
   if (region.kind === 'negation') return [{ edge: 'negated', region: region.body }];
@@ -18,10 +19,10 @@ function children(region: ReadingRegion): { edge: string; region: ReadingRegion 
   const edge = { all: 'conjunct', alternatives: 'alternative', equivalence: 'side', structure: 'part' }[region.kind];
   return region.children.map(child => ({ edge, region: child }));
 }
-const size = (region: ReadingRegion): number => 1 + children(region).reduce((sum, child) => sum + size(child.region), 0);
+const size = (region: ReadingRegion): number => 1 + regionEdges(region).reduce((sum, child) => sum + size(child.region), 0);
 export function regionView(region: ReadingRegion, visible?: ReadonlySet<string>): RegionView {
   if (visible && !region.sourceNodeIds.some(id => visible.has(id))) return { kind: region.kind, nodeIds: region.sourceNodeIds, folded: size(region), children: [] };
-  return { kind: region.kind, nodeIds: region.sourceNodeIds, children: children(region).map(child => ({ edge: child.edge, row: regionView(child.region, visible) })) };
+  return { kind: region.kind, nodeIds: region.sourceNodeIds, children: regionEdges(region).map(child => ({ edge: child.edge, row: regionView(child.region, visible) })) };
 }
 /** The structure a readback carries, without the labels drawn on it. */
 export function rowView(row: SkeletonRow): RegionView {

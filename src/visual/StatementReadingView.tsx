@@ -24,6 +24,8 @@ import { applicationFlow } from '../semantic/application-flow';
 import { formatExpression } from '../semantic/expression';
 import './statement-reading.css';
 import { compileReadingCues, type ReadingCue } from '../reading/cues';
+import { isRequired, type RootStanding } from '../reading/roles';
+import { framed, RoleLeaf, type RoleLeafKind } from './role-marks';
 import { GuidedReading } from './GuidedReading';
 import { contextEntryTitle } from '../core/context-entry';
 import { counted } from '../core/counted';
@@ -53,13 +55,16 @@ export interface StatementReadingViewProps {
   onSourceSelect?: (id: string) => void;
   /** Return null when this clause has no faithful symbolic geometric rendering. */
   renderGeometry?: (panel: ReadingPanel) => ReactNode;
+  /** What the root of this reading is. Defaults to an expression in component mode and a statement otherwise; a field
+   * law read inside a figure is a law. Only a statement marks a clause as required. */
+  rootStanding?: RootStanding;
 }
 
 import { assignIdentityColors, IdentityColorProvider, NEUTRAL_INK, useIdentityColor, useIdentityColors } from './object-identity';
 import { ambientNodes, binderGroupTitle, componentMode, connectiveWords, roleSymbol } from './region-words';
 import { StatementSkeleton } from './StatementSkeleton';
 type Maps = { objects: Map<string, SemanticObject>; relations: Map<string, SemanticRelation>; panels: Map<string, ReadingPanel> };
-type RenderContext = StatementReadingViewProps & Maps & { visibleNodes: Set<string>; presentation: ReadingPresentation; focusObjectIds?: ReadonlySet<string> };
+type RenderContext = StatementReadingViewProps & Maps & { visibleNodes: Set<string>; presentation: ReadingPresentation; standing: RootStanding; focusObjectIds?: ReadonlySet<string> };
 
 function keyActivate(event: KeyboardEvent<SVGGElement>, action?: () => void) {
   if (action && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); action(); }
@@ -115,6 +120,9 @@ export function expressionMapPath(objectId: string, relations: readonly Semantic
   return { inputs: inner.inputs, maps: [...inner.maps, flow.functionId], directions: [...inner.directions, flow.direction], output: objectId, collapsed: inner.collapsed };
 }
 
+const MEMBERSHIP_CAPTION = 'Membership condition · this condition places the named element in the region';
+const INCLUSION_CAPTION = 'This condition places every element of the inner set in the outer set. The sets may be equal; spacing does not express proper inclusion.';
+
 /** Basic containment and comparison keep their glyphs inside the shapes that
  * carry their meaning. Full object labels remain on the interactive groups. */
 function MeasuredRelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
@@ -143,8 +151,9 @@ function MeasuredRelationFigure({ relation, relations, ctx }: { relation: Semant
     ({ width, height } = layout);
     body = <><FigureObject id={first} ctx={ctx}><ellipse cx={layout.outer.x} cy={layout.outer.y} rx={layout.outer.rx} ry={layout.outer.ry} className="sr-set-outline"/>{name('first', firstLabel, layout.outer.x, layout.outer.label.baseline)}</FigureObject><FigureObject id={second} ctx={ctx}>{nested ? <ellipse cx={layout.inner.x} cy={layout.inner.y} rx={layout.inner.rx} ry={layout.inner.ry} className="sr-set-outline"/> : <><circle cx={layout.inner.x} cy={layout.inner.y} r="6" className="sr-named-point"/><circle cx={layout.inner.x} cy={layout.inner.y} r="16" fill="transparent"/></>}{name('second', secondLabel, layout.inner.x, layout.inner.label.baseline)}</FigureObject></>;
   }
-  const caption = comparison ? relation.kind === 'equality' ? 'The displayed expressions are required to satisfy this relation' : 'Order condition on the displayed expressions'
-    : nested ? 'Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion.' : 'Membership condition · the named element belongs to the region';
+  // Figure words describe the condition and never assert it; the role frames around the figure say where it stands.
+  const caption = comparison ? relation.kind === 'equality' ? relation.label === '≠' ? 'This condition says the displayed expressions differ' : 'This condition says the displayed expressions are equal' : 'Order condition on the displayed expressions'
+    : nested ? INCLUSION_CAPTION : MEMBERSHIP_CAPTION;
   return <figure className={`sr-relation-figure sr-figure-${relation.kind}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={figureSize(width, height)} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
 
@@ -212,7 +221,7 @@ function GenericRelationFigure({ relation, relations, ctx }: { relation: Semanti
     const rightY = left.height + symbolSize.height + 48;
     width = outputX + Math.max(left.width - left.outputX, right.width - right.outputX); height = rightY + right.height;
     body = <><g transform={`translate(${outputX - left.outputX} 0)`}>{left.draw()}</g><g transform={`translate(${outputX - right.outputX} ${rightY})`}>{right.draw()}</g><MathLabel label={symbol} labelKey="comparison" x={outputX} y={left.height + 24 + symbolSize.ascent} fontSize={COMPARISON_SIZE} className="sr-comparison-symbol"/><path d={`M${outputX} ${left.height - 4} V${left.height + 16} M${outputX} ${rightY - 16} V${rightY + 4}`} className="sr-role-connection"/></>;
-    caption = `Compare the outputs of these map paths${relation.label === '≠' ? ': they are required to differ' : ': they are required to agree'}.${leftPath.collapsed || rightPath.collapsed ? ' Further nested inputs retain their expression labels.' : ''}`;
+    caption = `Compare the outputs of these map paths${relation.label === '≠' ? ': this condition says they differ' : ': this condition says they agree'}.${leftPath.collapsed || rightPath.collapsed ? ' Further nested inputs retain their expression labels.' : ''}`;
   } else if (['membership', 'subset', 'image', 'preimage'].includes(relation.kind)) {
     const membership = relation.kind === 'membership', nested = relation.kind === 'subset';
     const construction = membership ? producedBy(port(relation, 'element'), relations)! : nested ? producedBy(port(relation, 'subset'), relations)! : relation;
@@ -227,7 +236,7 @@ function GenericRelationFigure({ relation, relations, ctx }: { relation: Semanti
     const from: [number, number] = [layout.left.x + (membership ? leftShape.width / 2 + 18 : leftShape.width + 8), layout.arrowY], to: [number, number] = [layout.right.x + (membership && contained ? contained.inner.x - 18 : -8), layout.arrowY];
     // The point output remains inside its set. Region arrows join the boundary.
     body = <>{shaped(leftId, 'source', leftLabel, leftShape, membership ? 'point' : 'ellipse', layout.left.x, layout.left.y)}<g transform={`translate(${layout.right.x} ${layout.right.y})`}>{contained ? <><FigureObject id={rightId} ctx={ctx}><ellipse cx={contained.outer.x} cy={contained.outer.y} rx={contained.outer.rx} ry={contained.outer.ry} className="sr-set-outline"/>{name('target', rightLabel, contained.outer.x, contained.outer.label.baseline)}</FigureObject><FigureObject id={innerId} ctx={ctx}>{nested ? <ellipse cx={contained.inner.x} cy={contained.inner.y} rx={contained.inner.rx} ry={contained.inner.ry} className="sr-set-outline"/> : <circle cx={contained.inner.x} cy={contained.inner.y} r="6" className="sr-named-point"/>}{name('inner', innerLabel, contained.inner.x, contained.inner.label.baseline)}</FigureObject></> : shaped(rightId, 'target', rightLabel, rightShape, 'ellipse')}</g><FigureObject id={mapId} ctx={ctx}>{name('map', mapLabel, layout.map.x + layout.map.width / 2, layout.map.baseline)}</FigureObject><FigureArrow from={relation.kind === 'preimage' ? to : from} to={relation.kind === 'preimage' ? from : to}/>{!membership && !nested && <><text x={layout.left.x + leftShape.width / 2} y={height - 10} textAnchor="middle" className="sr-role-label">given set</text><text x={layout.right.x + rightShape.width / 2} y={height - 10} textAnchor="middle" className="sr-role-label">{relation.kind}</text></>}</>;
-    caption = membership ? 'Membership condition · the named element belongs to the region' : nested ? 'Every element of the inner set belongs to the outer set. The sets may be equal; spacing does not express proper inclusion.' : relation.kind === 'image' ? 'The image collects outputs of the map on the given set' : 'The preimage collects inputs whose outputs lie in the given set';
+    caption = membership ? MEMBERSHIP_CAPTION : nested ? INCLUSION_CAPTION : relation.kind === 'image' ? 'The image collects outputs of the map on the given set' : 'The preimage collects inputs whose outputs lie in the given set';
   } else if (relation.kind === 'distance') {
     const fromId = port(relation, 'from'), toId = port(relation, 'to'), distanceId = port(relation, 'distance');
     const fromLabel = label(fromId), toLabel = label(toId), distanceLabel = label(distanceId);
@@ -258,7 +267,7 @@ function GenericRelationFigure({ relation, relations, ctx }: { relation: Semanti
     height = rowY + Math.max(0, ...shapes.map(shape => shape.height)) + 20;
     let x = (width - rowWidth) / 2;
     body = <>{shaped(centerId, 'head', center, centerShape, 'box', (width - centerShape.width) / 2, 16)}{shapes.map((shape, i) => { const left = x; x += shape.width + 24; return <g key={`${others[i].role}:${i}`}><path d={`M${width / 2} ${16 + centerShape.height} L${left + shape.width / 2} ${rowY + shape.pointY! - 10}`} className="sr-role-connection"/>{shaped(others[i].objectId, `argument:${i}`, labels[i], shape, 'point', left, rowY)}</g>; })}</>;
-    caption = componentMode(ctx.document) ? 'Argument structure of this expression' : relation.fidelity === 'structural' ? 'Argument structure only · this expression has no interpreted geometric meaning' : `${relation.label} · a property required of the displayed object`;
+    caption = componentMode(ctx.document) ? 'Argument structure of this expression' : relation.fidelity === 'structural' ? 'Argument structure only · this expression has no interpreted geometric meaning' : `${relation.label} · a condition on the displayed object`;
   }
   return <figure className={`sr-relation-figure sr-figure-${relation.kind}${mapPaths ? ' sr-has-map-paths' : ''}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={figureSize(width, height)} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
@@ -335,7 +344,7 @@ function FieldLawReading({ field, ctx }: { field: StructuralField; ctx: RenderCo
   const document = field.lawDocument;
   const reading = useMemo(() => document ? compileReading(document, { selectedNodeId: nodeId }) : undefined, [document, nodeId]);
   if (!document || !reading) return <code>{field.type}</code>;
-  return <StatementReadingView document={document} reading={reading} selectedObjectId={objectId ?? ctx.selectedObjectId}
+  return <StatementReadingView document={document} reading={reading} rootStanding="law" selectedObjectId={objectId ?? ctx.selectedObjectId}
     onNodeSelect={setNodeId} onObjectSelect={id => { setObjectId(id); if (ctx.objects.has(id)) ctx.onObjectSelect?.(id); }}/>;
 }
 
@@ -345,12 +354,17 @@ function StructuralBinderFigure({ object, ctx, enclosed }: { object: SemanticObj
     renderLaw={field => <FieldLawReading key={field.projection} field={field} ctx={ctx}/>}/> : object.binder?.structureOmission ? <p className="sd-remaining">{object.binder.structureOmission}</p> : null;
 }
 
-function HypothesisStructures({ nodeIds, ctx }: { nodeIds: readonly string[]; ctx: RenderContext }) {
-  const owners = nodeIds.flatMap(id => {
+/** The objects with a reflected structure that the hypotheses of these nodes introduce. */
+function hypothesisOwners(nodeIds: readonly string[], ctx: RenderContext): SemanticObject[] {
+  return nodeIds.flatMap(id => {
     const binder = ctx.reading.nodes.find(node => node.id === id)?.binder;
     const owner = binder?.role === 'assumption' && binder.objectId ? ctx.objects.get(binder.objectId) : undefined;
     return owner?.binder?.structure ? [owner] : [];
   });
+}
+
+function HypothesisStructures({ nodeIds, ctx }: { nodeIds: readonly string[]; ctx: RenderContext }) {
+  const owners = hypothesisOwners(nodeIds, ctx);
   return owners.length ? <div className="sd-hypotheses"><p>Under these hypotheses, the following laws are available in the conclusion.</p>{owners.map(owner => <StructuralBinderFigure key={owner.id} object={owner} ctx={ctx}/>)}</div> : null;
 }
 
@@ -405,27 +419,35 @@ function AtlasRegion({ region, ctx, depth = 0, lead }: { region: ReadingRegion; 
   return <section className={`sr-atlas-region sr-region-${region.kind}${focused ? ' sr-region-focused' : ''}${depth > 3 ? ' sr-deep-region' : ''}`} data-reading-step={region.id} data-reading-region={region.kind} data-source-nodes={region.sourceNodeIds.join(' ')} data-component-region={componentMode(ctx.document) ? ambientNodes([region.node], ctx.document) ? 'context' : 'expression' : undefined}>{componentMode(ctx.document) && region.sourceNodeIds.includes(ctx.document.presentation!.targetNodeId!) && <p className="sr-heading-lead" data-component-target={ctx.document.presentation!.target}>{ctx.componentTitle ?? (ctx.document.presentation!.target === 'type' ? 'Inferred type' : 'Selected term')} begins here.</p>}{body}</section>;
 }
 
+/** The figure of one step, drawn inside one frame per role edge of its region and around a leaf that says what it
+ * shows. The figure itself does not change with its standing. role-readback.ts reads the frames back. */
 function CueFigure({ cue, ctx }: { cue: ReadingCue; ctx: RenderContext }) {
   const node = ctx.reading.nodes.find(candidate => candidate.id === cue.nodeId)!;
   const focused = { ...ctx, focusObjectIds: new Set(cue.focusObjectIds) };
-  let body: ReactNode;
+  let body: ReactNode, leaf: RoleLeafKind = 'clause';
   if (cue.intent === 'introduce') {
     const nodes = cue.sourceNodeIds.flatMap(id => { const source = ctx.reading.nodes.find(candidate => candidate.id === id); return source?.binder ? [source] : []; });
+    leaf = 'binder';
     body = <><BinderStrip nodes={nodes} ctx={focused}/><BinderFigures nodes={nodes} ctx={focused}/></>;
   } else if (cue.stage.kind === 'clause') {
     body = <Clause node={node} ctx={focused}/>;
   } else if (cue.stage.relationId) {
+    leaf = 'part';
     const relation = ctx.relations.get(cue.stage.relationId);
     const panel = cue.panelId ? ctx.panels.get(cue.panelId) : undefined;
     const group = panel?.groups.find(candidate => candidate.scopeId === cue.scopeId);
     const relations = group?.relationIds.flatMap(id => ctx.relations.has(id) ? [ctx.relations.get(id)!] : []) ?? [];
     const localContext = ctx.document.scopes.find(scope => scope.id === cue.scopeId)?.context ?? [];
-    body = <>{cue.stage.kind === 'construction' && <p className="rg-construction-context">Constructing part of <span title={node.lean}>{compactLabel(node.phrase || node.lean, 180)}</span></p>}{cue.stage.kind === 'contained' && <p className="rg-local-binders">Part of <code>{node.lean}</code>.{componentMode(ctx.document) || relation?.fidelity === 'structural' ? ' This part retains its expression scope.' : ' This inner relation is not asserted separately.'}{group?.role === 'local-expression' && <> Local context: {localContext.join(' · ') || 'binders apply only inside this expression'}.</>}</p>}{relation && <RelationFigure relation={relation} relations={relations} ctx={focused}/>}</>;
+    body = <>{cue.stage.kind === 'construction' && <p className="rg-construction-context">Constructing part of <code title={node.lean}>{compactLabel(node.lean, 180)}</code></p>}{cue.stage.kind === 'contained' && <p className="rg-local-binders">Part of <code>{node.lean}</code>.{componentMode(ctx.document) || relation?.fidelity === 'structural' ? ' This part retains its expression scope.' : ' This inner relation is not asserted separately.'}{group?.role === 'local-expression' && <> Local context: {localContext.join(' · ') || 'binders apply only inside this expression'}.</>}</p>}{relation && <RelationFigure relation={relation} relations={relations} ctx={focused}/>}</>;
   } else if (cue.intent === 'logic') {
-    // The step is the marked row of the skeleton and the rows inside its frame; nothing repeats them here.
-    body = <HypothesisStructures nodeIds={cue.sourceNodeIds} ctx={focused}/>;
+    // The step is the marked row of the skeleton and the rows inside its frame; nothing repeats them here. Only the
+    // laws its hypotheses carry are drawn.
+    leaf = 'law';
+    body = hypothesisOwners(cue.sourceNodeIds, focused).length ? <HypothesisStructures nodeIds={cue.sourceNodeIds} ctx={focused}/> : null;
   } else body = <Clause node={node} ctx={focused}/>;
-  return <>{body}<details className="rg-source-context"><summary>Lean fragment and source context</summary><code>{node.lean}</code></details></>;
+  const binder = cue.binders[0];
+  return <>{body !== null && framed(cue.roleChain, <RoleLeaf leaf={leaf} required={leaf === 'clause' && isRequired(cue.roleChain, ctx.standing)} nodeId={cue.nodeId} mark={leaf === 'binder' && binder ? roleSymbol[binder.role] : undefined}>{body}</RoleLeaf>)}
+    <details className="rg-source-context"><summary>Lean fragment and source context</summary><code>{node.lean}</code></details></>;
 }
 
 export function StatementReadingView(props: StatementReadingViewProps) {
@@ -442,7 +464,7 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   const maps = useMemo<Maps>(() => ({ objects: new Map(semantic.objects.map(object => [object.id, object])), relations: new Map(semantic.relations.map(relation => [relation.id, relation])), panels: new Map(reading.panels.map(panel => [panel.id, panel])) }), [semantic, reading]);
   const presentation = useMemo(() => planReadingPresentation(reading, { boundaryNodeIds: componentMode(semantic) && semantic.presentation?.targetNodeId ? [semantic.presentation.targetNodeId] : [] }), [reading, semantic]);
   const cuePlan = useMemo(() => compileReadingCues(reading, semantic), [reading, semantic]);
-  const scopedGraph = useMemo(() => cuePlan.truncated ? undefined : compileScopedStatementGraph(semantic, reading), [semantic, reading, cuePlan]);
+  const scopedGraph = useMemo(() => cuePlan.truncated ? undefined : compileScopedStatementGraph(semantic, reading, presentation), [semantic, reading, cuePlan, presentation]);
   const activeCue = resolveReadingCue({ plan: cuePlan, document: semantic, selectedNodeId: reading.selection.nodeId,
     rootNodeId: reading.root.id, selectedRelationId, selection: props.selectedCue === undefined ? guideChoice : props.selectedCue });
   function chooseCue(cue: ReadingCue) {
@@ -492,7 +514,8 @@ export function StatementReadingView(props: StatementReadingViewProps) {
     target?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start', inline: 'nearest' });
   }, [reading.selection.nodeId, presentation, activeCue]);
   const visibleNodes = visibleReadingNodes(reading, nodeLimit);
-  const ctx: RenderContext = { ...props, ...maps, onNodeSelect: chooseNode, visibleNodes, presentation };
+  const standing = props.rootStanding ?? (componentMode(semantic) ? 'expression' : 'statement');
+  const ctx: RenderContext = { ...props, ...maps, onNodeSelect: chooseNode, visibleNodes, presentation, standing };
   const guided = activeCue && <GuidedReading plan={cuePlan} cue={activeCue} reading={reading} document={semantic} onChoose={chooseCue} onObjectSelect={props.onObjectSelect}><FigureBoundary resetKeys={[activeCue, semantic, selectedObjectId, nodeLimit]}><CueFigure cue={activeCue} ctx={ctx}/></FigureBoundary></GuidedReading>;
   const graphical = showGraph && scopedGraph && <ScopedStatementGraph model={scopedGraph} document={semantic} reading={reading} focusedNodeId={graphNodeId} selectedObjectId={selectedObjectId} selectedRelationId={selectedRelationId}
     onObjectSelect={props.onObjectSelect} onNodeSelect={chooseGraphClause} onSourceSelect={props.onSourceSelect} onRelationSelect={id => {
@@ -500,7 +523,7 @@ export function StatementReadingView(props: StatementReadingViewProps) {
       if (cue) chooseCue(cue);
       else { const relation = maps.relations.get(id); if (relation) { chooseNode(relation.nodeId); props.onSourceSelect?.(id); } }
     }}/>;
-  return <IdentityColorProvider value={colors}><div className="statement-reading-view">
+  return <IdentityColorProvider value={colors}><div className="statement-reading-view" data-role-root={standing}>
     <FigureBoundary resetKeys={[presentation, semantic, activeCue, reading.selection.nodeId, selectedObjectId, nodeLimit]}><StatementSkeleton root={presentation.root} document={semantic} visibleNodes={visibleNodes} activeRegionId={activeCue?.regionId ?? presentation.nodeToRegionId[reading.selection.nodeId]} activeNodeId={reading.selection.nodeId} selectedObjectId={selectedObjectId} onNodeSelect={chooseNode}/></FigureBoundary>
     <div ref={surface} className="sr-reading-surface">{scopedGraph && <nav className="ssg-mode" aria-label="Reading presentation"><button type="button" aria-pressed={showGraph} onClick={() => setReadingMode('graph')}>Construction graph</button><button type="button" aria-pressed={!showGraph} onClick={() => setReadingMode('guided')}>Guided reading</button></nav>}{showGraph ? <FigureBoundary resetKeys={[scopedGraph, graphNodeId, selectedObjectId, selectedRelationId]}>{graphical}</FigureBoundary> : guided}<details ref={complete} className="sr-complete-reading"><summary>{componentMode(semantic) ? 'Full visual reading' : 'Full visual statement'}</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ '--trace-color': colors.get(selectedObjectId) ?? NEUTRAL_INK } as CSSProperties}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label={componentMode(semantic) ? 'Ordered visual reading of the expression' : 'Ordered visual reading of the statement'}><FigureBoundary resetKeys={[presentation, semantic, selectedObjectId, nodeLimit]} note={`The ${componentMode(semantic) ? 'full visual reading' : 'full visual statement'} could not be drawn.`}><AtlasRegion region={presentation.root} ctx={ctx}/></FigureBoundary></div></details></div>
     {reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {counted(reading.nodes.length, componentMode(semantic) ? 'expression node' : 'logical node')}, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {counted(Math.min(100, reading.nodes.length - visibleNodes.size), 'node')}</button></div>}

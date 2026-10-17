@@ -1,6 +1,6 @@
 import type { Expr } from '../core/types';
 import type { SemanticDocument, SemanticObject, SemanticRelation } from '../semantic/types';
-import { planReadingPresentation, type ReadingRegion } from './presentation';
+import { planReadingPresentation, type ReadingPresentation, type ReadingRegion } from './presentation';
 import type { ReadingDocument, ReadingNode, ReadingRelationGroup } from './types';
 
 export interface ScopedGraphPort { readonly id: string; readonly role: string; readonly objectId: string; readonly output: boolean }
@@ -77,8 +77,9 @@ function clauseGraph(document: SemanticDocument, node: ReadingNode, group: Readi
 
 /** Spatial composition of an existing reading only. No expression is matched,
  * unfolded, evaluated, or reclassified here. Each graph is one clause and one
- * expression scope; the source tree supplies all surrounding logical frames. */
-export function compileScopedStatementGraph(document: SemanticDocument, reading: ReadingDocument): ScopedStatementGraphModel | undefined {
+ * expression scope; the source tree supplies all surrounding logical frames. A view passes the presentation it draws
+ * its other figures from, so the graph's frames are the skeleton's regions. */
+export function compileScopedStatementGraph(document: SemanticDocument, reading: ReadingDocument, presentation?: ReadingPresentation): ScopedStatementGraphModel | undefined {
   // Positional components have a separate, explicitly associated interpretation
   // boundary. Keep that reader separate from this legacy semantic document view.
   if (document.presentation?.kind === 'component') return;
@@ -86,7 +87,7 @@ export function compileScopedStatementGraph(document: SemanticDocument, reading:
   const clauses = reading.nodes.filter(node => !node.children.length).map(node => ({ node, graphs: (panels.get(node.id)?.groups ?? []).map(group => clauseGraph(document, node, group)) }));
   const composed = clauses.filter(clause => clause.graphs.some(graph => !graph.reason && graph.edges.some(edge => edge.kind === 'result') && graph.nodes.filter(node => node.kind === 'relation').length > 1));
   if (!composed.length) return;
-  return { root: planReadingPresentation(reading).root, clauses };
+  return { root: (presentation ?? planReadingPresentation(reading)).root, clauses };
 }
 
 /** Reference annotations preserve binder identity when printed names collide. */

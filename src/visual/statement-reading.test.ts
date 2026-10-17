@@ -6,6 +6,7 @@ import { compileSemanticDocument } from '../semantic';
 import { compileReading } from '../reading';
 import { expressionMapPath, StatementReadingView } from './StatementReadingView';
 import { assignIdentityColors } from './object-identity';
+import { assertStageReadsBack } from './role-marks.test-fixtures';
 import { assertSkeletonReadsBack } from './statement-skeleton.test-fixtures';
 import { compileReadingCues } from '../reading/cues';
 
@@ -20,7 +21,8 @@ function render(tree: StatementNode, selectedNodeId?: string) {
   const reading = compileReading(document, { selectedNodeId });
   const html = renderToStaticMarkup(createElement(StatementReadingView, { document, reading, onObjectSelect: () => undefined, onNodeSelect: () => undefined }));
   assertSkeletonReadsBack(document, reading, html);
-  return { html, document, reading };
+  const { figures } = assertStageReadsBack(document, reading, html);
+  return { html, document, reading, figures };
 }
 
 describe('mathematical atlas reading', () => {
@@ -77,7 +79,7 @@ describe('mathematical atlas reading', () => {
 
   it('names a step once, in its selector, and folds its explanation and context behind one counted disclosure', () => {
     const x = binder('x'), y = binder('y', 'ℝ', 'existential', ['x']);
-    const { html, document, reading } = render(node('x-choice', 'forall', [node('y-choice', 'exists', [node('both', 'and', [leaf('first'), leaf('second')])], y)], x), 'second');
+    const { html, document, reading, figures } = render(node('x-choice', 'forall', [node('y-choice', 'exists', [node('both', 'and', [leaf('first'), leaf('second')])], y)], x), 'second');
     const cues = compileReadingCues(reading, document).cues, cue = cues.find(candidate => candidate.nodeId === 'second')!;
     // The title is the selected option. It is repeated for assistive technology only, not drawn as a caption.
     expect(html).toContain(`<option value="${cue.id}" selected="">${cues.indexOf(cue) + 1}. ${cue.title}</option>`);
@@ -88,8 +90,10 @@ describe('mathematical atlas reading', () => {
     expect(html).toContain(`<details class="rg-about"><summary>About this step · 2 in scope · 1 alongside</summary><p>${cue.detail}</p><div class="rg-in-scope"><span class="rg-context-label">In scope</span>`);
     expect(html).toContain('<div class="rg-listed"><span class="rg-context-label">Alongside this clause</span><ul><li><code>first source</code></li></ul></div></details>');
     expect(html.match(/<details class="rg-about"/g)).toHaveLength(1);
-    // The position of the step among the connectives stays in view beside its figure.
-    expect(html).toContain('<ol class="rg-logical-path"><li data-logic-role="conjunct">Condition 2 · required together</li></ol>');
+    // The step's standing is on its figure, not in a line of text beside it: a conjunct stands where its conjunction
+    // stands, so this clause of the statement is required.
+    expect(html).not.toContain('rg-logical-path');
+    expect(figures).toEqual([{ nodeId: 'second', leaf: 'clause', required: true, mark: '⊢', chain: [], standing: 'statement', depth: 0 }]);
   });
 
   it('counts the assumptions a step stands under in the disclosure label and keeps them listed inside it', () => {
@@ -214,7 +218,7 @@ describe('mathematical atlas reading', () => {
     expect(html).toContain('Inside this expression');
     expect(html).toContain('These are parts of the expression, not separate assertions.');
     expect(html).toContain('<details class="sr-contained-expressions">');
-    expect(html.indexOf('Inside this expression')).toBeLessThan(html.indexOf('Membership condition · the named element belongs'));
+    expect(html.indexOf('Inside this expression')).toBeLessThan(html.indexOf('Membership condition · this condition places the named element'));
     expect(html.indexOf('sr-figure-predicate')).toBeLessThan(html.indexOf('sr-contained-expressions'));
   });
 

@@ -11,7 +11,7 @@ import type { SemanticDocument, SemanticRelation } from '../src/semantic/types.t
 import { compileReading, compileReadingCues, type ReadingDocument, type ReadingCuePlan } from '../src/reading/index.ts';
 import { compileGraphConstraint } from '../src/graphs/model.ts';
 import type { StatementReadingViewProps } from '../src/visual/StatementReadingView.tsx';
-import { activeReadingGuide as activeGuide } from './ssr-reading.ts';
+import { activeReadingGuide as activeGuide, cueRoleChain, stageRoleChains } from './ssr-reading.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backend = createWorkerBackend({ rootDir });
@@ -21,6 +21,8 @@ const ssr = await createServer({ configFile: false, root: rootDir, appType: 'cus
 interface Compiled { analysis: Analysis; document: SemanticDocument; reading: ReadingDocument; cues: ReadingCuePlan; html: string }
 interface Case { name: string; source: string; check: (result: Compiled) => void }
 let StatementReadingView: ComponentType<StatementReadingViewProps>;
+/** The role oracle (src/visual/role-marks.test-fixtures.ts), loaded through Vite because it draws the reader. */
+let assertStageReadsBack: (document: SemanticDocument, reading: ReadingDocument, html: string) => unknown;
 const graphRelations = (document: SemanticDocument, kind?: string) => document.relations.filter(relation => kind ? relation.kind === kind : relation.pluginId === 'graphs');
 const port = (relation: SemanticRelation, role: string) => relation.ports.find(port => port.role === role)!.objectId;
 
@@ -31,6 +33,8 @@ function render(document: SemanticDocument, selectedNodeId?: string): string {
   try {
     const html = renderToStaticMarkup(createElement(StatementReadingView, { document, reading, onObjectSelect: () => undefined, onNodeSelect: () => undefined }));
     assert.equal(warnings.length, 0, `React could not faithfully render the graph reader: ${warnings[0]?.slice(0, 260)}`);
+    // Every drawn step's frames, figure kind and mark agree with the region tree, worked out apart from the renderer.
+    assertStageReadsBack(document, reading, html);
     return html;
   } finally { console.error = originalError; }
 }
@@ -54,11 +58,9 @@ function assertBinder(result: Compiled, relation: SemanticRelation): void {
   assert.equal(cue.intent, 'introduce');
   assert.ok(cue.focusRelationIds.includes(relation.id), 'Bundled properties belong to the binder introduction');
   assert.ok(cue.binders.some(binder => binder.objectId === valueId));
-  const rendered = activeGuide(render(result.document, node.id));
+  const html = render(result.document, node.id), rendered = activeGuide(html);
   assert.ok(figure(rendered, relation).includes(`data-graph-scope="${relation.scopeId}"`));
-  for (const position of cue.branchPath.filter(position => !['body', 'result'].includes(position.edge.role))) {
-    assert.ok(rendered.includes(`data-logic-role="${position.edge.role}"`), 'A binder annotation lost its enclosing logical role');
-  }
+  assert.deepEqual(stageRoleChains(html), [cueRoleChain(cue)], 'A binder annotation lost its enclosing logical role');
 }
 async function compile(source: string): Promise<Compiled> {
   const response = await backend.analyze(source);
@@ -100,8 +102,8 @@ const cases: Case[] = [
       assert.ok(clause.groups[0]!.connections.some(connection => connection.fromRelationId === application.id && connection.toRelationId === root.id && connection.kind === 'feeds'));
       assert.equal(stages.find(cue => cue.stage.relationId === application.id)!.assumptionNodeIds.length, 1);
     }
-    const rendered = activeGuide(render(result.document, clause.nodeId));
-    assert.ok(rendered.includes('data-logic-role="conclusion"'));
+    const clauseHtml = render(result.document, clause.nodeId), rendered = activeGuide(clauseHtml);
+    assert.deepEqual(stageRoleChains(clauseHtml), [[['conclusion', 0]]]);
     assert.ok(rendered.includes('Constructing part of'));
     assert.ok(rendered.includes('source application'));
     const introduction = activeGuide(render(result.document, binder.nodeId));
@@ -117,8 +119,9 @@ const cases: Case[] = [
     const stages = result.cues.cues.filter(cue => cue.nodeId === target.nodeId);
     assert.deepEqual(stages.map(cue => cue.stage.relationKind), ['graph-map', 'graph-map', 'graph-adjacency']);
     const application = maps.find(relation => relation.id === stages[0]!.stage.relationId)!;
-    const guide = activeGuide(render(result.document, target.nodeId));
-    assert.ok(guide.includes('data-logic-role="conclusion"') && guide.includes('Constructing part of'));
+    const targetHtml = render(result.document, target.nodeId), guide = activeGuide(targetHtml);
+    assert.deepEqual(stageRoleChains(targetHtml), [[['conclusion', 0]]]);
+    assert.ok(guide.includes('Constructing part of'));
     assert.ok(figure(guide, application).includes(`data-graph-scope="${application.scopeId}"`));
     assert.match(result.document.objects.find(object => object.id === port(application, 'target vertex'))!.label, /^f\([uv]\)$/);
     assert.ok(figure(result.html, binder).includes('injectivity is not required'));
@@ -143,15 +146,15 @@ const cases: Case[] = [
     const alternative = graphRelations(result.document, 'graph-colorable')[0]!;
     const coloringId = port(binder, 'coloring');
     assert.ok(!result.document.scopes.find(scope => scope.id === alternative.scopeId)!.objectIds.includes(coloringId));
-    const rightGuide = activeGuide(render(result.document, alternative.nodeId));
-    assert.ok(rightGuide.includes('data-logic-role="negated"') && rightGuide.includes('data-logic-role="alternative"'));
+    const rightHtml = render(result.document, alternative.nodeId), rightGuide = activeGuide(rightHtml);
+    assert.deepEqual(stageRoleChains(rightHtml), [[['negated', 0], ['alternative', 1]]]);
     assert.ok(!rightGuide.includes(`data-reading-object="${coloringId}"`), 'A sibling existential witness leaked into the other branch');
   } },
   { name: 'same-identity adjacency uses one source vertex and preserves negation', source: '∀ (V : Type) (G : SimpleGraph V) (u : V), ¬ G.Adj u u', check: result => {
     const adjacency = graphRelations(result.document, 'graph-adjacency')[0]!;
     assert.equal(port(adjacency, 'left vertex'), port(adjacency, 'right vertex'));
-    const rendered = activeGuide(render(result.document, adjacency.nodeId));
-    assert.ok(rendered.includes('data-logic-role="negated"'));
+    const adjacencyHtml = render(result.document, adjacency.nodeId), rendered = activeGuide(adjacencyHtml);
+    assert.deepEqual(stageRoleChains(adjacencyHtml), [[['negated', 0]]]);
     const graph = figure(rendered, adjacency);
     assert.equal((graph.match(/data-graph-endpoint=/g) ?? []).length, 1);
     assert.ok(graph.includes('same vertex occurs at both endpoints'));
@@ -162,7 +165,7 @@ const cases: Case[] = [
     assert.equal(model.palette!.count, '0');
     assert.equal(model.coloring, undefined);
     const rendered = figure(activeGuide(render(result.document, relation.nodeId)), relation);
-    assert.ok(rendered.includes('Empty vertex type required') && rendered.includes('edge rule is vacuous'));
+    assert.ok(rendered.includes('<strong>Holds only for an empty vertex type</strong>') && rendered.includes('edge rule is vacuous'));
     assert.ok(!rendered.includes('data-graph-endpoint=') && !rendered.includes('data-palette-label='));
   } },
   { name: 'finite palettes are allowed labels and templates are never semantic vertex identities', source: '∀ (V : Type) (G : SimpleGraph V) (c : G.Coloring (Fin 4)), True', check: result => {
@@ -195,6 +198,7 @@ const cases: Case[] = [
 let passed = 0, failed = 0;
 try {
   ({ StatementReadingView } = await ssr.ssrLoadModule('/src/visual/StatementReadingView.tsx'));
+  ({ assertStageReadsBack } = await ssr.ssrLoadModule('/src/visual/role-marks.test-fixtures.ts'));
   for (const test of cases) {
     try { const result = await compile(test.source); test.check(result); passed++; console.log(`PASS ${test.name}`); }
     catch (error) { failed++; console.error(`FAIL ${test.name}: ${error instanceof Error ? error.message : String(error)}`); }

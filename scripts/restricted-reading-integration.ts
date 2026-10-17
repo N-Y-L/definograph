@@ -16,7 +16,7 @@ import type { SemanticDocument, SemanticRelation } from '../src/semantic/types.t
 import { compileReading, compileReadingCues, type ReadingDocument, type ReadingCuePlan } from '../src/reading/index.ts';
 import { compileRestrictedMap } from '../src/restricted/model.ts';
 import type { StatementReadingViewProps } from '../src/visual/StatementReadingView.tsx';
-import { activeReadingGuide as guide } from './ssr-reading.ts';
+import { activeReadingGuide as guide, cueRoleChain, stageRoleChains } from './ssr-reading.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(await readFile(path.join(rootDir, '.local/config.json'), 'utf8')) as { leanPath: string[]; contextExecutable: string; workerExecutable: string };
@@ -27,6 +27,8 @@ const temporary = await mkdtemp(path.join(os.tmpdir(), 'statementlens-restricted
 const snapshots = new Map<string, string>();
 const ssr = await createServer({ configFile: false, root: rootDir, appType: 'custom', server: { middlewareMode: true, watch: null, hmr: false, ws: false } });
 let StatementReadingView: ComponentType<StatementReadingViewProps>;
+/** The role oracle (src/visual/role-marks.test-fixtures.ts), loaded through Vite because it draws the reader. */
+let assertStageReadsBack: (document: SemanticDocument, reading: ReadingDocument, html: string) => unknown;
 
 interface Compiled { analysis: Analysis; document: SemanticDocument; reading: ReadingDocument; cues: ReadingCuePlan; html: string }
 interface Case { name: string; term: string; header?: string; source?: string; opaque?: boolean; check: (result: Compiled) => void }
@@ -47,8 +49,11 @@ function render(document: SemanticDocument, selectedNodeId?: string): string {
   const warnings: string[] = [], originalError = console.error;
   console.error = (...items: unknown[]) => { warnings.push(items.map(String).join(' ')); };
   try {
-    const html = renderToStaticMarkup(createElement(StatementReadingView, { document, reading: compileReading(document, { selectedNodeId }), onObjectSelect: () => undefined, onNodeSelect: () => undefined }));
+    const reading = compileReading(document, { selectedNodeId });
+    const html = renderToStaticMarkup(createElement(StatementReadingView, { document, reading, onObjectSelect: () => undefined, onNodeSelect: () => undefined }));
     assert.deepEqual(warnings, [], 'The production reader must render without React errors');
+    // Every drawn step's frames, figure kind and mark agree with the region tree, worked out apart from the renderer.
+    assertStageReadsBack(document, reading, html);
     return html;
   } finally { console.error = originalError; }
 }
@@ -71,9 +76,7 @@ function assertIntroduction(result: Compiled, relation: SemanticRelation): void 
   assert.ok(displayed.includes('data-restricted-law="source"') && displayed.includes('data-restricted-law="target"'));
   assert.ok(displayed.includes('For every element in the source region') && displayed.includes('For every element in the target region'));
   assert.ok(displayed.includes('possibly empty') && !displayed.includes('<circle'));
-  for (const branch of cue.branchPath.filter(branch => !['body', 'result'].includes(branch.edge.role))) {
-    assert.ok(guide(render(result.document, relation.nodeId)).includes(`data-logic-role="${branch.edge.role}"`));
-  }
+  assert.deepEqual(stageRoleChains(render(result.document, relation.nodeId)), [cueRoleChain(cue)], 'The introduction lost its enclosing logical role');
 }
 function assertRoundTrip(result: Compiled, expectedDirection: 'forward' | 'inverse', assumed: boolean): void {
   const applications = restricted(result.document, 'restricted-application');
@@ -244,6 +247,7 @@ try {
   const toolchain = path.join(temporary, 'lean-toolchain');
   await writeFile(toolchain, 'leanprover/lean4:v4.28.0\n'); snapshots.set(toolchain, 'leanprover/lean4:v4.28.0\n');
   ({ StatementReadingView } = await ssr.ssrLoadModule('/src/visual/StatementReadingView.tsx'));
+  ({ assertStageReadsBack } = await ssr.ssrLoadModule('/src/visual/role-marks.test-fixtures.ts'));
   for (const [index, test] of cases.entries()) {
     try {
       const source = test.source ?? `${test.header ?? partial}\n#check ${test.term}\n`;

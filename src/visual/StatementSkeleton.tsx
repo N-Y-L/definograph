@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { FigureScroll } from '../components/FigureScroll';
 import { contextEntryTitle } from '../core/context-entry';
 import { counted } from '../core/counted';
-import type { ReadingRegion } from '../reading/presentation';
+import { regionParts, type ReadingRegion, type RegionPart } from '../reading/presentation';
 import { formatExpression } from '../semantic/expression';
 import type { SemanticDocument } from '../semantic/types';
 import { compactLabel } from './layout';
@@ -23,17 +23,7 @@ export interface StatementSkeletonProps {
   onNodeSelect?: (id: string) => void;
 }
 
-type Part = { edge: 'body' | 'assumption' | 'conclusion' | 'negated' | 'conjunct' | 'alternative' | 'side' | 'part'; region: ReadingRegion };
-function parts(region: ReadingRegion): Part[] {
-  switch (region.kind) {
-    case 'binders': return region.body ? [{ edge: 'body', region: region.body }] : [];
-    case 'implication': return [...region.assumptions.map(assumption => ({ edge: 'assumption' as const, region: assumption })), { edge: 'conclusion', region: region.conclusion }];
-    case 'negation': return [{ edge: 'negated', region: region.body }];
-    case 'clause': return [];
-    default: return region.children.map(child => ({ edge: region.kind === 'all' ? 'conjunct' as const : region.kind === 'alternatives' ? 'alternative' as const : region.kind === 'equivalence' ? 'side' as const : 'part' as const, region: child }));
-  }
-}
-const rowCount = (region: ReadingRegion): number => 1 + parts(region).reduce((sum, part) => sum + rowCount(part.region), 0);
+const rowCount = (region: ReadingRegion): number => 1 + regionParts(region).reduce((sum, part) => sum + rowCount(part.region), 0);
 /** A clause or structure row's own text: Lean's where the node has it, and the region kind before an empty row. */
 const ownText = (region: ReadingRegion): string => (region.kind === 'structure' ? region.node.phrase || region.node.lean : region.node.lean || region.node.phrase) || region.kind;
 
@@ -51,7 +41,7 @@ export function skeletonFrames({ root, document, visibleNodes, activeRegionId, a
   const name = component ? 'Expression and context' : 'Whole statement';
   const row = (region: ReadingRegion, content: ReactNode, nodeId = region.id, current = region.id === activeRegionId) => <button type="button" className={`sk-row${current ? ' sk-selected' : ''}`}
     aria-current={current ? 'true' : undefined} title={nodeId === region.id && region.kind !== 'clause' ? region.node.lean : undefined} onClick={() => onNodeSelect?.(nodeId)}>{content}</button>;
-  const within = (part: Part) => <div key={part.region.id} className="sk-children" data-skeleton-edge={part.edge}>{draw(part.region)}</div>;
+  const within = (part: RegionPart) => <div key={part.region.id} className="sk-children" data-skeleton-edge={part.edge}>{draw(part.region)}</div>;
   function draw(region: ReadingRegion): ReactNode {
     const identity = { 'data-skeleton-row': region.id, 'data-skeleton-kind': region.kind, 'data-skeleton-nodes': region.sourceNodeIds.join(' ') };
     if (!region.sourceNodeIds.some(id => visibleNodes.has(id))) {
@@ -69,7 +59,7 @@ export function skeletonFrames({ root, document, visibleNodes, activeRegionId, a
             return <span className="sk-binder" key={node.id}><span className={`sk-name${binder.objectId && binder.objectId === selectedObjectId ? ' sk-object-selected' : ''}`} data-skeleton-name="" data-reading-object={binder.objectId}
               style={{ '--object-color': colorOf(binder.objectId) } as CSSProperties}>{role === 'auxiliary' ? contextEntryTitle(binder) : binder.name}</span><span className="sk-type">: {binder.type}{binder.definition && ` := ${formatExpression(binder.definition.value)}`}</span></span>;
           })}</>)}
-        {parts(region).map(within)}
+        {regionParts(region).map(within)}
       </div>;
     }
     if (region.kind === 'implication') {
@@ -83,7 +73,7 @@ export function skeletonFrames({ root, document, visibleNodes, activeRegionId, a
     if (region.kind === 'clause') return <div className="sk-region sk-clause" {...identity}>{row(region, ownText(region))}</div>;
     return <div className={`sk-region sk-${region.kind}`} {...identity}>
       {row(region, region.kind === 'structure' ? ownText(region) : <><span className="sk-mark" data-skeleton-mark="">{connectiveWords[region.kind].symbol}</span><span className="sk-words">{connectiveWords[region.kind].title}</span></>)}
-      {parts(region).map(within)}
+      {regionParts(region).map(within)}
     </div>;
   }
   return <section className="statement-skeleton" aria-label={name}><FigureScroll label={`${name}; scroll to see all of it`}>{draw(root)}</FigureScroll></section>;
