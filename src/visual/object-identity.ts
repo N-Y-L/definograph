@@ -22,13 +22,17 @@ export function assignIdentityColors(document: Pick<SemanticDocument, 'objects' 
   const colors = new Map(inherited);
   const used = new Set(inherited.values());
   const free = IDENTITY_PALETTE.filter(color => !used.has(color));
-  const ownBinders = new Set<string>();
+  const ownBinders = new Set<string>(), hypotheses = new Set<string>();
   for (const pending = [document.tree]; pending.length;) {
     const node = pending.pop()!;
     if (node.binder) ownBinders.add(node.binder.id);
+    // The proof binder of a hypothesis is a hypothesis whatever role its binder records: the packet path records the
+    // binder of an implication, or of a `∀` over proofs, read as one logical layer with the role `universal`.
+    if (node.binder && (node.kind === 'implies' || node.binder.proof)) hypotheses.add(node.binder.id);
     pending.push(...node.children);
   }
-  const eligible = document.objects.filter(object => object.binder && object.binder.role !== 'assumption' && object.binder.role !== 'auxiliary' && !colors.has(object.id));
+  const eligible = document.objects.filter(object => object.binder && object.binder.role !== 'assumption' && object.binder.role !== 'auxiliary'
+    && !hypotheses.has(object.binder.id) && !colors.has(object.id));
   for (const object of [...eligible.filter(object => ownBinders.has(object.binder!.id)), ...eligible.filter(object => !ownBinders.has(object.binder!.id))]) {
     if (!free.length) break;
     colors.set(object.id, free.shift()!);

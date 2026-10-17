@@ -263,7 +263,9 @@ export async function analyzeEditorContext(request: EditorContextRequest): Promi
     const relative = path.relative(project.root, sourceFile);
     if (!inside(project.root, sourceFile)) throw new WorkerError('EDITOR_FILE', 'The selected file is outside its resolved Lean project.');
     const mainModule = relative.replace(/\.lean$/, '').split(path.sep).join('.');
-    await runContext(executable, JSON.stringify({ guidedContextContract: GUIDED_CONTEXT_CONTRACT, source: request.source, fileName: sourceFile, mainModule, captureId, expansion: request.expansion, previewDefinitions: request.previewDefinitions,
+    // `sectionVariableReport`: this host's reader lists the section variables the engine leaves out of the drawing
+    // (src/editor/section-variables.tsx). An older host does not send it, and the engine then leaves nothing out.
+    await runContext(executable, JSON.stringify({ guidedContextContract: GUIDED_CONTEXT_CONTRACT, sectionVariableReport: true, source: request.source, fileName: sourceFile, mainModule, captureId, expansion: request.expansion, previewDefinitions: request.previewDefinitions,
       startByte, endByte, occurrence, headExposure, decomposition }) + '\n', temporary, {
       ...process.env, LEAN_PATH: project.libraries.join(path.delimiter),
       STATEMENTLENS_LEAN_SYSROOT: config.leanSysroot, STATEMENTLENS_CONTEXT_RESULT: resultFile,

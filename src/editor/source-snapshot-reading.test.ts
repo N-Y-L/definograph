@@ -166,6 +166,12 @@ describe('a selected proof is shown closed with the statement it proves', () => 
     expect(differs.indexOf('data-proof-statement')).toBeLessThan(differs.indexOf('data-proof-expected'));
     const same = termPosition(renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot: proofSnapshot({ expected: (_h: unknown, P: unknown) => P as never }), initialTab: 'prepared', selectionClass: 'proof' })));
     expect(same).not.toContain('data-proof-expected');
+    // An expectation that still holds a metavariable is not called a different expression: nothing in view, and one
+    // line behind the disclosure says it was not compared.
+    const metavariable = ['mvar', ['num', ['str', ['anonymous'], '_uniq'], ['nat', '19']]] as never;
+    const unresolved = leafParts(termPosition(renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot: proofSnapshot({ expected: () => metavariable }), initialTab: 'prepared', selectionClass: 'proof' }))));
+    expect(unresolved.shown).not.toContain('data-proof-expected');
+    expect(unresolved.checked).toContain(`<p data-proof-expected="unresolved">${proofWording.expectedUnresolved}</p>`);
   });
   it('gives the main panel the same verdict and expected-type lines as the leaf', () => {
     const truth = ['const', ['str', ['anonymous'], 'True'], []] as never;
@@ -175,6 +181,23 @@ describe('a selected proof is shown closed with the statement it proves', () => 
     expect(renderToStaticMarkup(createElement(ProofLeaf, { fold: differs }))).toContain(renderToStaticMarkup(createElement(ProofVerdict, { fold: differs })));
     // The main panel draws these lines through the same component, so it cannot lose the warning by itself.
     expect(readFileSync(new URL('../App.tsx', import.meta.url), 'utf8')).toContain("selectionKind==='proof-type'&&<ProofVerdict fold={proofFold}/>");
+  });
+  it('does not point to a closed leaf when neither frame of the selected proof was recorded', () => {
+    // A proof over the raw limits: both frames are unavailable, so no tab draws the term or its leaf.
+    const snapshot = proofSnapshot({ unprepared: true });
+    const fold = rootProofFold({ snapshot, selectionClass: 'proof', printedStatement: 'p ∧ q' })!;
+    for (const initialTab of ['original', 'prepared'] as const) {
+      const html = renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot, initialTab, selectionClass: 'proof', printedStatement: 'p ∧ q' }));
+      expect(html).not.toContain('data-proof-leaf');
+      expect(html).toContain(`data-proof-frames="unrecorded" data-proof-closed="elaborator">${proofWording.unrecordedSelection(fold, 'raw JSON depth limit exceeded')}</p>`);
+      expect(html).not.toContain('closed at Source Term');
+    }
+    // The line names the tabs a reader sees, not internal frames, and ends as a sentence.
+    expect(proofWording.unrecordedSelection(fold, 'raw JSON depth limit exceeded')).toBe('Selected term reported as a proof of p ∧ q, not drawn. Neither Original data nor Checker input could record it, so no view below shows it. Recorded reason: raw JSON depth limit exceeded.');
+    expect(proofWording.unrecordedSelection(fold, 'The term is too deep.')).toMatch(/Recorded reason: The term is too deep\.$/);
+    // Where a frame is drawn, the line still names the leaf it closes.
+    const recorded = renderToStaticMarkup(createElement(SourceSnapshotReading, { snapshot: proofSnapshot(), initialTab: 'prepared', selectionClass: 'proof' }));
+    expect(recorded).toContain('data-proof-frames="recorded"'); expect(recorded).toContain('closed at Source Term');
   });
   it('says in view that a statement is not written on one line, in the statement’s place', () => {
     const fold = rootProofFold({ snapshot: proofSnapshot({ unprepared: true }), selectionClass: 'proof' })!;

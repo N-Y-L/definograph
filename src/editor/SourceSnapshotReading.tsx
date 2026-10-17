@@ -14,7 +14,7 @@ import type { HeadExposureTarget } from './source-head-exposure';
 import './source-snapshot.css';
 import { counted } from '../core/counted';
 import { ProofLeaf } from './ProofLeaf';
-import { proofWording, rootProofFold, selectionClassUnknown, type ProofFold } from './source-proof-fold';
+import { closedSelectionLine, proofWording, rootProofFold, selectionClassUnknown, type ProofFold } from './source-proof-fold';
 import type { SelectionClass } from './selection-class';
 
 type Tab = 'original' | 'prepared' | 'expectedType' | 'checking';
@@ -119,6 +119,8 @@ export function SourceSnapshotReading({ snapshot, origin, initialTab, selectionC
   const continueAction = origin && (decompositions?.length ?? 0) < 8 ? onContinue : undefined;
   const checkSource = headExposure || decompositions !== undefined || proof ? undefined : onCheckOccurrence;
   const wholeProof = proof && occurrence?.path.length === 0 ? proof : undefined;
+  // Only a drawn frame shows the closed leaf. Where neither frame was recorded, the drawer line must not point to one.
+  const closedLine = useMemo(() => proof ? closedSelectionLine(proof, snapshot) : undefined, [proof, snapshot]);
   const originalReady = occurrence?.checking.status === 'captured' && occurrence.checking.action.status === 'completed' && occurrence.checking.selected;
   const statementUnchecked = proof?.basis === 'elaborator' && !headExposure && decompositions === undefined;
   // Offered until a whole-term check is retained; a completed one continues through the existing type inspection. Not
@@ -137,7 +139,7 @@ export function SourceSnapshotReading({ snapshot, origin, initialTab, selectionC
     <header><h2>Selected source data</h2><button className="toolbar-button" onClick={download}>Save source snapshot</button></header>
     <p>{origin ? 'Captured from your Lean buffer by the local reader process.' : 'Saved source snapshot. Its origin is unverified.'} Raw data and kernel outcomes are separate records.</p>
     <p className="snapshot-context">Selected bytes {snapshot.selection.startByte}–{snapshot.selection.endByte}{origin?.document ? ` · buffer v${origin.document.version}` : ''}. Imported libraries describe that process’s environment; their later changes are not tracked by this snapshot.</p>
-    {proof ? <p className="snapshot-context" data-proof-closed={proof.basis}>{proofWording.closedSelection(proof)}</p>
+    {proof && closedLine ? <p className="snapshot-context" data-proof-frames={closedLine.frames} data-proof-closed={proof.basis}>{closedLine.text}</p>
       : classUnknown ? <p className="snapshot-context" data-selection-class="unreported">{proofWording.unreported(!!origin)}</p>
       : <p className="snapshot-context" data-proof-arguments-open="">{proofWording.openArguments}</p>}
     <div className="snapshot-tabs" role="tablist" aria-label="Source snapshot sections">{(Object.keys(titles) as Tab[]).map(key => <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{titles[key]}</button>)}</div>

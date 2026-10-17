@@ -25,6 +25,9 @@ export interface Binder {
   declarationKind?: 'auxDecl' | 'implDetail';
   /** A scoped local definition, not an arbitrary choice or a hypothesis. */
   definition?: { value: Expr; nondep: boolean };
+  /** The binder ranges over proofs of a proposition, as a source capture's logical reading recorded (`proofBinder`):
+   * it names a hypothesis, not an object, whatever its role. */
+  proof?: true;
   dependsOn: string[];
   domain?: Domain;
   dimension?: number;

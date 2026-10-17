@@ -7,6 +7,8 @@ import { compileScopedStatementGraph } from '../reading/scoped-graph';
 import { scopedFixture } from '../reading/scoped-graph.test-fixtures';
 import { compileSemanticDocument } from '../semantic';
 import type { SemanticDocument } from '../semantic/types';
+import type { JsonValue } from '../packets/packet';
+import { compilePositionalComponent } from '../packets/semantic';
 import { assignIdentityColors, IDENTITY_PALETTE, IdentityColorProvider, NEUTRAL_INK } from './object-identity';
 import { ScopedStatementGraph } from './ScopedStatementGraph';
 import { renderReading } from './statement-skeleton.test-fixtures';
@@ -78,6 +80,48 @@ describe('identity colours', () => {
     expect(colors.size).toBe(4);
     expect(document.objects.filter(object => !object.binder).length).toBeGreaterThan(4);
     expect(colors.has(objectOf(document, 'h').id)).toBe(false);
+  });
+
+  it('gives no hue to the proof binder of an implication read through a capture packet', () => {
+    // Context P : Prop and Q : Nat → Prop; the selected term P → ∀ y, Q y read as one logical layer whose root is the
+    // implication. The packet path records the hypothesis's anonymous binder with the role `universal`.
+    const name = (text: string): JsonValue => ['str', ['anonymous'], text];
+    const bound = (index: number): JsonValue => ['bvar', ['nat', String(index)]];
+    const nat: JsonValue = ['const', name('Nat'), []];
+    const pi = (text: string, type: JsonValue, body: JsonValue): JsonValue => ['forallE', name(text), type, body, 'default'];
+    const port = (prefix: JsonValue, text: string, type: JsonValue): JsonValue => ['port', prefix, { name: name(text), info: 'default' }, type];
+    const compiled = compilePositionalComponent({ home: { arity: 2, telescope: port(port(['nil'], 'P', ['sort', ['zero']]), 'Q', pi('n', nat, ['sort', ['zero']])) },
+      term: pi('h', bound(1), pi('y', nat, ['app', bound(2), bound(0)])), type: ['sort', ['zero']] },
+    { sourceIdentity: 'hypothesis-hue', target: 'term', logicalRoot: { form: 'implies', proofBinder: true, bodyUsesBinder: false } });
+    const document = compiled.document!;
+    const nodes: StatementNode[] = [];
+    for (const pending = [document.tree]; pending.length;) { const next = pending.pop()!; nodes.push(next); pending.push(...next.children); }
+    const hypothesis = nodes.find(item => item.kind === 'implies')!.binder!, later = nodes.find(item => item.binder?.name === 'y')!.binder!;
+    const colors = assignIdentityColors(document);
+    expect(colors.get(objectOf(document, hypothesis.id).id)).toBeUndefined();
+    expect(['P', 'Q', 'y'].map(id => colors.get(objectOf(document, nodes.find(item => item.binder?.name === id)!.binder!.id).id))).toEqual(IDENTITY_PALETTE.slice(0, 3));
+    expect(later.role).toBe('parameter');
+  });
+
+  it('gives no hue to a proof binder that its body uses, read through a capture packet', () => {
+    // Context P : Prop and Q : P → Prop; the selected term ∀ h : P, Q h read as one logical layer. Its root is a `∀`
+    // over proofs, recorded with the role `universal`, and h is a hypothesis all the same.
+    const name = (text: string): JsonValue => ['str', ['anonymous'], text];
+    const bound = (index: number): JsonValue => ['bvar', ['nat', String(index)]];
+    const pi = (text: string, type: JsonValue, body: JsonValue): JsonValue => ['forallE', name(text), type, body, 'default'];
+    const port = (prefix: JsonValue, text: string, type: JsonValue): JsonValue => ['port', prefix, { name: name(text), info: 'default' }, type];
+    const compiled = compilePositionalComponent({ home: { arity: 2, telescope: port(port(['nil'], 'P', ['sort', ['zero']]), 'Q', pi('p', bound(0), ['sort', ['zero']])) },
+      term: pi('h', bound(1), ['app', bound(1), bound(0)]), type: ['sort', ['zero']] },
+    { sourceIdentity: 'dependent-hypothesis-hue', target: 'term', logicalRoot: { form: 'forall', proofBinder: true, bodyUsesBinder: true } });
+    const document = compiled.document!;
+    const nodes: StatementNode[] = [];
+    for (const pending = [document.tree]; pending.length;) { const next = pending.pop()!; nodes.push(next); pending.push(...next.children); }
+    const root = nodes.find(item => item.kind === 'forall')!;
+    expect(root.binder?.role).toBe('universal');
+    expect(root.binder?.proof).toBe(true);
+    const colors = assignIdentityColors(document);
+    expect(colors.get(objectOf(document, root.binder!.id).id)).toBeUndefined();
+    expect(['P', 'Q'].map(id => colors.get(objectOf(document, nodes.find(item => item.binder?.name === id)!.binder!.id).id))).toEqual(IDENTITY_PALETTE.slice(0, 2));
   });
 
   it('leaves objects beyond the palette neutral and never reuses a hue', () => {

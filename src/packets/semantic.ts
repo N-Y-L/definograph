@@ -440,6 +440,8 @@ class RecordCompiler {
       // expression() may have already registered this exact binder neutrally.
       // Only this explicitly associated root changes its presentation role.
       if (universal) node.binder.role = role;
+      // A binder over proofs, read as one logical layer, is a hypothesis: `∀ h : P, Q h` as much as `P → Q`.
+      if (universal && logical?.proofBinder) node.binder.proof = true;
       node.label = logical?.form === 'implies' ? 'If the first condition holds, then the second holds'
         : `${role === 'definition' ? 'Define' : role === 'lambda' ? 'Function input' : role === 'universal' ? `For every${logical?.proofBinder ? ' proof' : ''}` : 'Dependent function input'} ${node.binder.name}${universal ? ` : ${node.binder.type}` : ''}`;
       localObjects.push(this.introduce(node.binder, raw, path, env, id));

@@ -22,7 +22,9 @@ export function visibleReadingNodes(reading: ReadingDocument, limit: number): Se
 }
 
 /** Layout grouping only. Quantifiers never cross a connective, and implication
- * premises combine only along an uninterrupted right-associated chain. */
+ * premises combine only along an uninterrupted right-associated chain. A boundary
+ * node (the selected component's root) interrupts both: no group or chain runs
+ * from the context into the component. */
 export function planReadingPresentation(reading: ReadingDocument, options: { boundaryNodeIds?: readonly string[] } = {}): ReadingPresentation {
   const boundaries = new Set(options.boundaryNodeIds);
   const nodeToRegionId: Record<string, string> = {};
@@ -44,7 +46,7 @@ export function planReadingPresentation(reading: ReadingDocument, options: { bou
       const sources = [node.id];
       const assumptions = [visit(node.children[0])];
       let conclusion = node.children[1];
-      while (conclusion.kind === 'implies' && conclusion.children.length === 2) {
+      while (conclusion.kind === 'implies' && conclusion.children.length === 2 && !boundaries.has(conclusion.id)) {
         sources.push(conclusion.id);
         assumptions.push(visit(conclusion.children[0]));
         conclusion = conclusion.children[1];

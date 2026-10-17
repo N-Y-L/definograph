@@ -26,8 +26,10 @@
 /* What is negated hangs from a rail as heavy as a witness's box and dashed, so it is not taken for an assertion. */
 .sk-negation > .sk-children { padding-left:5px; border-left:2px dashed var(--sr-ink); }
 /* The Given marks are one column and the hypotheses the next. The conclusion steps in under the hypotheses, never
-   under the marks, so it is always further in than the hypotheses that govern it. */
-.sk-implication { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:baseline; }
+   under the marks, so it is always further in than the hypotheses that govern it. Neither column may shrink below
+   its content: a zero minimum gives the grid a min-content width without its hypotheses, so in a narrow column a
+   witness box enclosing it became narrower than they are and they crossed its border. */
+.sk-implication { display:grid; grid-template-columns:max-content minmax(min-content,1fr); align-items:baseline; }
 .sk-given { display:contents; }
 .sk-given > .sk-row { width:auto; min-width:0; padding-right:4px; font:12px/1.5 system-ui,sans-serif; color:var(--sr-muted); }
 .sk-given > .sk-region,.sk-given > .sk-stub,.sk-implication > .sk-children { grid-column:2; }

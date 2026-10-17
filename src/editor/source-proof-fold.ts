@@ -12,7 +12,7 @@
  * elaborator reported. The typing verdict and the axiom list are the snapshot's
  * own component receipt and its audit, read as they were recorded. */
 import { counted } from '../core/counted';
-import { createExactJsonTools } from '../packets/packet';
+import { createExactJsonTools, type JsonValue } from '../packets/packet';
 import { nameText } from '../packets/syntax';
 import { scopedExpressionLabel } from './definition-occurrences';
 import type { SelectionClass } from './selection-class';
@@ -25,15 +25,26 @@ import { supplierReading } from './source-supplier';
  * recorded inferred type, with every argument explicit. `record` means no line is shown: the type stays in the record. */
 export type ProofStatement = { source: 'printed' | 'recorded'; text: string } | { source: 'record' };
 export type ProofTyping = { status: 'recorded'; outcome: SnapshotOutcome } | { status: 'unrecorded'; reason: string };
+/** Why a retained check of the statement established nothing. The first three are supply-reading statuses: no accepted
+ * typing of the term, conflicting formation answers, or neither a proposition nor a type established. */
+export type UnestablishedCheck = { attempt: number } & ({ outcome: 'annotation-only' | 'conflicting' | 'not-established' | 'no-reading' | 'unreadable' }
+  | { outcome: 'unrecorded'; attempted: boolean; reason: string });
+export type ExpectedComparison = 'absent' | 'same' | 'differs' | 'unresolved';
 export type ProofAxioms = { status: 'recorded'; names: string[] } | { status: 'unrecorded'; reason: string };
 export interface ProofFold {
   basis: 'elaborator' | 'kernel';
   /** Kernel basis only: the retained attempt and its numbered outcomes that the basis rests on, as a reader counts them. */
   established: { attempt: number; typingOutcome: number; formationOutcomes: number[] } | null;
+  /** Elaborator basis only: every retained attempt that took a type-component step on the whole term and established
+   * nothing about its statement, numbered as a reader counts them, with what its record says. */
+  unestablished: UnestablishedCheck[];
   statement: ProofStatement;
-  /** An expected type is recorded at this position and is not, as exact data, the prepared inferred type. This is
-   * a comparison of two recorded expressions; an expectation that still holds a metavariable also differs. */
-  expectedDiffers: boolean;
+  /** How the expected type recorded at this position compares, as exact data, with the prepared inferred type.
+   * `same` and `differs` compare two recorded expressions. An expectation that is not the same and holds a
+   * metavariable is `unresolved`: the snapshot keeps the expectation as Lean stored it, without filling in
+   * metavariables (for `hp` in `⟨hp, hq⟩` it is one metavariable), so it is not reported as different.
+   * `absent` means no expectation or no prepared frame was recorded. */
+  expected: ExpectedComparison;
   typing: ProofTyping;
   axioms: ProofAxioms;
   /** Constructor nodes recorded for the prepared term in the checked raw drawing, or null without a prepared frame. */
@@ -52,21 +63,28 @@ export interface ProofFoldInput {
 export const PROOF_STATEMENT_CHARACTERS = 4096;
 
 /** What the kernel established about the whole selected term's type, read from the first type-component step taken
- * directly on the original pair. A refused or unfinished reading contributes nothing. */
-function kernelReading(history: DecompositionHistory): { proof: true; established: NonNullable<ProofFold['established']> } | { proof: false } | undefined {
+ * directly on the original pair. A refused or unfinished reading establishes nothing; it is listed as a check that
+ * established nothing, so the leaf never says that no check is recorded when one was taken. */
+function kernelReading(history: DecompositionHistory): { proof: true; established: NonNullable<ProofFold['established']> } | { proof: false } | { unestablished: UnestablishedCheck[] } | undefined {
   if (history.occurrence.path.length !== 0 || history.seed) return undefined;
   let notProposition = false;
+  const unestablished: UnestablishedCheck[] = [];
   for (const [position, entry] of history.attempts.entries()) {
-    const record = entry.record;
-    if (record.checking.status !== 'captured' || record.operations[0]?.kind !== 'typeComponent') continue;
+    const record = entry.record, attempt = position + 1;
+    if (record.operations[0]?.kind !== 'typeComponent') continue;
+    if (record.checking.status !== 'captured') {
+      unestablished.push({ attempt, outcome: 'unrecorded', attempted: record.checking.attempted, reason: record.checking.reason });
+      continue;
+    }
     let link;
-    try { link = supplierReading(history, record.captureId, 0).links.find(item => item.from === 0); } catch { continue; }
-    if (link?.status === 'supplier') return { proof: true, established: { attempt: position + 1, typingOutcome: link.typing.index + 1,
+    try { link = supplierReading(history, record.captureId, 0).links.find(item => item.from === 0); } catch { unestablished.push({ attempt, outcome: 'unreadable' }); continue; }
+    if (link?.status === 'supplier') return { proof: true, established: { attempt, typingOutcome: link.typing.index + 1,
       formationOutcomes: link.formation.judgements.filter(group => group.established)
         .flatMap(group => group.receipts.filter(receipt => receipt.outcome === 'accepted').map(receipt => receipt.index + 1)) } };
     if (link?.status === 'value-of-type') notProposition = true;
+    else unestablished.push({ attempt, outcome: link ? link.status : 'no-reading' });
   }
-  return notProposition ? { proof: false } : undefined;
+  return notProposition ? { proof: false } : unestablished.length ? { unestablished } : undefined;
 }
 
 function statementOf(snapshot: SourceSnapshot, printed: string | undefined): ProofStatement {
@@ -97,21 +115,34 @@ function termNodeCount(snapshot: SourceSnapshot): number | null {
   return count;
 }
 
-function expectedDiffers(snapshot: SourceSnapshot): boolean {
-  if (snapshot.expectedType.status !== 'available' || snapshot.prepared.status !== 'available') return false;
+/** Whether recorded raw data holds a metavariable node: an expression or universe level whose constructor tag is `mvar`. */
+function holdsMetavariable(value: JsonValue): boolean {
+  for (const pending: JsonValue[] = [value]; pending.length;) {
+    const current = pending.pop()!;
+    if (Array.isArray(current)) { if (current[0] === 'mvar') return true; pending.push(...current); }
+    else if (current !== null && typeof current === 'object') pending.push(...Object.values(current));
+  }
+  return false;
+}
+
+function expectedComparison(snapshot: SourceSnapshot): ExpectedComparison {
+  if (snapshot.expectedType.status !== 'available' || snapshot.prepared.status !== 'available') return 'absent';
   const { canonical } = createExactJsonTools();
-  return canonical(snapshot.expectedType.expression) !== canonical(snapshot.prepared.frame.sourceType);
+  if (canonical(snapshot.expectedType.expression) === canonical(snapshot.prepared.frame.sourceType)) return 'same';
+  return holdsMetavariable(snapshot.expectedType.expression) ? 'unresolved' : 'differs';
 }
 
 /** Nothing says what the whole selected term is: no class was reported with the capture and no retained kernel
  * check reads its type. Such a term is drawn as recorded and may be a proof. */
 export function selectionClassUnknown(input: ProofFoldInput): boolean {
-  return input.selectionClass === undefined && (input.history ? kernelReading(input.history) : undefined) === undefined;
+  const kernel = input.history ? kernelReading(input.history) : undefined;
+  return input.selectionClass === undefined && (kernel === undefined || 'unestablished' in kernel);
 }
 
 /** The closed-proof reading of the whole selected term, or undefined when the term is not shown as a proof. */
 export function rootProofFold(input: ProofFoldInput): ProofFold | undefined {
-  const { snapshot } = input, kernel = input.history ? kernelReading(input.history) : undefined;
+  const { snapshot } = input, reading = input.history ? kernelReading(input.history) : undefined;
+  const kernel = reading && 'proof' in reading ? reading : undefined;
   if (kernel ? !kernel.proof : input.selectionClass !== 'proof') return undefined;
   const checking = snapshot.checking;
   let typing: ProofTyping, axioms: ProofAxioms;
@@ -127,9 +158,20 @@ export function rootProofFold(input: ProofFoldInput): ProofFold | undefined {
         : { status: 'unrecorded', reason: audit.result.reason };
   }
   const fold: ProofFold = { basis: kernel?.proof ? 'kernel' : 'elaborator', established: kernel?.proof ? kernel.established : null,
-    statement: statementOf(snapshot, input.printedStatement), expectedDiffers: expectedDiffers(snapshot), typing, axioms, termNodes: termNodeCount(snapshot) };
+    unestablished: reading && 'unestablished' in reading ? reading.unestablished : [],
+    statement: statementOf(snapshot, input.printedStatement), expected: expectedComparison(snapshot), typing, axioms, termNodes: termNodeCount(snapshot) };
   createExactJsonTools().freeze(fold);
   return fold;
+}
+
+/** The drawer's line for a selection shown closed. It names the leaf only where a recorded frame draws one; where
+ * neither frame of the term was recorded, it says so with the recorded reason instead. */
+export function closedSelectionLine(fold: ProofFold, snapshot: SourceSnapshot): { frames: 'recorded' | 'unrecorded'; text: string } {
+  const drawings = sourceSnapshotDrawings(snapshot);
+  if (drawings.original || drawings.prepared) return { frames: 'recorded', text: proofWording.closedSelection(fold) };
+  const reason = snapshot.prepared.status === 'unavailable' ? snapshot.prepared.reason
+    : snapshot.original.status === 'unavailable' ? snapshot.original.reason : 'no raw drawing is available.';
+  return { frames: 'unrecorded', text: proofWording.unrecordedSelection(fold, reason) };
 }
 
 /** Fixed sentences of the closed-proof leaf. A kernel verdict is worded as one only for a recorded accepted or
@@ -151,6 +193,11 @@ export const proofWording = Object.freeze({
   closedSelection(fold: ProofFold): string {
     return `${proofWording.selected(fold)}, closed at Source Term as ${proofWording.closed(fold.statement)}. Proof arguments inside the statement and in local definitions are still drawn as ordinary structure.`;
   },
+  /** The drawer line where neither frame of the term was recorded, so no view below holds the term or its leaf.
+   * `reason` is the recorded reason the frames are unavailable. */
+  unrecordedSelection(fold: ProofFold, reason: string): string {
+    return `${proofWording.selected(fold)}${fold.statement.source === 'record' ? '' : ` of ${fold.statement.text}`}, not drawn. Neither Original data nor Checker input could record it, so no view below shows it. Recorded reason: ${reason}${/[.!?]$/.test(reason) ? '' : '.'}`;
+  },
   /** No class was reported and no kernel check reads the type. A live capture names the remedy. */
   unreported(live: boolean): string {
     return `${live ? 'Lean’s class of this selection was not reported' : 'This saved record does not hold Lean’s class of the selection'}: the term may be a proof, and no proof inside it is labelled.${live ? ' Rebuild the engine and install the matching extension, then run the selection again.' : ''}`;
@@ -168,6 +215,9 @@ export const proofWording = Object.freeze({
   originalFrame: 'This position holds the original term, before preparation. It is not drawn and stays in the saved snapshot. Every line of this leaf is about the prepared term under Checker input; the record does not prove the two frames equivalent.',
   /** A comparison of two recorded expressions, and nothing about which of them holds. */
   expected: 'The expected type recorded for this selection is a different expression; see the Expected type tab of Source data.',
+  /** Kept with the other details: the reader says neither that the two match nor that they differ, so nothing is said
+   * in view. */
+  expectedUnresolved: 'The expected type recorded for this selection holds a metavariable, a placeholder of Lean’s elaboration, so the reader does not say whether it matches the statement; see the Expected type tab of Source data.',
   statement(statement: ProofStatement): string {
     if (statement.source === 'printed') return 'Statement: the inferred type of the term, printed by Lean’s elaborator with local definitions substituted.';
     if (statement.source === 'recorded') return 'Statement: the recorded inferred type of the term, written out with every argument explicit.';
@@ -197,8 +247,22 @@ export const proofWording = Object.freeze({
   basisLead(fold: ProofFold): string {
     return `Statement is a proposition: ${fold.established ? 'accepted by Lean’s kernel' : 'reported by Lean’s elaborator'}.`;
   },
+  /** What one retained check that established nothing records, as a sentence that opens with its attempt. */
+  unestablished(check: UnestablishedCheck): string {
+    const opening = `Attempt ${check.attempt}`;
+    switch (check.outcome) {
+      case 'not-established': return `${opening} submitted this check and established neither that the statement is a proposition nor that it is a type.`;
+      case 'conflicting': return `${opening} submitted this check, and its accepted results disagree, so nothing is established.`;
+      case 'annotation-only': return `${opening} recorded no accepted typing of the term, so its check establishes nothing about this statement.`;
+      case 'no-reading': return `${opening} recorded no step to the term’s type, so it establishes nothing about this statement.`;
+      case 'unreadable': return `${opening} is kept, but its record could not be read here, so it establishes nothing about this statement.`;
+      // `attempted` means only that the capture was requested; the record can be missing after a refusal or an error.
+      case 'unrecorded': return `${opening} ${check.attempted ? 'was sent for checking, but no record of its checks is kept' : 'was not sent for checking'}: ${check.reason}`;
+    }
+  },
   basis(fold: ProofFold): string {
     const found = fold.established;
+    if (!found && fold.unestablished.length) return `${proofWording.basisLead(fold)} ${fold.unestablished.map(check => proofWording.unestablished(check)).join(' ')}`;
     if (!found) return `${proofWording.basisLead(fold)} No kernel check of this is recorded.`;
     return `${proofWording.basisLead(fold)} Attempt ${found.attempt} records that check (${found.formationOutcomes.length === 1 ? 'outcome' : 'outcomes'} ${found.formationOutcomes.join(', ')}) and an accepted typing of the term (outcome ${found.typingOutcome}). Its supply reading lists the full conditions.`;
   },

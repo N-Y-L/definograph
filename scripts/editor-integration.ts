@@ -11,6 +11,9 @@ import { compileReading } from '../src/reading/index.js';
 import type { Analysis, StatementNode } from '../src/core/types.js';
 import { GUIDED_CONTEXT_CONTRACT } from '../src/editor/guided-context-contract.js';
 import { analysisShapeIssue } from '../src/core/analysis-shape.js';
+import { validateSourceSnapshot } from '../src/editor/source-snapshot.js';
+import { closedSelectionLine, rootProofFold } from '../src/editor/source-proof-fold.js';
+import { sectionVariableReport } from '../src/editor/section-variables.js';
 const engine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(await readFile(path.join(engine, '.local/config.json'), 'utf8'));
 const fixture = await mkdtemp(path.join(os.tmpdir(), 'statementlens-editor-test-'));
@@ -75,6 +78,96 @@ try {
   assert.equal(pairProof.pretty, 'p ∧ q');
   assert.equal(pairProof.provenance?.selectionKind, 'proof-type');
   assert.equal(selectionClass(pairProof), 'proof');
+  // The snapshot keeps the expectation as Lean stored it, without filling in metavariables; for `hp` here it is one
+  // metavariable. The leaf must not call that a different expression.
+  const argumentProof = await analyze('example (p q : Prop) (hp : p) (hq : q) : p ∧ q := ⟨hp, hq⟩\n', 'hp');
+  assert.equal(selectionClass(argumentProof), 'proof');
+  const argumentSnapshot = validateSourceSnapshot((argumentProof as unknown as { sourceSnapshot: unknown }).sourceSnapshot);
+  assert.ok(argumentSnapshot.expectedType.status === 'available' && JSON.stringify(argumentSnapshot.expectedType.expression).startsWith('["mvar"'));
+  assert.equal(rootProofFold({ snapshot: argumentSnapshot, selectionClass: 'proof', printedStatement: argumentProof.pretty })?.expected, 'unresolved');
+  const rflProof = await analyze('example : 2 + 2 = 4 := rfl\n', 'rfl');
+  assert.equal(rootProofFold({ snapshot: validateSourceSnapshot((rflProof as unknown as { sourceSnapshot: unknown }).sourceSnapshot), selectionClass: 'proof' })?.expected, 'differs');
+  // The guided reading draws a selected proof's statement and checks only that; the proof is checked by the source
+  // snapshot's own bounded declaration. A proof the kernel refuses (it uses an unsafe constant) leaves its statement readable.
+  const unsafeProof = await analyze('unsafe def castProof : Nat := (fun (_ : 1 = 1) => 0) (unsafeCast ())\n', 'unsafeCast ()');
+  assert.equal(unsafeProof.pretty, '1 = 1');
+  const unsafeChecking = validateSourceSnapshot((unsafeProof as unknown as { sourceSnapshot: unknown }).sourceSnapshot).checking;
+  assert.ok(unsafeChecking.status === 'captured' && unsafeChecking.checks[1]?.outcome.tag !== 'accepted', 'the bounded check of the proof itself is not accepted');
+  // A proof too deep for the raw record: no frame draws its leaf, so the drawer line must not point to one.
+  const deepTerm = 'id ('.repeat(100) + 'hp' + ')'.repeat(100);
+  const deepProof = await analyze(`example (p : Prop) (hp : p) : p := ${deepTerm}\n`, deepTerm);
+  const deepSnapshot = validateSourceSnapshot((deepProof as unknown as { sourceSnapshot: unknown }).sourceSnapshot);
+  assert.equal(deepSnapshot.original.status, 'unavailable'); assert.equal(deepSnapshot.prepared.status, 'unavailable');
+  const deepLine = closedSelectionLine(rootProofFold({ snapshot: deepSnapshot, selectionClass: 'proof', printedStatement: deepProof.pretty })!, deepSnapshot);
+  assert.equal(deepLine.frames, 'unrecorded'); assert.doesNotMatch(deepLine.text, /closed at Source Term/); assert.match(deepLine.text, /^Selected term reported as a proof of p, not drawn\./);
+  // A section variable the theorem does not take is not drawn as one of its assumptions. Lean's own #check of the
+  // theorem in the same file shows its statement without it.
+  const sectionReading = async (source: string, term: string, first = false) => {
+    const chosen = first ? source.indexOf(term) : source.lastIndexOf(term);
+    const response = await analyzeEditorContext({ engineDirectory: engine, fileName, source, workspaceTrusted: true, selection: { start: position(source, chosen), end: position(source, chosen + term.length) } });
+    assert.equal(response.ok, true, JSON.stringify(response)); checks++;
+    const result = response as unknown as Analysis;
+    assert.equal(analysisShapeIssue(result), undefined);
+    const report = sectionVariableReport(result.provenance);
+    assert.ok(report, `the engine reports its section-variable check: ${term}`);
+    const drawn = nodes(result.tree).flatMap(node => node.binder ? [`${node.binder.name}:${node.binder.role}`] : []);
+    assert.equal(compileReading(compileSemanticDocument(result)).nodes.length, nodes(result.tree).length);
+    return { result, report, drawn, omitted: report.omitted.map(entry => `${entry.name}:${entry.reason}`), unconfirmed: report.unconfirmed.map(entry => entry.name) };
+  };
+  const unused = await sectionReading('section\nvariable (h : False)\ntheorem t (n : Nat) : n = n := rfl\n#check t\nend\n', 'n = n', true);
+  assert.deepEqual(unused.drawn, ['n:parameter']);
+  assert.deepEqual(unused.omitted, ['h:not-taken']); assert.equal(unused.report.check, 'matched');
+  assert.ok(unused.result.diagnostics.some((d: any) => d.severity === 'information' && d.message === 't (n : Nat) : n = n'), 'Lean prints the theorem without h');
+  // intent fixture B3b: identical text, one theorem takes h by `include`, the other does not.
+  const omittedHypothesis = await sectionReading('section\nvariable (n : Nat) (h : 0 < n)\ntheorem pred_lt : n - 1 < n := sorry\nend\n', 'n - 1 < n');
+  const includedHypothesis = await sectionReading('section\nvariable (n : Nat) (h : 0 < n)\ninclude h\ntheorem pred_lt : n - 1 < n := by omega\nend\n', 'n - 1 < n');
+  assert.deepEqual(omittedHypothesis.drawn, ['n:parameter']); assert.deepEqual(omittedHypothesis.omitted, ['h:not-taken']);
+  assert.deepEqual(includedHypothesis.drawn, ['n:parameter', 'h:assumption']); assert.deepEqual(includedHypothesis.omitted, []);
+  // Instance variables over taken variables are taken; ones over variables the theorem does not take are not, named or not.
+  const instances = await sectionReading('section\nvariable {α : Type} [Inhabited α] (h : False)\ntheorem t (x : α) : x = x := rfl\nend\n', 'x = x');
+  assert.deepEqual(instances.drawn, ['α:parameter', 'inst:parameter', 'x:parameter']); assert.deepEqual(instances.omitted, ['h:not-taken']);
+  const unusedInstance = await sectionReading('section\nvariable {β : Type} [Inhabited β] (h : False)\ntheorem t (x : Nat) : x = x := rfl\nend\n', 'x = x');
+  assert.deepEqual(unusedInstance.drawn, ['x:parameter']); assert.deepEqual(unusedInstance.omitted, ['β:not-taken', 'inst:not-taken', 'h:not-taken']);
+  const scoped = await sectionReading('variable (h : False) in\ntheorem u (n : Nat) : n = n ∧ True := ⟨rfl, trivial⟩\n', 'n = n', true);
+  assert.deepEqual(scoped.drawn, ['n:parameter']); assert.deepEqual(scoped.omitted, ['h:not-taken']);
+  // Without a declaration in the processed environment the rule cannot be checked: the variable is still not drawn
+  // among the assumptions, and it is reported as undetermined, not as taken or not taken.
+  const example = await sectionReading('section\nvariable (h : False)\nexample (n : Nat) : n = n := rfl\nend\n', 'n = n');
+  assert.deepEqual(example.drawn, ['n:parameter']); assert.deepEqual(example.omitted, ['h:undetermined']); assert.equal(example.report.check, 'no-declaration');
+  assert.deepEqual(example.unconfirmed, []);
+  // An unnamed instance variable has no binder record. Where nothing decides whether it is taken, it is drawn, here as
+  // an assumption, and named as drawn without confirmation, together with the section variable its type mentions.
+  const unnamed = await sectionReading('section\nvariable {β : Type} [Nonempty β] (h : False)\nexample (x : Nat) : x = x := rfl\nend\n', 'x = x');
+  assert.deepEqual(unnamed.drawn, ['β:parameter', 'inst:assumption', 'x:parameter']); assert.equal(unnamed.report.check, 'no-declaration');
+  assert.deepEqual(unnamed.omitted, ['h:undetermined']); assert.deepEqual(unnamed.unconfirmed, ['β', 'inst']);
+  // With no named section variable, an unnamed one still counts when a `variable` command precedes the selection, and
+  // a declaration's own unnamed instance does not count without one.
+  const unnamedOnly = await sectionReading('section\nvariable [Nonempty Nat]\nexample (x : Nat) : x = x := rfl\nend\n', 'x = x');
+  assert.deepEqual(unnamedOnly.drawn, ['inst:assumption', 'x:parameter']); assert.equal(unnamedOnly.report.check, 'no-declaration'); assert.deepEqual(unnamedOnly.unconfirmed, ['inst']);
+  const ownInstance = await sectionReading('example [Nonempty Nat] (x : Nat) : x = x := rfl\n', 'x = x');
+  assert.deepEqual(ownInstance.drawn, ['inst:assumption', 'x:parameter']); assert.equal(ownInstance.report.check, 'none-in-scope'); assert.deepEqual(ownInstance.unconfirmed, []);
+  // A long name and type are cut to the reader's limits with an ellipsis, so the record stays readable.
+  const long = await sectionReading(`section\nvariable (${'h'.repeat(600)} : ∀ (${'x'.repeat(4100)} : Nat), ${'x'.repeat(4100)} = ${'x'.repeat(4100)})\ntheorem t (n : Nat) : n = n := rfl\nend\n`, 'n = n');
+  assert.deepEqual(long.drawn, ['n:parameter']); assert.equal(long.report.omitted.length, 1);
+  assert.equal([...long.report.omitted[0]!.name].length, 512); assert.ok(long.report.omitted[0]!.name.endsWith('…'));
+  assert.equal([...long.report.omitted[0]!.type].length, 4096); assert.ok(long.report.omitted[0]!.type.endsWith('…'));
+  // A host that does not ask for the record, such as an extension built before it existed, gets the drawing as before:
+  // nothing left out, and no record.
+  {
+    const resultFile = path.join(fixture, 'older-host-result.json'), olderSource = 'section\nvariable (h : False)\ntheorem t (n : Nat) : n = n := rfl\nend\n';
+    const startByte = Buffer.byteLength(olderSource.slice(0, olderSource.indexOf('n = n')));
+    await runBoundedProcess(config.contextExecutable, { cwd: fixture,
+      input: JSON.stringify({ guidedContextContract: GUIDED_CONTEXT_CONTRACT, source: olderSource, fileName, mainModule: 'Main', captureId: '550e8400-e29b-41d4-a716-446655440001', startByte, endByte: startByte + 5 }) + '\n',
+      env: { ...process.env, LEAN_PATH: config.leanPath.join(path.delimiter), STATEMENTLENS_LEAN_SYSROOT: config.leanSysroot, STATEMENTLENS_CONTEXT_RESULT: resultFile }, timeoutMs: 10_000 });
+    const older = JSON.parse(await readFile(resultFile, 'utf8'));
+    assert.equal(older.ok, true, JSON.stringify(older).slice(0, 400));
+    assert.equal(Object.hasOwn(older.provenance, 'sectionVariables'), false);
+    assert.deepEqual(nodes(older.tree).flatMap((node: StatementNode) => node.binder ? [`${node.binder.name}:${node.binder.role}`] : []), ['h:assumption', 'n:parameter']);
+    checks++;
+  }
+  // Inside the proof, Lean has already removed the variables the theorem does not take.
+  const body = await sectionReading('section\nvariable (h : False)\ntheorem t (n : Nat) : n = n := rfl\nend\n', 'rfl');
+  assert.ok(!body.drawn.some(entry => entry.startsWith('h:'))); assert.equal(body.report.check, 'none-in-scope');
   const existsProof = await analyze('example : ∃ n : Nat, n = 2 := ⟨2, rfl⟩\n', '⟨2, rfl⟩');
   assert.equal(existsProof.pretty, '∃ n, n = 2');
   assert.equal(selectionClass(existsProof), 'proof');

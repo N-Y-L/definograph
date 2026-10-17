@@ -19,6 +19,26 @@ describe('mathematical reading regions', () => {
     expect(sourceIds(p.root).sort()).toEqual(['A', 'B', 'C', 'first', 'second']);
   });
 
+  it('stops an implication chain at the selected component\'s root, as it stops a binder group there', () => {
+    // A context hypothesis r over a selected implication p → q: the chain r, p must not run into the component.
+    const tree = node('context', 'implies', [node('r', 'predicate'), node('selected', 'implies', [node('p', 'predicate'), node('q', 'predicate')])]);
+    const p = planReadingPresentation({ root: tree } as ReadingDocument, { boundaryNodeIds: ['selected'] });
+    expect(p.root.kind).toBe('implication');
+    if (p.root.kind !== 'implication') return;
+    expect(p.root.sourceNodeIds).toEqual(['context']);
+    expect(p.root.assumptions.map(region => region.id)).toEqual(['r']);
+    expect(p.root.conclusion.kind).toBe('implication');
+    if (p.root.conclusion.kind === 'implication') {
+      expect(p.root.conclusion.id).toBe('selected');
+      expect(p.root.conclusion.assumptions.map(region => region.id)).toEqual(['p']);
+      expect(p.root.conclusion.conclusion.id).toBe('q');
+    }
+    expect(p.nodeToRegionId.selected).toBe('selected');
+    expect(sourceIds(p.root).sort()).toEqual(['context', 'p', 'q', 'r', 'selected']);
+    // Without a boundary the same tree is one chain, as before.
+    expect(present(tree).nodeToRegionId.selected).toBe('context');
+  });
+
   it('does not move a quantifier across a premise to merge implications', () => {
     const p = present(node('if', 'implies', [node('P', 'predicate'), node('x', 'forall', [node('inner', 'implies', [node('Q', 'predicate'), node('R', 'predicate')])])]));
     expect(p.root.kind).toBe('implication');

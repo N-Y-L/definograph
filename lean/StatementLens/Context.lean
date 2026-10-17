@@ -15,12 +15,14 @@ structure Candidate where
   term : TermInfo
   startByte : Nat
   endByte : Nat
+  /-- The index of the top-level InfoTree, one per command, that recorded this term. -/
+  tree : Nat := 0
 
 partial def candidates (tree : InfoTree) (outer : Option ContextInfo) (start stop : Nat)
-    (out : Array Candidate := #[]) : Array Candidate := Id.run do
+    (out : Array Candidate := #[]) (treeIndex : Nat := 0) : Array Candidate := Id.run do
   if out.size >= 2048 then return out
   match tree with
-  | .context inner child => return candidates child (inner.mergeIntoOuter? outer) start stop out
+  | .context inner child => return candidates child (inner.mergeIntoOuter? outer) start stop out treeIndex
   | .hole _ => return out
   | .node info children =>
     let mut result := out
@@ -31,8 +33,8 @@ partial def candidates (tree : InfoTree) (outer : Option ContextInfo) (start sto
             if range.start.byteIdx <= start && stop <= range.stop.byteIdx &&
                 (start < range.stop.byteIdx || start == stop && range.start.byteIdx == start) &&
                 (start == stop || range.start.byteIdx == start && range.stop.byteIdx == stop) then
-              result := result.push ⟨ctx, term, range.start.byteIdx, range.stop.byteIdx⟩
-    for child in children do result := candidates child outer start stop result
+              result := result.push ⟨ctx, term, range.start.byteIdx, range.stop.byteIdx, treeIndex⟩
+    for child in children do result := candidates child outer start stop result treeIndex
     return result
 
 /-- Smallest byte range first. `candidates` records a parent before its children,
@@ -43,6 +45,158 @@ def orderCandidates (found : Array Candidate) : Array Candidate :=
     let spanA := a.endByte - a.startByte
     let spanB := b.endByte - b.startByte
     spanA < spanB || spanA == spanB && i < j).map (·.1)
+
+/-- The byte ranges of every `variable` command, from the commands' own InfoTree records. -/
+partial def variableCommandRanges (tree : InfoTree) (out : Array (Nat × Nat) := #[]) : Array (Nat × Nat) := Id.run do
+  match tree with
+  | .context _ child => return variableCommandRanges child out
+  | .hole _ => return out
+  | .node info children =>
+    let mut result := out
+    if let .ofCommandInfo command := info then
+      if command.stx.getKind == ``Lean.Parser.Command.variable then
+        if let some range := command.stx.getRange? (canonicalOnly := true) then
+          result := result.push (range.start.byteIdx, range.stop.byteIdx)
+    for child in children do result := variableCommandRanges child result
+    return result
+
+/-- Where Lean recorded the binder of each local: the start byte of every binder `TermInfo` whose expression is that
+free variable. Lean re-elaborates the section's `variable` binders for every declaration and records each one at the
+identifier written in its `variable` command (`Term.addLocalVarInfo`). -/
+partial def binderPositions (tree : InfoTree) (out : Std.HashMap FVarId (Array Nat) := {}) : Std.HashMap FVarId (Array Nat) := Id.run do
+  match tree with
+  | .context _ child => return binderPositions child out
+  | .hole _ => return out
+  | .node info children =>
+    let mut result := out
+    if let .ofTermInfo term := info then
+      if term.isBinder then
+        if let .fvar id := term.expr then
+          if let some position := term.stx.getPos? (canonicalOnly := true) then
+            result := result.insert id ((result.getD id #[]).push position.byteIdx)
+    for child in children do result := binderPositions child result
+    return result
+
+/-- What the reader knows about where the selection's locals were bound. -/
+structure BinderOrigins where
+  variableRanges : Array (Nat × Nat) := #[]
+  binders : Std.HashMap FVarId (Array Nat) := {}
+  /-- The environment after the whole buffer was processed, which holds the enclosing declaration if Lean added it. -/
+  finalEnv : Option Environment := none
+
+/-- A section variable: a local whose every binder record lies in a `variable` command. A local Lean recorded nowhere,
+or anywhere else, is not one as far as the reader can tell, and is drawn as before. -/
+def BinderOrigins.isSectionVariable (origins : BinderOrigins) (decl : LocalDecl) : Bool :=
+  match origins.binders.get? decl.fvarId with
+  | some positions => !decl.isImplementationDetail && !positions.isEmpty &&
+      positions.all fun position => origins.variableRanges.any fun (start, stop) => start ≤ position && position < stop
+  | none => false
+
+/-- Whether `type` opens with one binder for each of `pre`, in order, each with that local's user name, binder
+annotation and type, and then continues with a binder for `next` in the same way, or, without `next`, is exactly `rest`. -/
+def opensWith (type : Expr) (pre : Array LocalDecl) (next : Option LocalDecl) (rest : Expr) : Bool := Id.run do
+  let mut current := type
+  let mut fvars : Array Expr := #[]
+  for decl in pre do
+    let .forallE name domain body info := current | return false
+    unless name == decl.userName && info == decl.binderInfo && domain.instantiateRev fvars == decl.type do return false
+    fvars := fvars.push (.fvar decl.fvarId)
+    current := body
+  match next with
+  | some decl =>
+    let .forallE name domain _ info := current | return false
+    return name == decl.userName && info == decl.binderInfo && domain.instantiateRev fvars == decl.type
+  | none => return current.instantiateRev fvars == rest
+
+/-- How `sectionVariables` decided which section variables are drawn, and what it could not decide. -/
+structure SectionVariableReport where
+  check : String
+  /-- Each section variable left out of the drawing, with its reason: `not-taken` or `undetermined`. -/
+  omitted : Array (LocalDecl × String) := #[]
+  /-- Locals that are drawn although the test did not confirm that the declaration takes them: an unnamed instance
+  variable, or a section variable that only such a local mentions. Empty after `matched`. -/
+  unconfirmed : Array LocalDecl := #[]
+
+/-- Which section variables in the selection's context the enclosing declaration takes, so that one it does not take
+is never drawn as one of its assumptions. Returns how this was decided, each section variable left out of the drawing
+with its reason, and each local that is drawn without the test confirming it.
+
+Lean 4.28.0's rule (`Elab/MutualDef.lean`, `withHeaderSecVars` and `withUsed`): a theorem takes the section variables
+its header mentions, those named by `include`, every variable a taken one mentions, and each instance-implicit variable
+whose type mentions only taken variables, less those named by `omit`; any other declaration takes the variables its
+header or its value mentions, with every variable they mention. The `include` and `omit` sets and the section's
+variable map are not saved after elaboration, so the rule is not recomputed here. Instead:
+
+* A local Lean recorded nowhere that sits among the section variables, such as an unnamed instance variable, is in
+  doubt like a section variable. With no named section variable in scope it counts only when a `variable` command
+  ends before the selection starts.
+* One that the selected term, its statement or another drawn local mentions, directly or through the types of such
+  locals, is taken under either rule, and is drawn. When every one in doubt is mentioned, the check is `mentioned`.
+* For the others, every choice of which of them the declaration takes is tested against the declaration's final
+  type in the processed environment. That type must open with the drawn locals that precede the first local Lean
+  recorded inside the declaration, in order, followed by that local; with no such local, it must be exactly the
+  selected statement after them. When exactly one choice passes (`matched`), the ones it leaves out are reported as
+  `not-taken` and the ones it keeps are drawn. Otherwise (`mismatch`), or with no declaration of this buffer in the
+  environment (`no-declaration`: an `example`, a `#check`, a declaration that failed, or one whose name is an
+  imported constant's), or with more than ten to choose among (`not-checked`, and no type is compared), the section
+  variables among them are reported as `undetermined` and left out, and the other ones are drawn and reported as
+  `unconfirmed`.
+* `none-in-scope` means that nothing is in doubt.
+
+Neither `not-taken` nor `undetermined` is drawn, as an assumption or as a parameter; both are listed apart with their
+reason. -/
+def sectionVariables (locals : Array LocalDecl) (term statement : Expr) (declaration : Option Name) (selectionStart : Nat)
+    (origins : BinderOrigins) : SectionVariableReport := Id.run do
+  let candidates := locals.filter origins.isSectionVariable
+  let isCandidate (decl : LocalDecl) := candidates.any (·.fvarId == decl.fvarId)
+  let ordinary := locals.filter (!·.isImplementationDetail)
+  -- The first local Lean recorded inside the declaration: its first own binder, or the first one its body introduced.
+  let next := ordinary.find? fun decl => !isCandidate decl && origins.binders.contains decl.fvarId
+  let before (decl : LocalDecl) := next.all fun first => decl.index < first.index
+  -- A local Lean recorded nowhere that sits among the section variables, such as an unnamed instance variable. It is
+  -- drawn unless the declaration's type shows that it is not taken, and reported when that was not shown.
+  let unrecorded := if candidates.isEmpty && !origins.variableRanges.any (·.2 ≤ selectionStart) then #[]
+    else ordinary.filter fun decl => !origins.binders.contains decl.fvarId && before decl
+  if candidates.isEmpty && unrecorded.isEmpty then return { check := "none-in-scope" }
+  let isUnrecorded (decl : LocalDecl) := unrecorded.any (·.fvarId == decl.fvarId)
+  -- What must be drawn because something drawn mentions it. A local's type mentions only earlier locals, so one pass
+  -- from the newest closes the set.
+  let mentioned (open? : LocalDecl → Bool) : CollectFVars.State := Id.run do
+    let mut needed : CollectFVars.State := collectFVars (collectFVars {} term) statement
+    for decl in locals do
+      if !open? decl then needed := collectFVars needed decl.type
+    for decl in locals.reverse do
+      if needed.fvarSet.contains decl.fvarId then needed := collectFVars needed decl.type
+    return needed
+  -- A section variable that an unrecorded local mentions is drawn whenever that local is.
+  let kept := mentioned isCandidate
+  let undecided := candidates.filter fun decl => !kept.fvarSet.contains decl.fvarId
+  let strict := mentioned fun decl => isCandidate decl || isUnrecorded decl
+  let choices := ordinary.filter fun decl => (isCandidate decl || isUnrecorded decl) && !strict.fvarSet.contains decl.fvarId
+  if choices.isEmpty then return { check := "mentioned" }
+  let undetermined : SectionVariableReport :=
+    { check := "", omitted := undecided.map (·, "undetermined")
+      unconfirmed := choices.filter fun decl => !undecided.any (·.fvarId == decl.fvarId) }
+  -- Only a declaration this buffer added is compared: a failed one may share its name with an imported constant.
+  let some info := (do
+      let name ← declaration
+      let env ← origins.finalEnv
+      guard (env.getModuleIdxFor? name).isNone
+      env.find? name) | return { undetermined with check := "no-declaration" }
+  if choices.size > 10 then return { undetermined with check := "not-checked" }
+  let mut passing : Array (Array LocalDecl) := #[]
+  for choice in [0:2 ^ choices.size] do
+    let chosen := (choices.zipIdx.filter fun (_, bit) => (choice >>> bit) % 2 == 1).map (·.1)
+    let drawn (decl : LocalDecl) := !choices.any (·.fvarId == decl.fvarId) || chosen.any (·.fvarId == decl.fvarId)
+    let pre := ordinary.filter fun decl => drawn decl && before decl
+    if opensWith info.type pre next statement then passing := passing.push chosen
+  let [chosen] := passing.toList | return { undetermined with check := "mismatch" }
+  return { check := "matched", omitted := (choices.filter fun decl => !chosen.any (·.fvarId == decl.fvarId)).map (·, "not-taken") }
+
+/-- `text` cut to at most `limit` characters, the last of them an ellipsis when it was cut, so that the reader's
+limits on a section-variable entry never refuse the record. -/
+def boundedText (text : String) (limit : Nat) : String :=
+  if text.length ≤ limit then text else (text.take (limit - 1)).toString ++ "…"
 
 /-- How Lean's elaborator classifies a selected term: a proposition, a proof of
 one, or neither. This is `Meta.isProp`, not a kernel check. A term whose
@@ -79,7 +233,7 @@ partial def contextTree (locals : Array LocalDecl) (index : Nat) (expression : E
       else if assumption then s!"Assume {b.name}" else s!"Context parameter {b.name}")
     b.type (premise.push body) expr (some bj)).setObjVal! "scope" (toJson (bs.map (·.id)))
 
-def exportCandidate (candidate : Candidate) (source : String) (fileName : String) (request : Json) : IO Json := do
+def exportCandidate (candidate : Candidate) (source : String) (fileName : String) (request : Json) (origins : BinderOrigins := {}) : IO Json := do
   unless (request.getObjValAs? String "guidedContextContract").toOption == some guidedContextContract do
     throw (IO.userError "Incompatible guided context format. Rebuild the matching checkout and extension, then reopen Definograph: Visualize Selection. Exact source capture remains separate.")
   candidate.term.runMetaM candidate.context <| withOptions (fun opts =>
@@ -101,7 +255,8 @@ def exportCandidate (candidate : Candidate) (source : String) (fileName : String
       let proof ← isProp originalType
       let expression ← if ← isProp original then pure original else if proof then pure originalType
         else throwError "Select a proposition, theorem statement, or proof term with a proposition type."
-      checkWithKernel original
+      -- The guided reading draws the statement, so only the statement is checked here. A selected proof is checked by
+      -- the source snapshot's own declaration, under its heartbeat bound, and not here, where no bound would apply.
       checkWithKernel expression
       let expression ← instantiateMVars (← zetaReduce expression)
       if expression.hasMVar || expression.hasSorry then throwError "The selected proposition contains an unresolved term or sorry after local definitions are substituted."
@@ -116,6 +271,22 @@ def exportCandidate (candidate : Candidate) (source : String) (fileName : String
           checkWithKernel ty
           locals := locals.push (localDecl.setType ty)
       if locals.size > 128 then throwError "The selected local context exceeds 128 declarations."
+      -- A section variable the enclosing declaration does not take is not one of its assumptions: it is listed apart.
+      -- Only a host that shows that list asks for it; for any other host nothing is left out of the drawing.
+      let mut sectionJson : List (String × Json) := []
+      if (request.getObjValAs? Bool "sectionVariableReport").toOption == some true then
+        let sections := sectionVariables locals original expression candidate.context.parentDecl? candidate.startByte origins
+        locals := locals.filter fun decl => !sections.omitted.any (·.1.fvarId == decl.fvarId)
+        let entry (decl : LocalDecl) : MetaM (List (String × Json)) := do
+          pure [("name", str (boundedText (binderName decl.userName) 512)), ("type", str (boundedText (← pp decl.type) 4096))]
+        let mut omittedJson := #[]
+        for (decl, reason) in sections.omitted do
+          omittedJson := omittedJson.push (obj ((← entry decl) ++ [("reason", str reason)]))
+        let mut unconfirmedJson := #[]
+        for decl in sections.unconfirmed do
+          unconfirmedJson := unconfirmedJson.push (obj (← entry decl))
+        sectionJson := [("sectionVariables", obj [("check", str sections.check), ("omitted", Json.arr omittedJson),
+          ("unconfirmed", Json.arr unconfirmedJson)])]
       let policy ← readPolicy request
       let result ← contextTree locals 0 expression #[] "context" policy
       let pretty ← pp expression
@@ -139,7 +310,7 @@ def exportCandidate (candidate : Candidate) (source : String) (fileName : String
         ("ok", toJson true), ("schemaVersion", toJson (2 : Nat)), ("leanVersion", str Lean.versionString),
         ("source", str source), ("pretty", str pretty), ("type", str type),
         ("validation", str "kernel-type-checked-context-fragment"),
-        ("provenance", obj [("assistant", str "lean"), ("inputMode", str "editor"),
+        ("provenance", obj ([("assistant", str "lean"), ("inputMode", str "editor"),
           ("inspected", str "context-fragment"), ("fileName", str fileName),
           ("selectionKind", str (if proof then "proof-type" else "proposition")),
           ("startByte", toJson candidate.startByte), ("endByte", toJson candidate.endByte),
@@ -148,7 +319,7 @@ def exportCandidate (candidate : Candidate) (source : String) (fileName : String
           ("parentDeclaration", candidate.context.parentDecl?.map (str ∘ Name.toString) |>.getD Json.null),
           ("contextParameters", toJson ordinaryLocals.size),
           ("auxiliaryContextEntries", toJson (locals.size - ordinaryLocals.size)),
-          ("localLetBindings", str "substituted-definitionally")]),
+          ("localLetBindings", str "substituted-definitionally")] ++ sectionJson)),
         ("expansionPolicy", obj [("constants", toJson (policy.constants.map Name.toString)), ("maxDepth", toJson policy.maxDepth)]),
         ("definitions", Json.arr definitions), ("definitionPreviews", Json.arr previews), ("tree", result), ("expression", expressionOf result),
         ("sourceTerms", Json.arr #[obj [("startByte", toJson candidate.startByte), ("endByte", toJson candidate.endByte),
@@ -176,9 +347,10 @@ unsafe def analyze (request : Json) : IO Json := do
   if messages.hasErrors then throw (IO.userError "Project imports could not be loaded. Build the project's saved dependencies using its normal Lean workflow.")
   let state ← Elab.IO.processCommands input parserState (Command.mkState env messages opts)
   let infoState := state.commandState.infoState.substituteLazy.get
+  let trees := infoState.trees.toArray.map (·.substitute infoState.assignment)
   let mut found := #[]
-  for tree in infoState.trees do
-    found := candidates (tree.substitute infoState.assignment) none start stop found
+  for (tree, index) in trees.zipIdx do
+    found := candidates tree none start stop found index
   let ordered := orderCandidates found
   let mut selected : Option (Candidate × String) := none
   for candidate in ordered do
@@ -239,7 +411,12 @@ unsafe def analyze (request : Json) : IO Json := do
           } decompositionRequest fresh
           pure (some value, none, some presentation)
         catch error => pure (none, some ((error.toString.take 4096).toString), none)
-  let result ← try exportCandidate chosen source fileName request catch error =>
+  let variableRanges := trees.foldl (fun ranges tree => variableCommandRanges tree ranges) #[]
+  let binders := match trees[chosen.tree]? with
+    | some tree => binderPositions tree
+    | none => {}
+  let origins : BinderOrigins := { variableRanges, binders, finalEnv := some state.commandState.env }
+  let result ← try exportCandidate chosen source fileName request origins catch error =>
     pure (obj [("ok", toJson false), ("error", str error.toString), ("diagnostics", Json.arr #[])])
   let mut diagnostics := #[]
   for msg in state.commandState.messages.toList do

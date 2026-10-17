@@ -220,6 +220,24 @@ function flatteningRules(source: string): string[] {
     return (property === 'border-left' || property === 'border') && /^(?:0(?:px)?\b|none\b)/.test(value);
   })).map(rule => rule.selector);
 }
+/** Grid tracks of the skeleton that may become narrower than their content: a fixed length, or a `minmax` whose
+ * minimum is a fixed length. Such a track lets a grid report a min-content width without its items, and an enclosing
+ * frame sized from that width no longer encloses them. */
+function shrinkingTracks(source: string): string[] {
+  const tracks = (list: string) => { const out: string[] = []; let depth = 0, current = '';
+    for (const character of list.trim()) { if (character === '(') depth++; if (character === ')') depth--;
+      if (/\s/.test(character) && depth === 0) { if (current) out.push(current); current = ''; } else current += character; }
+    if (current) out.push(current); return out; };
+  const fixed = (value: string) => /^-?[\d.]+(?:px|em|rem|%|vw|ch)?$/.test(value.trim());
+  // `repeat(n, tracks)` is read as the tracks it repeats, each listed once.
+  const expanded = (track: string): string[] => /^repeat\(/.test(track) ? tracks(track.slice(7, -1).split(',').slice(1).join(',')).flatMap(expanded) : [track];
+  return cssRules(source).flatMap(rule => rule.declarations.split(';').flatMap(declaration => {
+    const [property, value = ''] = declaration.split(':').map(part => part.trim());
+    if (property !== 'grid-template-columns') return [];
+    return tracks(value).flatMap(expanded).filter(track => fixed(track) || /^minmax\(/.test(track) && fixed(track.slice(7).split(',')[0]!))
+      .map(track => `${rule.selector}: ${track}`);
+  }));
+}
 const pixels = (declarations: string, property: string) => Number(new RegExp(`(?:^|;)\\s*${property}:\\s*([\\d.]+)px`).exec(declarations)?.[1] ?? 0);
 
 describe('reader stylesheets', () => {
@@ -254,6 +272,26 @@ describe('reader stylesheets', () => {
     expect(figure).not.toMatch(/(?:^|;)\s*(?:width|max-width)\s*:|margin:[^;]*auto/);
   });
 
+  it('let no skeleton grid column shrink below what it holds, so every frame encloses its rows at any width', () => {
+    // Measured in a 300px column on 2026-10-17: with `minmax(0,1fr)` the ε–δ example's δ box was 236px wide and its
+    // hypothesis and conclusion rows crossed its right border by 59px and 82px.
+    expect(shrinkingTracks(sheets[0]!)).toEqual([]);
+    expect(shrinkingTracks('.sk-implication { display:grid; grid-template-columns:auto minmax(0,1fr); }')).toEqual(['.sk-implication: minmax(0,1fr)']);
+    expect(shrinkingTracks('.x { grid-template-columns:120px 1fr minmax(min-content, 1fr) repeat(2, auto); }')).toEqual(['.x: 120px']);
+    expect(shrinkingTracks('.x { grid-template-columns:repeat(2,minmax(0,1fr)); }')).toEqual(['.x: minmax(0,1fr)']);
+    // The reading view's two grids are listed so that no new one passes unnoticed. Neither draws a frame around its
+    // items: the alternatives carry a rail on their left and top edges only, and the Given grid has no border. So a
+    // too-wide item runs past its column instead of crossing a border that claims to hold it. Whether it then runs
+    // under the neighbouring alternative's rail in a narrow column has not been measured.
+    expect(shrinkingTracks(sheets[1]!)).toEqual([
+      '.sr-alternatives: minmax(0,1fr)', '.sr-equivalent-conditions: minmax(0,1fr)',
+      '.sr-given-region:has(> .sr-region-stack > .sr-region-clause:only-child > .sr-inline-constraint): 64px',
+      '.sr-given-region:has(> .sr-region-stack > .sr-region-clause:only-child > .sr-inline-constraint): minmax(0,1fr)']);
+    for (const sheet of sheets.slice(2)) expect(shrinkingTracks(sheet)).toEqual([]);
+    // A region is never narrower than its own content, and the outermost one keeps that minimum over its maximum.
+    expect(cssRules(sheets[0]!).find(rule => rule.selector === '.sk-region')!.declarations).toBe('min-width:min-content;');
+  });
+
   it('keep the skeleton frame\'s height the same whether or not it scrolls', () => {
     // Without its own formatting context the frame loses a witness's outer margin while it does not scroll and gains
     // it when it does, so crossing that width changes the height under the reader.
@@ -264,7 +302,8 @@ describe('reader stylesheets', () => {
     const rule = (selector: string) => cssRules(sheets[0]!).find(candidate => candidate.selector === selector)!.declarations;
     // The Given marks are the first column; hypotheses and the conclusion share the second, so the conclusion's
     // own step puts it further in than every hypothesis.
-    expect(rule('.sk-implication')).toMatch(/display:grid; grid-template-columns:auto minmax\(0,1fr\)/);
+    // The marks' column is as wide as the word Given, and the second column never narrower than what it holds.
+    expect(rule('.sk-implication')).toMatch(/display:grid; grid-template-columns:max-content minmax\(min-content,1fr\)/);
     expect(rule('.sk-given')).toBe('display:contents;');
     for (const selector of ['.sk-given > .sk-region', '.sk-given > .sk-stub', '.sk-implication > .sk-children']) expect(rule(selector)).toBe('grid-column:2;');
     // The negation's rail is as heavy as the witness's box and keeps the same total step as every other frame.

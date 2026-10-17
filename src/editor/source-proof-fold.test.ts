@@ -40,7 +40,7 @@ describe('closed proof reading, constructed controls', () => {
   });
   it('closes a reported proof on the elaborator basis with the recorded verdict and axioms', () => {
     const fold = rootProofFold({ snapshot: proofSnapshot({ axioms: ['Classical.choice', 'propext', 'Quot.sound'] }), selectionClass: 'proof' })!;
-    expect(fold).toEqual({ basis: 'elaborator', established: null, statement: { source: 'recorded', text: 'P' }, expectedDiffers: false,
+    expect(fold).toEqual({ basis: 'elaborator', established: null, unestablished: [], statement: { source: 'recorded', text: 'P' }, expected: 'absent',
       typing: { status: 'recorded', outcome: { tag: 'accepted' } }, axioms: { status: 'recorded', names: ['Classical.choice', 'propext', 'Quot.sound'] }, termNodes: 1 });
     expect(Object.isFrozen(fold) && Object.isFrozen(fold.axioms) && Object.isFrozen(fold.statement)).toBe(true);
     expect(proofWording.closed(fold.statement)).toBe('(⋯ : P)');
@@ -126,13 +126,32 @@ describe('closed proof reading, constructed controls', () => {
     const truth = ['const', ['str', ['anonymous'], 'True'], []] as never;
     const same = rootProofFold({ snapshot: proofSnapshot({ expected: (_h, P) => P }), selectionClass: 'proof' })!;
     const differs = rootProofFold({ snapshot: proofSnapshot({ expected: () => truth }), selectionClass: 'proof' })!;
-    expect(same.expectedDiffers).toBe(false); expect(differs.expectedDiffers).toBe(true);
-    expect(rootProofFold({ snapshot: proofSnapshot(), selectionClass: 'proof' })!.expectedDiffers).toBe(false);
-    expect(rootProofFold({ snapshot: proofSnapshot({ unprepared: true }), selectionClass: 'proof' })!.expectedDiffers).toBe(false);
+    expect(same.expected).toBe('same'); expect(differs.expected).toBe('differs');
+    expect(rootProofFold({ snapshot: proofSnapshot(), selectionClass: 'proof' })!.expected).toBe('absent');
+    expect(rootProofFold({ snapshot: proofSnapshot({ unprepared: true }), selectionClass: 'proof' })!.expected).toBe('absent');
     // The difference is its own short line beside the verdict, which stays the same.
     expect(proofWording.verdict(differs)).toBe(proofWording.verdict(same));
     // The sentence states a difference of recorded expressions and nothing about which one holds.
     expect(proofWording.expected).toBe('The expected type recorded for this selection is a different expression; see the Expected type tab of Source data.');
+  });
+  it('does not report a difference for an expectation that still holds a metavariable', () => {
+    // `hp` in `⟨hp, hq⟩`: the snapshot keeps the expectation as Lean stored it, without filling in metavariables, and
+    // for this argument it is one metavariable (measured with the native engine on 2026-10-17), while the inferred
+    // type is the hypothesis's type itself.
+    const metavariable = ['mvar', ['num', ['str', ['anonymous'], '_uniq'], ['nat', '19']]] as never;
+    const unresolved = rootProofFold({ snapshot: proofSnapshot({ expected: () => metavariable }), selectionClass: 'proof' })!;
+    expect(unresolved.expected).toBe('unresolved');
+    // A metavariable anywhere in the expectation, an expression's or a universe level's, leaves it uncompared.
+    const nested = ['app', ['const', ['str', ['anonymous'], 'Not'], []], metavariable] as never;
+    expect(rootProofFold({ snapshot: proofSnapshot({ expected: () => nested }), selectionClass: 'proof' })!.expected).toBe('unresolved');
+    const level = ['sort', ['mvar', ['num', ['str', ['anonymous'], '_uniq'], ['nat', '3']]]] as never;
+    expect(rootProofFold({ snapshot: proofSnapshot({ expected: () => level }), selectionClass: 'proof' })!.expected).toBe('unresolved');
+    // The sentence says what the record holds and what the reader does not say, and nothing about when or whether Lean
+    // assigned the metavariable.
+    expect(proofWording.expectedUnresolved).toContain('does not say whether it matches');
+    expect(proofWording.expectedUnresolved).not.toMatch(/different expression|assigned|was not compared/);
+    // An expectation identical to the inferred type is the same whatever it holds.
+    expect(rootProofFold({ snapshot: proofSnapshot({ expected: (_h, P) => P }), selectionClass: 'proof' })!.expected).toBe('same');
   });
   it('tells an unreported class from a class Lean reported and from a type the kernel read', () => {
     const snapshot = proofSnapshot();
@@ -159,6 +178,39 @@ describe('closed proof reading, constructed controls', () => {
     expect(proofWording.checkStatement).toBe('Check with the kernel that this statement is a proposition');
     // The kernel basis needs no report from the elaborator, and a report does not change it.
     expect(withSupply(() => [link('supplier')], () => rootProofFold({ snapshot, selectionClass: 'other', history: historyOf(['typeComponent']) }))!.basis).toBe('kernel');
+  });
+  it('names a retained check that established nothing instead of saying that no check is recorded', () => {
+    const snapshot = proofSnapshot();
+    const fold = (links: (captureId: string) => unknown[], history = historyOf(['typeComponent'])) => withSupply(links, () => rootProofFold({ snapshot, selectionClass: 'proof', history }))!;
+    const lead = 'Statement is a proposition: reported by Lean’s elaborator.';
+    expect(proofWording.basis(fold(() => [link('not-established')]))).toBe(`${lead} Attempt 1 submitted this check and established neither that the statement is a proposition nor that it is a type.`);
+    expect(proofWording.basis(fold(() => [link('conflicting')]))).toBe(`${lead} Attempt 1 submitted this check, and its accepted results disagree, so nothing is established.`);
+    expect(proofWording.basis(fold(() => [link('annotation-only')]))).toBe(`${lead} Attempt 1 recorded no accepted typing of the term, so its check establishes nothing about this statement.`);
+    expect(proofWording.basis(fold(() => []))).toBe(`${lead} Attempt 1 recorded no step to the term’s type, so it establishes nothing about this statement.`);
+    expect(proofWording.basis(fold(() => { throw new Error('refused'); }))).toBe(`${lead} Attempt 1 is kept, but its record could not be read here, so it establishes nothing about this statement.`);
+    // A checking record that is unavailable: `attempted` says only that the capture was requested, so the leaf never
+    // says that a check ran, and gives the recorded reason.
+    const unavailable = (phase: string, reason: string, attempted: boolean) => {
+      const history = historyOf(['logical', 'typeComponent']);
+      (history.attempts[1]!.record as { checking: unknown }).checking = { status: 'unavailable', kind: 'limit', phase, reason, attempted };
+      return fold(() => [], history);
+    };
+    const unrecorded = unavailable('checking-output', 'The complete checking record exceeds 768 KiB; no receipts are displayed.', true);
+    expect(unrecorded.unestablished).toEqual([{ attempt: 2, outcome: 'unrecorded', attempted: true, reason: 'The complete checking record exceeds 768 KiB; no receipts are displayed.' }]);
+    expect(proofWording.basis(unrecorded)).toBe(`${lead} Attempt 2 was sent for checking, but no record of its checks is kept: The complete checking record exceeds 768 KiB; no receipts are displayed.`);
+    // A refused decomposition is also recorded as attempted; no check of it ran.
+    const refused = proofWording.basis(unavailable('decomposition-capture', 'The decomposition was refused.', true));
+    expect(refused).toBe(`${lead} Attempt 2 was sent for checking, but no record of its checks is kept: The decomposition was refused.`);
+    expect(refused).not.toMatch(/\bran\b|was omitted/);
+    expect(proofWording.basis(unavailable('decomposition-capture', 'The capture did not begin.', false))).toBe(`${lead} Attempt 2 was not sent for checking: The capture did not begin.`);
+    // Only where no type-component step was taken on the whole term does the leaf say that no check is recorded.
+    for (const history of [undefined, historyOf(['logical', 'focus']), historyOf(['typeComponent'], ['appArg'])]) {
+      const plain = withSupply(() => [link('not-established')], () => rootProofFold({ snapshot, selectionClass: 'proof', history }))!;
+      expect(plain.unestablished).toEqual([]);
+      expect(proofWording.basis(plain)).toBe(`${lead} No kernel check of this is recorded.`);
+    }
+    // The one-line verdict is unchanged: it never claims a kernel check of the statement.
+    expect(proofWording.verdict(fold(() => [link('not-established')]))).toBe(proofWording.verdict(rootProofFold({ snapshot, selectionClass: 'proof' })!));
   });
   it('does not close a term whose type the kernel established as a type, whatever the elaborator reported', () => {
     const snapshot = proofSnapshot();
@@ -207,9 +259,9 @@ describe.skipIf(!rows.length)('closed proof reading on the acceptance corpus', (
     // The cited outcomes are the attempt's own accepted receipts: the selected component and the type component.
     expect(attempt.checks[established.established!.typingOutcome - 1]).toMatchObject({ label: 'component', outcome: { tag: 'accepted' } });
     for (const outcome of established.established!.formationOutcomes) expect(attempt.checks[outcome - 1]).toMatchObject({ label: 'component', outcome: { tag: 'accepted' } });
-    expect(established.statement).toEqual(reported.statement); expect(reported.expectedDiffers).toBe(false);
+    expect(established.statement).toEqual(reported.statement); expect(reported.expected).not.toBe('differs');
     // `rfl` selected where `2 + 2 = 4` is expected: the inferred type shown is not the recorded expectation.
-    expect(rootProofFold({ snapshot: captured('proof term selected').snapshot, selectionClass: 'proof' })!.expectedDiffers).toBe(true);
+    expect(rootProofFold({ snapshot: captured('proof term selected').snapshot, selectionClass: 'proof' })!.expected).toBe('differs');
     expect(captured('statement selected').row.response.selectionClass).toBe('proposition');
     expect(captured('imported function applied').row.response.selectionClass).toBe('other');
   });
