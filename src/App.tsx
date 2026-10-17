@@ -33,7 +33,9 @@ import { VariableControl } from './VariableControl';
 import { examples } from './examples';
 import { SceneView } from './SceneView';
 import { Drawer } from './components/Drawer';
-import { FeatureBoundary } from './components/FeatureBoundary';
+import { FeatureBoundary, FigureBoundary } from './components/FeatureBoundary';
+import { healthLabel, requestAnalysis, serviceFailure, watchHealth, type HealthState, type ServiceFailure } from './service/local-service';
+import { editorFailureTitle, readableEditorMessage } from './editor/editor-failure';
 import { GUIDED_CONTEXT_CONTRACT } from './editor/guided-context-contract';
 import { contextEntryTitle } from './core/context-entry';
 import { counted } from './core/counted';
@@ -47,6 +49,7 @@ function errorText(value: unknown): string {
   if(Array.isArray(value))return value.map(v=>typeof v==='object'&&v!==null&&'message' in v?String(v.message):String(v)).join('\n');
   return JSON.stringify(value);
 }
+const firstLine=(text:string)=>{const line=text.split('\n')[0]??'';return line.length>240?`${line.slice(0,239)}…`:line;};
 function constants(expr: Expr): string[] {
   if(expr.kind==='const')return [expr.name];
   if(expr.kind==='app')return [...constants(expr.fn),...expr.args.flatMap(constants)];
@@ -84,8 +87,13 @@ export default function App(){
   const [experience,setExperience]=useState<'read'|'explore'>('read');
   const [scenario,setScenario]=useState<Scenario>({});
   const [busy,setBusy]=useState(false);
+  // `error` is the editor host's message; `failure` is the browser's reply from the local service.
   const [error,setError]=useState('');
-  const [health,setHealth]=useState<{ready:boolean;leanVersion?:string;issue?:string}|null>(null);
+  const [errorCode,setErrorCode]=useState<string|undefined>();
+  const [failure,setFailure]=useState<ServiceFailure|null>(null);
+  const [retrying,setRetrying]=useState<{retry:number;of:number}|null>(null);
+  const [health,setHealth]=useState<HealthState>({phase:'checking'});
+  const [healthRound,setHealthRound]=useState(0);
   const [drawer,setDrawer]=useState<'source'|'inspect'|'guide'|null>(null);
   const [selectedCue,setSelectedCue]=useState<ReadingCueSelection|null>(null);
   const [definitionWorkspace,setDefinitionWorkspace]=useState<DefinitionWorkspaceState|null>(null);
@@ -137,25 +145,28 @@ export default function App(){
     const initiatingDrawer=drawer;
     active.current?.abort();const controller=new AbortController();active.current=controller;
     const key=JSON.stringify([text,inputMode,expansions]);
-    setBusy(true);setError('');
+    setBusy(true);setFailure(null);setRetrying(null);
     const payload:AnalysisRequest={source:text,inputMode,previewDefinitions:expansions.length===0,...(expansions.length?{expansion:{constants:expansions,maxDepth:2}}:{})};
     try{
-      const response=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:controller.signal});
-      const data=await response.json();
+      // A newer request aborts this controller, which also cancels a pending busy retry.
+      const outcome=await requestAnalysis(payload,{signal:controller.signal,onBusyRetry:(retry,of)=>{if(generation===request.current)setRetrying({retry,of});},onBusyRetrySent:()=>{if(generation===request.current)setRetrying(null);}});
       if(generation!==request.current||currentKey.current!==key)return;
-      if(!response.ok||!data.ok){setAnalysis(null);setError(errorText(data.error??data.diagnostics??'Lean could not read this input.'));return;}
+      if(!outcome.ok){setAnalysis(null);setFailure(outcome.failure);if(outcome.failure.kind==='unreachable'||outcome.failure.kind==='unavailable')setHealthRound(round=>round+1);return;}
+      const data=outcome.analysis;
       const enriched=autoInspectRef.current?inspectSmallDefinitions(data):data;
       const effective=enriched.definitionTree?{...enriched,tree:enriched.definitionTree,expression:enriched.definitionTree.expression}:enriched;
       setExperience('read');setInspectorTab('objects');if(closeEditor)setDrawer(currentDrawer=>currentDrawer===initiatingDrawer?null:currentDrawer);
       setAnalysis(data);setInspectBody(true);setAnalyzedKey(key);setSelected(effective.tree.id);setObjectId('');setOverrideView('');setScenario(initialScenario(effective.tree));
-    }catch(cause){if(generation===request.current&&currentKey.current===key&&!(cause instanceof DOMException&&cause.name==='AbortError')){setAnalysis(null);setError('The local Lean service is unavailable. Start the application with npm run dev.');}}
-    finally{if(generation===request.current)setBusy(false);}
+    }catch(cause){if(generation===request.current&&currentKey.current===key&&!controller.signal.aborted){setAnalysis(null);setFailure(serviceFailure('unreadable',cause instanceof Error?cause.message:String(cause)));}}
+    finally{if(generation===request.current){setBusy(false);setRetrying(null);}}
   }
   useEffect(()=>{
     if(host){
       setBusy(true);
       const receive=(event:MessageEvent)=>{
-        const message=parseEditorMessage(event.data);if(!message)return;
+        const parsed=parseEditorMessage(event.data);if(!parsed)return;
+        // A reading with a malformed part becomes an error here, before any of it is compiled or drawn.
+        const message=readableEditorMessage(parsed);
         if(message.type==='statementlens.status'){
           if(message.phase==='idle'||!acceptsEditorStatus(hostSession.current,message))return;
           sourceAction.current=followSourceStatus(sourceAction.current,message);
@@ -181,20 +192,26 @@ export default function App(){
         // The whole-term check of a selected proof is followed at once by the inspection of its type; the answer shown is that second one.
         if(statementStep){sourceAction.current={request:statementStep};host.postMessage({type:'statementlens.inspectTypeComponent',parentCaptureId:statementStep.parentCaptureId,previousCaptureId:statementStep.previousCaptureId,parentStepIndex:statementStep.parentStepIndex});}
         else if(answered&&!retainReading)setSourceResult({anchor:answered});
-        if(retainReading){setError('');setHealth({ready:true,leanVersion:'4.28.0'});return;}
-        if(message.type==='statementlens.error'){setAnalysis(null);setError(message.message);if(message.source!==undefined)setSource(message.source);return;}
+        if(retainReading){setError('');setHealth({phase:'connected',leanVersion:'4.28.0'});return;}
+        if(message.type==='statementlens.error'){setAnalysis(null);setError(message.message);setErrorCode(message.code);if(message.source!==undefined)setSource(message.source);return;}
         setSelectedCue(null);returnFocus.current=null;
         const data=message.analysis;const policy=data.expansionPolicy as {constants?:unknown}|undefined;const expansions=Array.isArray(policy?.constants)?policy.constants.filter((name):name is string=>typeof name==='string').slice(0,12):[];const key=JSON.stringify([data.source,'term',expansions]);
         const effective=autoInspectRef.current?inspectSmallDefinitions(data):data;
-        currentKey.current=key;setSource(data.source);setMode('term');setExpandNames(expansions);setExampleId('');setAnalysis(data);setAnalyzedKey(key);setInspectBody(false);setSelected(data.tree.id);setObjectId('');setOverrideView('');setScenario(initialScenario(effective.tree));setExperience('read');setError('');setHealth({ready:true,leanVersion:'4.28.0'});
+        currentKey.current=key;setSource(data.source);setMode('term');setExpandNames(expansions);setExampleId('');setAnalysis(data);setAnalyzedKey(key);setInspectBody(false);setSelected(data.tree.id);setObjectId('');setOverrideView('');setScenario(initialScenario(effective.tree));setExperience('read');setError('');setHealth({phase:'connected',leanVersion:'4.28.0'});
       };
       window.addEventListener('message',receive);host.postMessage({type:'statementlens.ready',guidedContextContract:GUIDED_CONTEXT_CONTRACT});
       return()=>window.removeEventListener('message',receive);
     }
-    fetch('/api/health').then(r=>r.json()).then(setHealth).catch(()=>setHealth({ready:false,issue:'Local Lean service is unavailable.'}));
     void analyze(examples[0].source,'term',[],false);return()=>active.current?.abort();
   },[host]);
-  function edit(text:string){setSource(text);setExampleId(examples.find(e=>e.source===text)?.id??'');currentKey.current=JSON.stringify([text,mode,expandNames]);setError('');}
+  // Until Lean is connected, check again every few seconds, so the label recovers when the service comes back.
+  useEffect(()=>{
+    if(host)return;
+    const controller=new AbortController();
+    void watchHealth({signal:controller.signal,onState:next=>setHealth(old=>JSON.stringify(old)===JSON.stringify(next)?old:next)});
+    return()=>controller.abort();
+  },[host,healthRound]);
+  function edit(text:string){setSource(text);setExampleId(examples.find(e=>e.source===text)?.id??'');currentKey.current=JSON.stringify([text,mode,expandNames]);setFailure(null);}
   // Only an explicit inspection posted from this view moves the drawer and focus to its answer.
   useEffect(()=>{if(sourceResult)revealSourceResult(sourceResult.anchor);},[sourceResult]);
   function requestSource(request:SourceActionRequest,command:EditorCommand){definitionWorkflow.cancel();sourceAction.current={request};host?.postMessage(command);}
@@ -227,15 +244,16 @@ export default function App(){
   const activeExample=mode==='term'?examples.find(example=>example.id===exampleId):undefined;
   const editorFileName=editorSession?.document.fileName.split(/[\\/]/).at(-1);
   const parentDeclaration=current?.provenance?.parentDeclaration;
+  const status=healthLabel(health);
   const title=host?(checked?.provenance?.selectionKind==='proof-type'?'Statement of your selected proof':'Your selected expression'):mode==='declaration'?checked?.provenance?.declaration?.name??source.trim():activeExample?.title??'Your mathematical statement';
   return <div className="app-shell">
     <a className="skip-link" href="#statement-reading">Skip to the statement</a>
-    <header className="topbar"><a href="#statement-reading" className="brand" aria-label="Definograph home">Definograph</a><nav className="top-actions" aria-label="Workspace tools">{!host&&<><a className="quiet-button" href="/packet">Saved packet</a><a className="quiet-button" href="/source-data">Source data</a></>}<span className="local-label"><i className={health?.ready?'ready':''}/>{host?'Lean editor':health?.ready?'Lean connected':'Connecting to Lean'}</span><button className="quiet-button" onClick={()=>setDrawer('guide')}>Guide</button><button className="toolbar-button" onClick={exportDocument} disabled={!current}>Export</button></nav></header>
+    <header className="topbar"><a href="#statement-reading" className="brand" aria-label="Definograph home">Definograph</a><nav className="top-actions" aria-label="Workspace tools">{!host&&<><a className="quiet-button" href="/packet">Saved packet</a><a className="quiet-button" href="/source-data">Source data</a></>}<span className="local-label" role="status" title={host?undefined:status.detail}><i className={status.tone}/>{host?'Lean editor':status.text}</span><button className="quiet-button" onClick={()=>setDrawer('guide')}>Guide</button><button className="toolbar-button" onClick={exportDocument} disabled={!current}>Export</button></nav></header>
     <Drawer open={drawer==='guide'} title="Reading the diagrams" onClose={()=>setDrawer(null)}>
       <section className="guide"><p className="guide-lead">Follow a statement through its objects, assumptions, and conclusions.</p><div className="guide-grid"><p><strong>The whole statement, then one step at a time.</strong> The statement is drawn once at the top: a row governs the rows inside its frame. Below it, read one step at a time; the row of the current step is marked.</p><p><strong>Quantifiers describe choices.</strong> ∀ introduces an arbitrary choice; ∃ asks for a witness, boxed with everything it governs. A witness may use earlier choices, never a choice introduced later.</p><p><strong>Abstract objects need no coordinates.</strong> Maps connect the types supplied by Lean. Regions express membership and inclusion; distances and shapes appear only when their meaning is recognized.</p><p><strong>Every diagram has a source.</strong> Select an object to inspect its type and occurrences. Use Lean source to read or change the input, and Inspect for definition expansion and interpretation details.</p><p><strong>Samples are optional.</strong> Exploration uses numerical examples. The reading sequence is symbolic. A type-checked statement can still be false; neither its diagram nor a sample is a proof.</p></div></section>
     </Drawer>
     <main className="workspace atlas-workspace">
-      <div className="statement-bar">{host?<div className="editor-context"><span>FROM YOUR LEAN EDITOR</span><strong>{editorFileName??'Select a mathematical statement'}</strong>{editorSession&&<small>Buffer v{editorSession.document.version} · line {editorSession.document.selection.start.line+1}</small>}</div>:<div className="statement-picker"><label htmlFor="example">Statement</label><select id="example" value={mode==='term'?exampleId:''} onChange={e=>loadExample(e.target.value)} disabled={busy}><option value="" disabled>{mode==='declaration'?'Lean declaration':'Custom Lean statement'}</option>{examples.map(e=><option key={e.id} value={e.id}>{e.title}</option>)}</select></div>}<div className="statement-actions">{host&&<button className="toolbar-button" onClick={()=>void analyze()} disabled={busy}>Refresh from editor</button>}<button className="toolbar-button" onClick={()=>setDrawer('source')}>Lean source <span aria-hidden="true">↗</span></button>{host&&<button className="toolbar-button" onClick={()=>{setSourceTab('snapshot');setDrawer('source');}} disabled={!sourceCapture&&!sourceCaptureIssue&&!error}>Source data</button>}<button className="toolbar-button" onClick={()=>setDrawer('inspect')} disabled={!current}>Inspect <span aria-hidden="true">↗</span></button></div></div>
+      <div className="statement-bar">{host?<div className="editor-context"><span>FROM YOUR LEAN EDITOR</span><strong>{editorFileName??'Select a mathematical statement'}</strong>{editorSession&&<small>Buffer v{editorSession.document.version} · line {editorSession.document.selection.start.line+1}</small>}</div>:<div className="statement-picker"><label htmlFor="example">Statement</label><select id="example" value={mode==='term'?exampleId:''} onChange={e=>loadExample(e.target.value)} disabled={busy&&!retrying}><option value="" disabled>{mode==='declaration'?'Lean declaration':'Custom Lean statement'}</option>{examples.map(e=><option key={e.id} value={e.id}>{e.title}</option>)}</select></div>}<div className="statement-actions">{host&&<button className="toolbar-button" onClick={()=>void analyze()} disabled={busy}>Refresh from editor</button>}<button className="toolbar-button" onClick={()=>setDrawer('source')}>Lean source <span aria-hidden="true">↗</span></button>{host&&<button className="toolbar-button" onClick={()=>{setSourceTab('snapshot');setDrawer('source');}} disabled={!sourceCapture&&!sourceCaptureIssue&&!error}>Source data</button>}<button className="toolbar-button" onClick={()=>setDrawer('inspect')} disabled={!current}>Inspect <span aria-hidden="true">↗</span></button></div></div>
       <Drawer open={drawer==='source'} side="left" title="Lean source" onClose={()=>setDrawer(null)}>
       <section className="source-panel">
         <div className="source-tabs"><button className={sourceTab==='source'?'active':''} onClick={()=>setSourceTab('source')}>Source</button><button className={sourceTab==='structure'?'active':''} onClick={()=>setSourceTab('structure')}>Structure <span>{allNodes.length||'—'}</span></button>{host&&<button className={sourceTab==='snapshot'?'active':''} onClick={()=>setSourceTab('snapshot')}>Source data</button>}</div>
@@ -246,12 +264,12 @@ export default function App(){
           <FeatureBoundary fallback={<div className="plain-editor"><p>The enhanced editor could not load. You can continue in this basic editor.</p><textarea ref={plainEditor} aria-label="Lean statement editor" value={source} spellCheck={false} onChange={event=>edit(event.target.value)} onSelect={event=>setSelection([event.currentTarget.selectionStart,event.currentTarget.selectionEnd])} onKeyDown={event=>{if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();if(!busy)void analyze();}}}/></div>}><Suspense fallback={<div className="editor-loading">Loading editor…</div>}><LeanEditor value={source} onChange={edit} onAnalyze={()=>{if(!busy)void analyze();}} onSelection={(from,to)=>setSelection([from,to])} editorRef={editor}/></Suspense></FeatureBoundary>
           {mode==='term'&&<div className="symbol-bar">{symbols.map(s=><button key={s} onClick={()=>insert(s)} title={`Insert ${s}`}>{s}</button>)}</div>}
           <p className="input-help">{mode==='term'?<>Type <code>\forall</code> + Tab for ∀. Include variable binders; select a fragment after analysis.</>:<>For example <code>Metric.mem_ball</code>, <code>Function.comp</code>, or <code>Function.Injective</code>.</>}</p>
-          <button className="analyze-button" disabled={busy||!source.trim()} onClick={()=>void analyze()}>{busy?<><span className="spinner"/>Reading with Lean…</>:<>Interpret {mode==='term'?'statement':'declaration'}<span>↗</span></>}</button>
-          {error&&<div className="error-box" role="alert"><strong>The statement could not be read.</strong><pre>{error}</pre></div>}
+          <button className="analyze-button" disabled={busy||!source.trim()} onClick={()=>void analyze()}>{busy?<><span className="spinner"/>{retrying?'Lean is busy; trying again…':'Reading with Lean…'}</>:<>Interpret {mode==='term'?'statement':'declaration'}<span>↗</span></>}</button>
+          {failure&&<div className="error-box" role="alert"><strong>{failure.title}</strong><pre>{failure.detail}</pre></div>}
           {typedSelection&&<details className="typed-selection"><summary>Type at selection <code>{typedSelection.type}</code></summary><pre>{typedSelection.lean}</pre><p>Exact source occurrence from Lean · bytes {typedSelection.startByte}–{typedSelection.endByte}</p></details>}
 
         </>:<><div className="outline-heading"><p>Select any part of the statement. Its surrounding scope stays attached.</p><button className="quiet-button" disabled={!current} onClick={()=>current&&chooseNode(current.tree.id)}>Whole statement</button></div>{current?<div className="statement-tree"><StatementTree key={analyzedKey} node={current.tree} selected={selected} choose={chooseNode} interpreted={interpreted}/></div>:<p className="empty-tree muted">Analyze the current source to read its logical structure.</p>}</>}
-        <div className="engine-status">{host?'Project context · isolated reader process':health?.ready?`Lean ${health.leanVersion?.match(/\d+\.\d+\.\d+/)?.[0]??'4'} · read-only environment`:health?.issue??'Connecting to Lean…'}</div>
+        <div className="engine-status">{host?'Project context · isolated reader process':status.detail}</div>
       </section></Drawer>
       <section className="visual-panel" id="statement-reading" aria-label="Statement reading">
 
@@ -263,6 +281,7 @@ export default function App(){
           <div className="experience-tabs" aria-label="Reading and exploration"><button className={experience==='read'?'active':''} aria-pressed={experience==='read'} onClick={()=>{setExperience('read');setInspectorTab('objects');}}>Visual sequence</button><button className={experience==='explore'?'active':''} aria-pressed={experience==='explore'} onClick={()=>{setExperience('explore');setInspectorTab(primary.fidelity==='numerical'?'scenario':'objects');}}>Explore a sample</button><button className="notation-toggle" aria-pressed={showNotation} onClick={()=>setShowNotation(!showNotation)}>{showNotation?'Hide notation':'Mathematical notation'}</button></div>
           {showNotation&&<FeatureBoundary fallback={<section className="notation-fallback"><p>Mathematical typesetting could not load. The checked Lean statement is available here.</p><pre>{current.pretty}</pre></section>}><Suspense fallback={<p>Loading mathematical notation…</p>}><MathematicalStatement notation={inspectBody&&checked?.definitionTree?checked.definitionReadableMath:checked?.readableMath} lean={current.pretty}/></Suspense></FeatureBoundary>}
           <div className={`definition-reading-layout${definitionWorkspace?' is-inspecting':''}`}><div>
+          <FeatureBoundary resetKeys={[experience,reading,plan,primary,scenario,objectId]} fallback={<section className="notation-fallback" role="note"><p>{experience==='read'?'The reading could not be drawn.':'These views could not be drawn.'} The Lean statement is below.</p><pre>{current.pretty}</pre></section>}>
           {experience==='read'?<StatementReadingView reading={reading} document={document} selectedCue={selectedCue} onCueChange={setSelectedCue} selectedObjectId={objectId} onObjectSelect={chooseObject} onNodeSelect={chooseNode} renderGeometry={panel=>{
             // Replace only a complete membership clause, never geometry nested inside an unknown claim.
             const roots=panel.rootRelationIds.map(id=>document.relations.find(r=>r.id===id)).filter(Boolean);
@@ -273,14 +292,15 @@ export default function App(){
             return ballScene?.kind==='ball'?<MetricStatementFigure scene={ballScene}/>:null;
           }}/>:<><div className="exploration-heading"><p className="exploration-intro">Optional illustrations of selected fragments. Numerical values do not change the statement or establish its truth.</p><button className="toolbar-button" onClick={()=>{setInspectorTab('scenario');setDrawer('inspect');}}>Sample choices ↗</button></div>
           <div className="view-tabs" aria-label="Representations">{plan.views.map(v=><button key={v.id} className={primary.id===v.id?'active':''} aria-pressed={primary.id===v.id} title={v.title} onClick={()=>{setOverrideView(v.id);if(v.fidelity==='numerical')setInspectorTab('scenario');}}>{kindLabel[v.kind]}{v.id===plan.primaryViewId&&<span className="recommended-dot"/>}</button>)}</div>
-          <article className="view-card primary-view"><header><div><span className="view-index">01</span><strong>{primary.title}</strong></div><span className={`fidelity ${primary.fidelity}`}>{primary.fidelity==='numerical'?'Numerical illustration':primary.fidelity==='symbolic'?'Symbolic relationships':'Formal structure'}</span></header>{scene&&(scene.context.length>0||scene.guards.length>0)&&<div className="view-context">{scene.context.map((c,i)=><span key={i}>{c}</span>)}{scene.guards.length>0&&<span>Under {scene.guards.length} local {scene.guards.length===1?'assumption':'assumptions'}</span>}</div>}{renderView(primary)}<div className="view-reason"><span>Why this view</span><p>{primary.reason}</p></div></article>
-          {supports.map((view,i)=><article className="view-card supporting-view" key={view.id}><header><div><span className="view-index">0{i+2}</span><strong>{view.title}</strong></div><span className="fidelity">{kindLabel[view.kind]}</span></header>{renderView(view)}</article>)}
+          <article className="view-card primary-view"><header><div><span className="view-index">01</span><strong>{primary.title}</strong></div><span className={`fidelity ${primary.fidelity}`}>{primary.fidelity==='numerical'?'Numerical illustration':primary.fidelity==='symbolic'?'Symbolic relationships':'Formal structure'}</span></header>{scene&&(scene.context.length>0||scene.guards.length>0)&&<div className="view-context">{scene.context.map((c,i)=><span key={i}>{c}</span>)}{scene.guards.length>0&&<span>Under {scene.guards.length} local {scene.guards.length===1?'assumption':'assumptions'}</span>}</div>}<FigureBoundary resetKeys={[primary,document,objectId,scenario]}>{renderView(primary)}</FigureBoundary><div className="view-reason"><span>Why this view</span><p>{primary.reason}</p></div></article>
+          {supports.map((view,i)=><article className="view-card supporting-view" key={view.id}><header><div><span className="view-index">0{i+2}</span><strong>{view.title}</strong></div><span className="fidelity">{kindLabel[view.kind]}</span></header><FigureBoundary resetKeys={[view,document,objectId,scenario]}>{renderView(view)}</FigureBoundary></article>)}
           </>}
+          </FeatureBoundary>
           </div>{definitionWorkspace&&<DefinitionWorkspace state={definitionWorkspace} onInspect={chosen=>definitionWorkflow.inspect(chosen)} onReturn={returnToReading} onDetails={()=>{setSourceTab('snapshot');setDrawer('source');}}/>}</div>
           {current.automaticInspection&&<div className="automatic-reading-note"><span>Reading <code>{current.automaticInspection.constant}</code> through its checked definition.</span><button type="button" onClick={()=>{setDrawer('inspect');setInspectorTab('objects');}}>See original and details ↗</button></div>}
           {expandNames.length>0&&<div className="expansion-note">{allNodes.filter(n=>n.expansion).length?`${allNodes.filter(n=>n.expansion).length} definition expansions checked by Lean for definitional equality.`:'No selected definition occurred at an expandable fragment head.'}</div>}
           <div className="reading-footnote"><span>A diagram of the statement, not a proof.</span><button className="quiet-button" onClick={()=>setDrawer('inspect')}>Interpretation details ↗</button></div>
-        </>:<div className="empty-view"><h1>{busy?'Reading the mathematical structure':editorSession?.phase==='stale'?'Your Lean buffer has changed':host?'Read a statement from your Lean editor':analysis?'Your source has changed':'From a statement to its structure'}</h1><p>{busy?'Lean is resolving types, scope, and definitions.':host?(error||'Select a proposition in your Lean file, then refresh. Its local context stays attached to the reading.'):error?'Open Lean source to review and correct the input.':'Interpret the current Lean input to build connected views of its objects, relationships, and choices.'}</p>{!busy&&<button className="toolbar-button" onClick={()=>host?void analyze():setDrawer('source')}>{host?'Refresh from editor':error?'Review Lean source':'Open Lean source'}</button>}{error&&<p className="error-summary" role="alert">The input could not be read.</p>}</div>}
+        </>:<div className="empty-view"><h1>{busy?(retrying?'Lean is busy; trying again':'Reading the mathematical structure'):editorSession?.phase==='stale'?'Your Lean buffer has changed':host?'Read a statement from your Lean editor':failure?failure.title:analysis?'Your source has changed':'From a statement to its structure'}</h1><p>{busy?(retrying?`Lean is busy with another statement, so Definograph will ask again in a moment (retry ${retrying.retry} of ${retrying.of}).`:'Lean is resolving types, scope, and definitions.'):host?(error||'Select a proposition in your Lean file, then refresh. Its local context stays attached to the reading.'):failure?failure.advice:'Interpret the current Lean input to build connected views of its objects, relationships, and choices.'}</p>{!busy&&<button className="toolbar-button" onClick={()=>{if(host){void analyze();return;}setSourceTab('source');setDrawer('source');}}>{host?'Refresh from editor':failure?.kind==='rejected'||failure?.kind==='too-large'?'Review Lean source':'Open Lean source'}</button>}{host&&error&&<p className="error-summary" role="alert">{editorFailureTitle(errorCode)}</p>}{!host&&!busy&&failure&&<p className="error-summary" role="alert">{firstLine(failure.detail)}</p>}</div>}
       </section>
       <Drawer open={drawer==='inspect'} title="Inspect the statement" onClose={()=>setDrawer(null)}><section className="scenario-panel inspector">
         <div className="source-tabs"><button className={inspectorTab==='objects'?'active':''} onClick={()=>setInspectorTab('objects')}>Objects</button>{experience==='explore'&&<button className={inspectorTab==='scenario'?'active':''} onClick={()=>setInspectorTab('scenario')}>Scenario</button>}</div>

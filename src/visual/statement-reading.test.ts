@@ -189,6 +189,21 @@ describe('mathematical atlas reading', () => {
     expect(html.indexOf('data-reading-node="positive"')).toBeLessThan(html.indexOf('aria-label="Then the conclusion is required"'));
   });
 
+  it('tells assistive technology which inline object is selected, as the binder buttons do', () => {
+    const epsilon = binder('ε');
+    const tree = node('bind-ε', 'forall', [leaf('positive', app('LT.lt', [constant('0'), variable(epsilon)], { operator: 'lt', standard: true }))], epsilon);
+    const document = compileSemanticDocument({ source: 'test', tree, expression: tree.expression });
+    const reading = compileReading(document, { selectedNodeId: 'positive' });
+    const selected = document.objects.find(object => object.label === 'ε')!;
+    const html = renderToStaticMarkup(createElement(StatementReadingView, { document, reading, selectedObjectId: selected.id, onObjectSelect: () => undefined, onNodeSelect: () => undefined }));
+    const inline = [...html.matchAll(/<button type="button" class="sr-inline-object[^"]*"[^>]*>/g)].map(match => match[0]);
+    const chosen = inline.filter(button => button.includes(`data-reading-object="${selected.id}"`)), others = inline.filter(button => !chosen.includes(button));
+    expect(chosen.length).toBeGreaterThan(0);
+    expect(others.length).toBeGreaterThan(0);
+    for (const button of chosen) expect(button).toContain('aria-pressed="true"');
+    for (const button of others) expect(button).toContain('aria-pressed="false"');
+  });
+
   it('keeps a proposition wrapper primary and exposes its geometry as parts of the expression', () => {
     const predicate: Expr = { kind: 'var', id: 'F', name: 'F', type: 'Prop → Prop', typeDescriptor: { kind: 'relation', lean: 'Prop → Prop' } };
     const proposition = app('Set.Mem', [app('Metric.ball', [constant('c'), constant('r')]), constant('x')], { typeDescriptor: { kind: 'proposition', lean: 'Prop' } });

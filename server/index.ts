@@ -9,7 +9,8 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('STATEMENTLENS_PORT must be an integer between 1 and 65535.');
 }
 const worker = createWorkerBackend({ rootDir, configPath: process.env.STATEMENTLENS_CONFIG });
-const server = createLocalServer({ worker, port, distDir: path.join(rootDir, 'dist') });
+// npm run dev passes --dev, which also admits the Vite development page on port 5173; npm start does not.
+const server = createLocalServer({ worker, port, distDir: path.join(rootDir, 'dist'), developmentOrigins: process.argv.slice(2).includes('--dev') });
 server.on('error', (error: NodeJS.ErrnoException) => {
   console.error(error.code === 'EADDRINUSE'
     ? `Definograph port ${port} is already in use.`

@@ -10,6 +10,7 @@ import { compileSemanticDocument } from '../src/semantic/index.js';
 import { compileReading } from '../src/reading/index.js';
 import type { Analysis, StatementNode } from '../src/core/types.js';
 import { GUIDED_CONTEXT_CONTRACT } from '../src/editor/guided-context-contract.js';
+import { analysisShapeIssue } from '../src/core/analysis-shape.js';
 const engine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const config = JSON.parse(await readFile(path.join(engine, '.local/config.json'), 'utf8'));
 const fixture = await mkdtemp(path.join(os.tmpdir(), 'statementlens-editor-test-'));
@@ -27,6 +28,8 @@ async function analyze(source: string, term: string, options: { expansion?: { co
   assert.equal(response.ok, true, JSON.stringify(response)); checks++;
   const result = response as unknown as Analysis;
   assert.equal(result.guidedContextContract, GUIDED_CONTEXT_CONTRACT);
+  // The editor view refuses a reading of any other shape (src/editor/editor-failure.ts).
+  assert.equal(analysisShapeIssue(result), undefined, `the editor view would refuse this reading: ${term}`);
   const semantic = compileSemanticDocument(result), reading = compileReading(semantic);
   assert.equal(reading.nodes.length, nodes(result.tree).length);
   assert.equal(result.provenance?.inputMode, 'editor');

@@ -93,7 +93,7 @@ describe('set construction interpretation', () => {
     const markup = renderToStaticMarkup(createElement(SetConstructionFigure, result));
     expect(markup).toContain('data-diagram-source="Type α₁"'); expect(markup).toContain('<msub>');
     expect(markup.indexOf('data-diagram-label="ambient"')).toBeLessThan(markup.indexOf('data-set-membership-regions='));
-    expect(markup).toContain('data-membership-bits="11"');
+    expect(markup).toContain('data-membership-bits="11" role="img" aria-label="in A, in B"');
     expect(JSON.stringify(result.document)).toBe(before);
   });
 

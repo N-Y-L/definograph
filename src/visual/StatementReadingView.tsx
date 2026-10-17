@@ -12,6 +12,7 @@ import { compileReading } from '../reading/compiler';
 import { compileSetConstruction, SetConstructionFigure } from '../set-constructions';
 import { compactLabel } from './layout';
 import { FigureScroll } from '../components/FigureScroll';
+import { FigureBoundary } from '../components/FeatureBoundary';
 import { useDiagramText } from '../components/use-diagram-text';
 import { MathLabel } from '../components/MathLabel';
 import { expressionDisplayNode, mathDisplay, sourceMathDisplay, type MathDisplay } from '../notation/math-display';
@@ -147,7 +148,13 @@ function MeasuredRelationFigure({ relation, relations, ctx }: { relation: Semant
   return <figure className={`sr-relation-figure sr-figure-${relation.kind}`}><FigureScroll label="Relation diagram; scroll to see all of it"><svg ref={text.ref} style={figureSize(width, height)} viewBox={`0 0 ${width} ${height}`} role="group" aria-label={`${relation.label}: schematic ${relation.fidelity === 'structural' ? 'expression' : 'relation'}`}><title>{relation.label}</title>{body}</svg></FigureScroll><figcaption>{caption}</figcaption></figure>;
 }
 
-function RelationFigure({ relation, relations, ctx }: { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext }) {
+type RelationFigureProps = { relation: SemanticRelation; relations: readonly SemanticRelation[]; ctx: RenderContext };
+
+function RelationFigure(props: RelationFigureProps) {
+  return <FigureBoundary resetKeys={[props.relation, props.relations, props.ctx.document, props.ctx.selectedObjectId]}><RelationFigureBody {...props}/></FigureBoundary>;
+}
+
+function RelationFigureBody({ relation, relations, ctx }: RelationFigureProps) {
   if (compileRestrictedMap(ctx.document, relation, relations)) return <RestrictedMapFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   if (compileGraphConstraint(ctx.document, relation, relations)) return <GraphConstraintFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
   if (!['image', 'preimage'].includes(relation.kind) && compileSetConstruction(ctx.document, relation, relations)) return <SetConstructionFigure document={ctx.document} relation={relation} relations={relations} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>;
@@ -276,7 +283,7 @@ function SourceButton({ node, ctx, children }: { node: ReadingNode; ctx: RenderC
 function InlineObject({ id, ctx }: { id: string; ctx: RenderContext }) {
   const object = ctx.objects.get(id);
   const color = useIdentityColor()(id);
-  return <button type="button" className={`sr-inline-object${id === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} data-reading-object={id} style={{ '--object-color': color } as CSSProperties} onClick={() => ctx.onObjectSelect?.(id)} title={object?.type} aria-label={`${object?.label ?? id}${object?.type ? ` : ${object.type}` : ''}`}>{object?.label ?? id}</button>;
+  return <button type="button" className={`sr-inline-object${id === ctx.selectedObjectId ? ' sr-object-selected' : ''}`} data-reading-object={id} style={{ '--object-color': color } as CSSProperties} onClick={() => ctx.onObjectSelect?.(id)} aria-pressed={id === ctx.selectedObjectId} title={object?.type} aria-label={`${object?.label ?? id}${object?.type ? ` : ${object.type}` : ''}`}>{object?.label ?? id}</button>;
 }
 
 function ContainedExpressions({ panel, ctx }: { panel: ReadingPanel; ctx: RenderContext }) {
@@ -295,7 +302,12 @@ function ContainedExpressions({ panel, ctx }: { panel: ReadingPanel; ctx: Render
   })}{count > limit && <button type="button" className="sr-show-more" onClick={() => setLimit(current => current + 3)}>Show {counted(Math.min(3, count - limit), 'more contained relation')}</button>}</details>;
 }
 
+/** One clause that fails to draw is replaced by a note with its Lean text; the other clauses stay. */
 function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
+  return <FigureBoundary resetKeys={[node, ctx.document, ctx.panels, ctx.selectedObjectId]} note={<>This {componentMode(ctx.document) ? 'expression' : 'condition'} could not be drawn. Its Lean text is <code>{node.lean}</code>.</>}><ClauseBody node={node} ctx={ctx}/></FigureBoundary>;
+}
+
+function ClauseBody({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
   const [showAllRelations, setShowAllRelations] = useState(false);
   const panel = node.panelId ? ctx.panels.get(node.panelId) : undefined;
   const groups = panel?.groups.filter(group => group.role === 'clause') ?? [];
@@ -311,7 +323,7 @@ function Clause({ node, ctx }: { node: ReadingNode; ctx: RenderContext }) {
   if (simpleConstraint && left && right) return <><div className="sr-inline-constraint" data-reading-node={node.id} aria-label={node.phrase}><span className="sr-constraint-math"><InlineObject id={left} ctx={ctx}/><span className="sr-inline-relation">{root.label}</span><InlineObject id={right} ctx={ctx}/></span><SourceButton node={node} ctx={ctx}><span className="sr-source-glyph" aria-hidden="true">↗</span></SourceButton></div>{contained}</>;
   return <section className="sr-clause" data-reading-node={node.id} aria-label={node.phrase || (componentMode(ctx.document) ? 'Selected expression' : 'Statement condition')}>
     <div className="sr-clause-heading"><SourceButton node={node} ctx={ctx}>{node.phrase || (componentMode(ctx.document) ? 'Expression' : 'Condition')} <span aria-hidden="true">↗</span></SourceButton>{panel?.coverage === 'partial' && <span className="sr-coverage-note">partly interpreted</span>}</div>
-    {geometry || (roots.length > 0 ? <div className={`sr-clause-figures${roots.length > 1 ? ' sr-multiple-roots' : ''}`}>{(showAllRelations ? roots : roots.slice(0, 3)).map(relation => <RelationFigure key={relation.id} relation={relation} relations={relations} ctx={ctx}/>)}{roots.length > 3 && !showAllRelations && <button type="button" className="sr-show-more" onClick={() => setShowAllRelations(true)}>Show {counted(roots.length - 3, 'further relation')} in this {componentMode(ctx.document) ? 'expression' : 'clause'}</button>}</div> : <div className="sr-symbolic-clause"><code>{node.lean}</code><p>{componentMode(ctx.document) ? 'This expression is retained symbolically; no further interpretation is assigned.' : 'This clause is retained symbolically; no geometric interpretation is assigned.'}</p></div>)}
+    {geometry ? <FigureBoundary resetKeys={[panel, ctx.selectedObjectId]}>{geometry}</FigureBoundary> : (roots.length > 0 ? <div className={`sr-clause-figures${roots.length > 1 ? ' sr-multiple-roots' : ''}`}>{(showAllRelations ? roots : roots.slice(0, 3)).map(relation => <RelationFigure key={relation.id} relation={relation} relations={relations} ctx={ctx}/>)}{roots.length > 3 && !showAllRelations && <button type="button" className="sr-show-more" onClick={() => setShowAllRelations(true)}>Show {counted(roots.length - 3, 'further relation')} in this {componentMode(ctx.document) ? 'expression' : 'clause'}</button>}</div> : <div className="sr-symbolic-clause"><code>{node.lean}</code><p>{componentMode(ctx.document) ? 'This expression is retained symbolically; no further interpretation is assigned.' : 'This clause is retained symbolically; no geometric interpretation is assigned.'}</p></div>)}
     {contained}
     {panel?.groups.some(group => group.role === 'local-expression') && <p className="sr-local-note">This expression contains local binders. Inspect the fragment to follow their scopes.</p>}
   </section>;
@@ -347,7 +359,7 @@ function BinderFigures({ nodes, ctx }: { nodes: readonly ReadingNode[]; ctx: Ren
   const recognized = relations.filter(relation => compileGraphConstraint(ctx.document, relation) || compileRestrictedMap(ctx.document, relation));
   const figures: ReactNode[] = [];
   let run: ReadingNode[] = [];
-  const flush = () => { if (run.length) { figures.push(<TypedConstructionFigure key={`types:${run[0]!.id}`} document={ctx.document} binders={run.map(node => node.binder!)} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/>); run = []; } };
+  const flush = () => { if (run.length) { figures.push(<FigureBoundary key={`types:${run[0]!.id}`} resetKeys={[ctx.document, ...run, ctx.selectedObjectId]}><TypedConstructionFigure document={ctx.document} binders={run.map(node => node.binder!)} selectedObjectId={ctx.selectedObjectId} onObjectSelect={ctx.onObjectSelect}/></FigureBoundary>); run = []; } };
   for (const node of nodes) {
     if (node.binder?.role === 'auxiliary') { flush(); continue; }
     const bundled = recognized.filter(relation => relation.nodeId === node.id);
@@ -481,7 +493,7 @@ export function StatementReadingView(props: StatementReadingViewProps) {
   }, [reading.selection.nodeId, presentation, activeCue]);
   const visibleNodes = visibleReadingNodes(reading, nodeLimit);
   const ctx: RenderContext = { ...props, ...maps, onNodeSelect: chooseNode, visibleNodes, presentation };
-  const guided = activeCue && <GuidedReading plan={cuePlan} cue={activeCue} reading={reading} document={semantic} onChoose={chooseCue} onObjectSelect={props.onObjectSelect}><CueFigure cue={activeCue} ctx={ctx}/></GuidedReading>;
+  const guided = activeCue && <GuidedReading plan={cuePlan} cue={activeCue} reading={reading} document={semantic} onChoose={chooseCue} onObjectSelect={props.onObjectSelect}><FigureBoundary resetKeys={[activeCue, semantic, selectedObjectId, nodeLimit]}><CueFigure cue={activeCue} ctx={ctx}/></FigureBoundary></GuidedReading>;
   const graphical = showGraph && scopedGraph && <ScopedStatementGraph model={scopedGraph} document={semantic} reading={reading} focusedNodeId={graphNodeId} selectedObjectId={selectedObjectId} selectedRelationId={selectedRelationId}
     onObjectSelect={props.onObjectSelect} onNodeSelect={chooseGraphClause} onSourceSelect={props.onSourceSelect} onRelationSelect={id => {
       const cue = cuePlan.cues.find(candidate => candidate.stage.relationId === id);
@@ -489,8 +501,8 @@ export function StatementReadingView(props: StatementReadingViewProps) {
       else { const relation = maps.relations.get(id); if (relation) { chooseNode(relation.nodeId); props.onSourceSelect?.(id); } }
     }}/>;
   return <IdentityColorProvider value={colors}><div className="statement-reading-view">
-    <StatementSkeleton root={presentation.root} document={semantic} visibleNodes={visibleNodes} activeRegionId={activeCue?.regionId ?? presentation.nodeToRegionId[reading.selection.nodeId]} activeNodeId={reading.selection.nodeId} selectedObjectId={selectedObjectId} onNodeSelect={chooseNode}/>
-    <div ref={surface} className="sr-reading-surface">{scopedGraph && <nav className="ssg-mode" aria-label="Reading presentation"><button type="button" aria-pressed={showGraph} onClick={() => setReadingMode('graph')}>Construction graph</button><button type="button" aria-pressed={!showGraph} onClick={() => setReadingMode('guided')}>Guided reading</button></nav>}{showGraph ? graphical : guided}<details ref={complete} className="sr-complete-reading"><summary>{componentMode(semantic) ? 'Full visual reading' : 'Full visual statement'}</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ '--trace-color': colors.get(selectedObjectId) ?? NEUTRAL_INK } as CSSProperties}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label={componentMode(semantic) ? 'Ordered visual reading of the expression' : 'Ordered visual reading of the statement'}><AtlasRegion region={presentation.root} ctx={ctx}/></div></details></div>
+    <FigureBoundary resetKeys={[presentation, semantic, activeCue, reading.selection.nodeId, selectedObjectId, nodeLimit]}><StatementSkeleton root={presentation.root} document={semantic} visibleNodes={visibleNodes} activeRegionId={activeCue?.regionId ?? presentation.nodeToRegionId[reading.selection.nodeId]} activeNodeId={reading.selection.nodeId} selectedObjectId={selectedObjectId} onNodeSelect={chooseNode}/></FigureBoundary>
+    <div ref={surface} className="sr-reading-surface">{scopedGraph && <nav className="ssg-mode" aria-label="Reading presentation"><button type="button" aria-pressed={showGraph} onClick={() => setReadingMode('graph')}>Construction graph</button><button type="button" aria-pressed={!showGraph} onClick={() => setReadingMode('guided')}>Guided reading</button></nav>}{showGraph ? <FigureBoundary resetKeys={[scopedGraph, graphNodeId, selectedObjectId, selectedRelationId]}>{graphical}</FigureBoundary> : guided}<details ref={complete} className="sr-complete-reading"><summary>{componentMode(semantic) ? 'Full visual reading' : 'Full visual statement'}</summary>{selectedObjectId && <svg className="sr-identity-traces" aria-hidden="true"><g style={{ '--trace-color': colors.get(selectedObjectId) ?? NEUTRAL_INK } as CSSProperties}>{traces.map(trace => <path key={trace.id} d={trace.path}/>)}</g></svg>}<div className="sr-reading-content" aria-label={componentMode(semantic) ? 'Ordered visual reading of the expression' : 'Ordered visual reading of the statement'}><FigureBoundary resetKeys={[presentation, semantic, selectedObjectId, nodeLimit]} note={`The ${componentMode(semantic) ? 'full visual reading' : 'full visual statement'} could not be drawn.`}><AtlasRegion region={presentation.root} ctx={ctx}/></FigureBoundary></div></details></div>
     {reading.nodes.length > visibleNodes.size && <div className="sr-limit">Showing {visibleNodes.size} of {counted(reading.nodes.length, componentMode(semantic) ? 'expression node' : 'logical node')}, with the complete selected scope. <button type="button" className="sr-show-more" onClick={() => setNodeLimit(limit => limit + 100)}>Show the next {counted(Math.min(100, reading.nodes.length - visibleNodes.size), 'node')}</button></div>}
     <p className="sr-reading-note">Symbolic schematics · no numerical choices. {componentMode(semantic) ? 'Schematics follow expression structure and its context. Shapes and spacing carry no additional meaning.' : 'Schematics describe the conditions in their logical context. Shapes and spacing carry no unstated geometric meaning.'}</p>
   </div></IdentityColorProvider>;

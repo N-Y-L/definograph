@@ -50,9 +50,11 @@ const MAX_RESULT_BYTES = 4 * 1024 * 1024;
 const PIN = 'leanprover/lean4:v4.28.0';
 
 async function boundedText(file: string, limit: number): Promise<string> {
-  const info = await stat(file);
-  if (!info.isFile() || info.size > limit) throw new WorkerError('EDITOR_CONFIG', `File is too large or unavailable: ${file}`);
-  const content = await readFile(file, 'utf8');
+  // Node's own errors name the system call; a missing or unreadable file gets this one sentence instead.
+  const unavailable = () => new WorkerError('EDITOR_CONFIG', `File is too large or unavailable: ${file}`);
+  const info = await stat(file).catch(() => { throw unavailable(); });
+  if (!info.isFile() || info.size > limit) throw unavailable();
+  const content = await readFile(file, 'utf8').catch(() => { throw unavailable(); });
   if (Buffer.byteLength(content) > limit) throw new WorkerError('EDITOR_CONFIG', `File exceeds the size limit: ${file}`);
   return content;
 }
@@ -224,7 +226,9 @@ export async function analyzeEditorContext(request: EditorContextRequest): Promi
   const project = await resolveEditorProject(sourceFile, request.libraryPaths);
   const engine = await realpath(request.engineDirectory);
   const configPath = path.join(engine, '.local/config.json');
-  const configText = await boundedText(configPath, 256 * 1024);
+  const configText = await boundedText(configPath, 256 * 1024).catch(() => {
+    throw new WorkerError('EDITOR_CONFIG', `The Lean engine is not set up: ${configPath} is missing, unreadable or too large. Run npm run setup:lean in the Definograph checkout, and check statementLens.engineDirectory.`);
+  });
   const config = JSON.parse(configText) as Record<string, unknown>;
   const executable = path.join(engine, '.local/statementlens-context');
   if (typeof config.leanSysroot !== 'string' || !path.isAbsolute(config.leanSysroot)) throw new WorkerError('EDITOR_CONFIG', 'The engine Lean installation is not configured.');
@@ -265,8 +269,12 @@ export async function analyzeEditorContext(request: EditorContextRequest): Promi
       STATEMENTLENS_LEAN_SYSROOT: config.leanSysroot, STATEMENTLENS_CONTEXT_RESULT: resultFile,
     }, request.signal, request.timeoutMs);
     if (request.signal?.aborted) throw new WorkerError('CANCELLED', 'Editor analysis was cancelled.');
-    if (contextSha256 !== await hashContextExecutable(executable) || configText !== await boundedText(configPath, 256 * 1024)) throw new WorkerError('EDITOR_STALE', 'The Lean engine changed during analysis. Refresh after the build completes.');
-    const response = parseEditorResult(await boundedText(resultFile, MAX_RESULT_BYTES));
+    // A configuration that is gone or changed now means the engine changed; a missing result is the worker's fault.
+    const configAfter = await boundedText(configPath, 256 * 1024).catch(() => undefined);
+    if (contextSha256 !== await hashContextExecutable(executable) || configText !== configAfter) throw new WorkerError('EDITOR_STALE', 'The Lean engine changed during analysis. Refresh after the build completes.');
+    const response = parseEditorResult(await boundedText(resultFile, MAX_RESULT_BYTES).catch(() => {
+      throw new WorkerError('EDITOR_PROTOCOL', 'The context worker did not write a readable result within the size limit.');
+    }));
     if (response.ok && response.guidedContextContract !== GUIDED_CONTEXT_CONTRACT) {
       // Refuse the incompatible guided reading; validate raw attachments below as usual.
       response.ok = false; response.error = GUIDED_CONTEXT_MISMATCH;

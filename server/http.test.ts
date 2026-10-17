@@ -13,8 +13,8 @@ const healthy: WorkerBackend = {
   analyze: async (source) => ({ ok: true, source, diagnostics: [], tree: {} }),
 };
 
-async function withServer(run: (url: string, server: Server) => Promise<void>, worker = healthy, distDir?: string) {
-  const server = createLocalServer({ worker, port: 0, distDir });
+async function withServer(run: (url: string, server: Server) => Promise<void>, worker = healthy, distDir?: string, developmentOrigins = false) {
+  const server = createLocalServer({ worker, port: 0, distDir, developmentOrigins });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
@@ -83,7 +83,37 @@ test('permits the explicit local frontend origins and returns narrow preflight h
     assert.equal(preflight.status, 204);
     assert.equal(preflight.headers.get('access-control-allow-headers'), 'Content-Type');
     assert.equal(preflight.headers.get('access-control-allow-credentials'), null);
-  });
+  }, healthy, undefined, true);
+});
+
+test('the Vite development origins are refused unless the server runs in development mode', async () => {
+  let calls = 0;
+  await withServer(async (url) => {
+    for (const origin of ['http://localhost:5173', 'http://127.0.0.1:5173']) {
+      const result = await post(url, { source: 'True' }, { Origin: origin });
+      assert.equal(result.status, 403, origin);
+      assert.equal((await result.json()).code, 'FORBIDDEN_ORIGIN');
+      assert.equal((await fetch(`${url}/api/analyze`, { method: 'OPTIONS', headers: { Origin: origin } })).status, 403, origin);
+    }
+    assert.equal((await post(url, { source: 'True' }, { Origin: url })).status, 200);
+  }, { ...healthy, analyze: async (source) => { calls++; return { ok: true, source, diagnostics: [] }; } });
+  assert.equal(calls, 1);
+});
+
+test('a request without Origin is accepted only from the app itself, the user, or a non-browser client', async () => {
+  let calls = 0;
+  await withServer(async (url) => {
+    for (const [site, expected] of [[undefined, 200], ['same-origin', 200], ['none', 200], ['same-site', 403], ['cross-site', 403]] as const) {
+      const headers: Record<string, string> = site ? { 'Sec-Fetch-Site': site } : {};
+      const health = await fetch(`${url}/api/health`, { headers });
+      assert.equal(health.status, expected, `health, Sec-Fetch-Site ${site}`);
+      const analysis = await post(url, { source: 'True' }, headers);
+      assert.equal(analysis.status, expected, `analyze, Sec-Fetch-Site ${site}`);
+      if (expected === 403) assert.equal((await analysis.json()).code, 'FORBIDDEN_ORIGIN');
+      assert.equal((await fetch(url, { headers })).status, expected === 200 ? 404 : 403, `page, Sec-Fetch-Site ${site}`);
+    }
+  }, { ...healthy, analyze: async (source) => { calls++; return { ok: true, source, diagnostics: [] }; } });
+  assert.equal(calls, 3);
 });
 
 test('validates request encoding, JSON, source type, emptiness, and size before analysis', async () => {

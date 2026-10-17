@@ -6,6 +6,7 @@ import { examples } from '../src/examples.ts';
 import { ballGeometry, collectBinders, discoverScenes, evaluateExpression, initialScenario, sampleGraph, sliceGeometry, updateScenario } from '../src/core/index.ts';
 import { compileSemanticDocument, planViews } from '../src/semantic/index.ts';
 import type { Analysis } from '../src/core/types.ts';
+import { analysisShapeIssue } from '../src/core/analysis-shape.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backend = createWorkerBackend({ rootDir });
@@ -15,6 +16,7 @@ try {
   for (const example of examples) {
     const result = await backend.analyze(example.source);
     assert.equal(result.ok, true, `${example.id}: ${result.error ?? 'elaboration failed'}`);
+    assert.equal(analysisShapeIssue(result), undefined, `${example.id}: the browser would refuse this reply`);
     const analysis = result as unknown as Analysis;
     analyses.set(example.id, analysis);
     const scenes = discoverScenes(analysis.tree);
@@ -74,7 +76,19 @@ try {
   assert.equal(updateScenario(fixed.tree, { [fixedY.id]: 5, [laterX.id]: 0 }, laterX.id, 2)[fixedY.id], 5);
   console.log('PASS actual metrics, high-dimensional slice, function graph/mapping, and witness dependency behavior');
   checks += 1;
-  console.log(`${checks}/${examples.length + 1} native Lean-to-visualizer integration checks passed.`);
+  // The browser checks the shape of every reply before drawing it; these are the other kinds of reply it asks for.
+  const requests = [
+    ['term mode with definition previews', examples[0].source, { inputMode: 'term', previewDefinitions: true }],
+    ['declaration mode', 'Function.Injective', { inputMode: 'declaration' }],
+  ] as const;
+  for (const [label, source, options] of requests) {
+    const reply = await backend.analyze(source, undefined, options);
+    assert.equal(reply.ok, true, `${label}: ${reply.error ?? 'elaboration failed'}`);
+    assert.equal(analysisShapeIssue(reply), undefined, `${label}: the browser would refuse this reply`);
+    console.log(`PASS the browser accepts the shape of a ${label} reply`);
+    checks += 1;
+  }
+  console.log(`${checks}/${examples.length + 1 + requests.length} native Lean-to-visualizer integration checks passed.`);
 } finally {
   backend.close?.();
 }

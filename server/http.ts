@@ -132,13 +132,16 @@ export async function resolveStaticFile(distDir: string, urlPath: string): Promi
   }
 }
 
-export function createLocalServer(options: { worker: WorkerBackend; port?: number; distDir?: string }) {
+/** Vite's development server (npm run dev). Its proxy forwards the page's Origin header unchanged. */
+const DEVELOPMENT_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173'];
+
+export function createLocalServer(options: { worker: WorkerBackend; port?: number; distDir?: string; developmentOrigins?: boolean }) {
   const port = options.port ?? 4317;
   let analyzing = false;
   const server = createServer((request, response) => {
     void handle(request, response).catch((error: unknown) => {
       if (error instanceof WorkerError) sendError(response, error.status, error.code, error.message);
-      else sendError(response, 500, 'INTERNAL_ERROR', 'The local server could not complete this request.');
+      else sendError(response, 500, 'INTERNAL_ERROR', 'The local Lean service could not complete this request.');
     });
   });
   // Bound slow or incomplete requests even though this is a loopback service.
@@ -156,10 +159,14 @@ export function createLocalServer(options: { worker: WorkerBackend; port?: numbe
     }
     const origins = new Set([
       `http://127.0.0.1:${actualPort}`, `http://localhost:${actualPort}`,
-      'http://127.0.0.1:5173', 'http://localhost:5173',
+      ...(options.developmentOrigins ? DEVELOPMENT_ORIGINS : []),
     ]);
     const origin = request.headers.origin;
-    if ((origin && !origins.has(origin)) || (!origin && request.headers['sec-fetch-site'] === 'cross-site')) {
+    // Browsers leave out Origin on same-origin GET requests and on navigations, but send Sec-Fetch-Site on every
+    // request. Without Origin, accept the app's own page (same-origin), a request the user started (none), or a
+    // client that is not a browser (no header). same-site is refused: it includes every other port on this machine.
+    const fetchSite = request.headers['sec-fetch-site'];
+    if (origin ? !origins.has(origin) : fetchSite !== undefined && fetchSite !== 'same-origin' && fetchSite !== 'none') {
       request.resume();
       sendError(response, 403, 'FORBIDDEN_ORIGIN', 'Only the local Definograph app may use this service.');
       return;

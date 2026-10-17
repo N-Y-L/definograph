@@ -23,6 +23,21 @@ test('editor coordinates use UTF-16, preserve CRLF and reject surrogate halves',
 test('trust refusal happens before source or engine filesystem access', async () => {
   await assert.rejects(analyzeEditorContext({ engineDirectory: '/nonexistent', fileName: '/nonexistent/Main.lean', source: 'True', selection: { start: { line: 0, character: 0 }, end: { line: 0, character: 4 } }, workspaceTrusted: false }), /Workspace Trust/);
 });
+test('a missing engine configuration is an EDITOR_CONFIG error that says how to set the engine up, not Node\'s raw file error', async () => {
+  const temporary = await realpath(await mkdtemp(path.join(os.tmpdir(), 'definograph-missing-config-')));
+  try {
+    const project = path.join(temporary, 'project'), engine = path.join(temporary, 'engine');
+    await mkdir(project, { recursive: true });
+    await mkdir(engine, { recursive: true });
+    await writeFile(path.join(project, 'lean-toolchain'), 'leanprover/lean4:v4.28.0\n');
+    const fileName = path.join(project, 'Main.lean');
+    await writeFile(fileName, 'True\n');
+    await assert.rejects(analyzeEditorContext({ engineDirectory: engine, fileName, source: 'True', selection: { start: { line: 0, character: 0 }, end: { line: 0, character: 4 } }, workspaceTrusted: true }),
+      (error: unknown) => error instanceof WorkerError && error.code === 'EDITOR_CONFIG'
+        && error.message === `The Lean engine is not set up: ${path.join(engine, '.local/config.json')} is missing, unreadable or too large. Run npm run setup:lean in the Definograph checkout, and check statementLens.engineDirectory.`
+        && !/ENOENT|\bstat\b/.test(error.message));
+  } finally { await rm(temporary, { recursive: true, force: true }); }
+});
 test('project discovery reads standard and path dependency libraries without evaluating lakefile', async () => {
   const temporary = await mkdtemp(path.join(os.tmpdir(), 'statementlens-project-paths-'));
   try {

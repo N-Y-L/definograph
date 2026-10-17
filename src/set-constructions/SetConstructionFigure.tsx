@@ -42,7 +42,7 @@ function MembershipRegions({ model, ...interaction }: Interaction & { model: Set
     {model.regions!.filter(region => region.highlighted).map((region, index) => {
       let regionShape: ReactNode = <rect x="25" y="22" width="490" height="287" fill={empty ? `url(#${prefix}-hatch)` : '#649b9a'} fillOpacity={empty ? .52 : .22} mask={`url(#${prefix}-out-${index})`}/>;
       region.bits.forEach((inside, bit) => { if (inside) regionShape = <g clipPath={`url(#${prefix}-in-${bit})`}>{regionShape}</g>; });
-      return <g key={index} data-membership-bits={region.bits.map(bit => bit ? '1' : '0').join('')} aria-label={model.atoms.map((atom, bit) => `${region.bits[bit] ? 'in' : 'outside'} ${atom.label}`).join(', ')}>{regionShape}</g>;
+      return <g key={index} data-membership-bits={region.bits.map(bit => bit ? '1' : '0').join('')} role="img" aria-label={model.atoms.map((atom, bit) => `${region.bits[bit] ? 'in' : 'outside'} ${atom.label}`).join(', ')}>{regionShape}</g>;
     })}
     {circles.map((circle, index) => <circle key={index} cx={circle.x} cy={circle.y} r={circle.r} className="sc-set-boundary" style={{ '--sc-object': colorOf(model.atoms[index].id) } as CSSProperties} fill="none" strokeWidth="1.4" strokeDasharray="5 3"/>)}
     </g>

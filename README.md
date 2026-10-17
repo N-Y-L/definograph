@@ -65,10 +65,10 @@ Install the official Lean extension (`leanprover.lean4`) in VS Code **1.95+**. A
 ```sh
 npm ci --prefix extension --ignore-scripts
 node --import tsx scripts/verify-local-setup.ts
-npm run package --prefix extension -- --out /absolute/path/to/new/definograph-0.7.1.vsix
+npm run package --prefix extension -- --out /absolute/path/to/new/statement-lens-editor-0.7.1.vsix
 ```
 
-Choose a new output path; packaging refuses to overwrite an existing VSIX. Use **Extensions: Install from VSIX…**, then set `statementLens.engineDirectory` in VS Code **User settings** to this matching built checkout's absolute path. In a trusted Lean 4.28.0 project with built imports, run **Definograph: Visualize Selection**.
+Packaging never overwrites an existing VSIX. The version stays 0.7.1 from one packaging run to the next, so packaging to the same path a second time stops with `Refusing to overwrite …`; pass a new `--out` path, or move the old file away first. Use **Extensions: Install from VSIX…**, then set `statementLens.engineDirectory` in VS Code **User settings** to this matching built checkout's absolute path. In a trusted Lean 4.28.0 project with built imports, run **Definograph: Visualize Selection**.
 
 A selected proof opens **Statement of your selected proof**, its inferred proposition with the recorded context. **Inspect a definition in this statement** keeps the original reading alongside a searchable list of actual applications. An inspection shows its recorded result in native Lean notation when available, with individual check outcomes and exact arguments and scope in details. Notation may hide implicit arguments. An opaque or unsupported head reports its boundary. **Return to reading** restores the exact step.
 
