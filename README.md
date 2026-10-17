@@ -82,7 +82,7 @@ The invariants a change must keep, the exact checks CI runs, the native checks a
 
 ## License and credits
 
-The application is available under [Apache License 2.0](LICENSE); reused dependencies retain their own terms in [NOTICE](NOTICE). The [source-capture snapshot](vendor/DefinographCapture/README.md) is a pinned copy of this project's own foundation, a separate repository that is not public; its manifest records the commit and file hashes it was copied from. That repository had no license file at the pinned commit, and this repository does not add a license to the snapshot.
+The application is available under [Apache License 2.0](LICENSE); reused dependencies retain their own terms in [NOTICE](NOTICE). The [source-capture snapshot](vendor/DefinographCapture/README.md) is a pinned copy of this project's own foundation, a separate repository that is not public; its manifest records the commit and file hashes it was copied from. The snapshot is licensed under the Apache License 2.0 as well (its own [LICENSE](vendor/DefinographCapture/LICENSE)).
 
 The 0.7 prototype was developed by Codex. The architecture decision and further development are by Claude. Both worked under the supervision of Neil Yuanting Li.
 

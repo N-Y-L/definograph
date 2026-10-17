@@ -32,5 +32,6 @@ From the application root, run the portable checks without Lean or downloads:
 node --test scripts/source-capture-dependency.test.mjs
 ```
 
-No upstream license file was present at this commit. No license is added to
-this snapshot.
+This snapshot is licensed under the Apache License 2.0 (`LICENSE` in this
+directory) by its copyright holder, Neil Yuanting Li. The foundation repository
+had no license file at the pinned commit.
