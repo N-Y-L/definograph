@@ -24,6 +24,13 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     await writeFile(path.join(engine, 'dist/index.html'), '<html><head></head><body><script type="module" src="./assets/app.js"></script></body></html>');
     let configuredEngine = engine;
     const pending: {request:any;resolve:(value:any)=>void}[] = [];
+    // Waits until the controller has handed its request to the fake backend. A fixed
+    // 5 ms delay was too short on a slow CI runner, so poll for up to two seconds.
+    const waitForRequest = async () => {
+      await tick();
+      for (let waited = 0; pending.length === 0 && waited < 400; waited++) await tick();
+      assert.ok(pending.length > 0, 'the controller sent no request to the backend within two seconds');
+    };
     const commands = new Map<string,()=>Promise<void>>();
     const listeners: Record<string,Function> = {};
     const messages: any[] = [];
@@ -66,7 +73,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     assert.equal(pending.length,0,'incompatible browser must not start native analysis');
     assert.equal(errors.length,2);
     assert.ok(errors.every(error=>error.includes('incompatible guided context')));
-    const ready = receiver!({type:'statementlens.ready',guidedContextContract:GUIDED_CONTEXT_CONTRACT}); await tick();
+    const ready = receiver!({type:'statementlens.ready',guidedContextContract:GUIDED_CONTEXT_CONTRACT}); await waitForRequest();
     assert.equal(messages.at(-1).phase,'analyzing');
     const oldRequest = pending.shift()!;
     a.version = 2; listeners.change!({document:a,contentChanges:[{}]});
@@ -75,7 +82,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     oldRequest.resolve({ok:true,diagnostics:[]}); await ready;
     assert.equal(messages.filter(message=>message.type==='statementlens.analysis').length,0);
     editorA.selection = new Range(0,9,0,13);
-    const refresh = receiver!({type:'statementlens.refresh',expansion:{constants:['Custom'],maxDepth:2}}); await tick();
+    const refresh = receiver!({type:'statementlens.refresh',expansion:{constants:['Custom'],maxDepth:2}}); await waitForRequest();
     const fresh = pending.shift()!;
     assert.equal(fresh.request.selection.start.character,9);
     assert.deepEqual(JSON.parse(JSON.stringify(fresh.request.expansion)),{constants:['Custom'],maxDepth:2});
@@ -88,7 +95,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     assert.equal(fresh.request.document.version, 2);
     editorA.selection = new Range(0,10,0,14); listeners.selection!({textEditor:editorA});
     assert.equal(messages.at(-1).phase,'stale','selection changes clear the source/check attachment');
-    const failedReading = receiver!({type:'statementlens.refresh'}); await tick();
+    const failedReading = receiver!({type:'statementlens.refresh'}); await waitForRequest();
     const retained = pending.shift()!;
     const snapshot = {schema:'control-only-snapshot'}, origin = {kind:'control-only-origin'};
     retained.resolve({ok:false,error:'guided export failed',diagnostics:[],sourceSnapshot:snapshot,sourceSnapshotOrigin:origin}); await failedReading;
@@ -108,7 +115,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     };
     const parentId = '550e8400-e29b-41d4-a716-446655440000';
     const establishParent = async () => {
-      const call = receiver!({type:'statementlens.refresh'}); await tick();
+      const call = receiver!({type:'statementlens.refresh'}); await waitForRequest();
       const current = pending.shift()!, result = sourceResult(current.request,parentId);
       current.resolve(result); await call; return {current,result};
     };
@@ -123,7 +130,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
       {...occurrenceCommand,snapshot:parent.result.sourceSnapshot}, {...occurrenceCommand,fileName:b.fileName},
     ]) { await receiver!(invalid); assert.equal(pending.length,0,'webview cannot replace host parent/file or send a stale path'); }
     assert.equal(errors.length,errorCount+5);
-    const followupCall = receiver!(occurrenceCommand); await tick();
+    const followupCall = receiver!(occurrenceCommand); await waitForRequest();
     const followup = pending.shift()!;
     assert.equal(parent.current.request.signal.aborted,true,'follow-up uses the ordinary new request lifecycle');
     assert.equal(followup.request.occurrence.snapshot,parent.result.sourceSnapshot);
@@ -145,7 +152,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
       {...exposureCommand,parentCaptureId:parentId}, {...exposureCommand,target:'body'}, {...exposureCommand,target:{toString:()=> 'term'}},
       {...exposureCommand,term:['const','forged']}, {...exposureCommand,fileName:b.fileName}, {...exposureCommand,origin:next.sourceSnapshotOrigin},
     ]) { await receiver!(invalid); assert.equal(pending.length,0,'head exposure takes only current identity and target'); }
-    const exposeCall = receiver!(exposureCommand); await tick();
+    const exposeCall = receiver!(exposureCommand); await waitForRequest();
     const exposureRequest = pending.shift()!;
     assert.equal(exposureRequest.request.occurrence,undefined);
     assert.equal(exposureRequest.request.headExposure.snapshot,next.sourceSnapshot);
@@ -176,7 +183,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
       {...focusCommand,path:['metadata']}, {...focusCommand,path:['lamBody']}, {...focusCommand,path:new Array(1)}, {...focusCommand,expectedSelected:occurrence.checking.selected},
       {...focusCommand,origin:next.sourceSnapshotOrigin}, {...focusCommand,type:'statementlens.exposeFocusedHead',path:undefined,target:'term'},
     ]) { await receiver!(invalid); assert.equal(pending.length,0,'continuation cannot forge history, fields or step kind'); }
-    const focusCall = receiver!(focusCommand); await tick();
+    const focusCall = receiver!(focusCommand); await waitForRequest();
     const focusRequest = pending.shift()!;
     assert.equal(focusRequest.request.decomposition.seed.record,exposureRecord);
     assert.equal(focusRequest.request.decomposition.occurrence,occurrence);
@@ -203,13 +210,13 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     assert.equal(Object.isFrozen(focusRecord.checking.steps),true);
     const exposeFocused = {type:'statementlens.exposeFocusedHead',parentCaptureId:next.sourceSnapshotOrigin.captureId,
       previousCaptureId:focusRecord.captureId,parentStepIndex:1,target:'type'};
-    const refusalCall = receiver!(exposeFocused); await tick();
+    const refusalCall = receiver!(exposeFocused); await waitForRequest();
     const refusalRequest = pending.shift()!;
     assert.equal(refusalRequest.request.decomposition.attempts[0].record,focusRecord);
     refusalRequest.resolve({...sourceResult(refusalRequest.request,'bb0e8400-e29b-41d4-a716-446655440000'),sourceDecompositionUnavailable:'No supported head.'}); await refusalCall;
     assert.equal(messages.at(-1).decompositionUnavailable,'No supported head.');
     assert.equal(messages.at(-1).decompositions.length,1,'native omission preserves every retained attempt');
-    const backtrackCall = receiver!(focusCommand); await tick();
+    const backtrackCall = receiver!(focusCommand); await waitForRequest();
     const backtrackRequest = pending.shift()!;
     assert.equal(backtrackRequest.request.decomposition.previousCaptureId,exposureRecord.captureId);
     assert.equal(backtrackRequest.request.decomposition.attempts.length,1,'earlier-prefix replay preserves existing history');
@@ -218,7 +225,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     backtrackRequest.resolve({...secondFresh,sourceDecomposition:secondRecord}); await backtrackCall;
     assert.equal(messages.at(-1).decompositions.length,2);
     assert.equal(messages.at(-1).decompositions[0].record,focusRecord,'earlier suffix stays immutable');
-    const staleExposureCall = receiver!(exposeFocused); await tick();
+    const staleExposureCall = receiver!(exposeFocused); await waitForRequest();
     const staleExposure = pending.shift()!;
     a.version++; listeners.change!({document:a,contentChanges:[{}]});
     assert.equal(staleExposure.request.signal.aborted,true);
@@ -226,7 +233,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     staleExposure.resolve({...secondFresh,sourceDecomposition:secondRecord}); await staleExposureCall;
     assert.equal(messages.length,priorExposureMessages,'late continuation restores no history after an edit');
     await establishParent();
-    const cancelledCall = receiver!({...occurrenceCommand,parentCaptureId:parentId,path:[]}); await tick();
+    const cancelledCall = receiver!({...occurrenceCommand,parentCaptureId:parentId,path:[]}); await waitForRequest();
     const cancelled = pending.shift()!;
     a.version++; listeners.change!({document:a,contentChanges:[{}]});
     assert.equal(cancelled.request.signal.aborted,true);
@@ -236,7 +243,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     await receiver!({...occurrenceCommand,parentCaptureId:next.sourceSnapshotOrigin.captureId});
     assert.equal(pending.length,0,'document revision invalidates the retained parent');
     await establishParent();
-    const boundedOccurrenceCall = receiver!({...occurrenceCommand,path:[]}); await tick();
+    const boundedOccurrenceCall = receiver!({...occurrenceCommand,path:[]}); await waitForRequest();
     const boundedOccurrenceRequest = pending.shift()!;
     const boundedSource = sourceResult(boundedOccurrenceRequest.request,'dd0e8400-e29b-41d4-a716-446655440000');
     const boundedOccurrence = intoContext({...occurrence,captureId:boundedSource.sourceSnapshotOrigin.captureId,path:[]});
@@ -244,7 +251,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     const boundedFocus = {type:'statementlens.focusExposedPart',parentCaptureId:boundedOccurrence.captureId,
       previousCaptureId:boundedOccurrence.captureId,parentStepIndex:0,path:[]};
     for (let index = 0; index < 8; index++) {
-      const call = receiver!(boundedFocus); await tick();
+      const call = receiver!(boundedFocus); await waitForRequest();
       const request = pending.shift()!;
       assert.equal(request.request.decomposition.attempts.length,index);
       if (index === 7) {
@@ -299,7 +306,7 @@ test('extension controller orders host messages, cancels stale analysis, and gua
     showDocument = ()=>new Promise(resolve=>{finishReveal=resolve;});
     const reveal = receiver!({type:'statementlens.reveal',range:{start:{line:0,character:1},end:{line:0,character:2}}});
     vscode.window.activeTextEditor = editorB; vscode.window.visibleTextEditors=[editorB];
-    const newCommand = command(); await tick();
+    const newCommand = command(); await waitForRequest();
     finishReveal(editorA); await reveal;
     assert.equal(reveals,0,'a new document must invalidate the awaited reveal');
     pending.shift()!.resolve({ok:true,diagnostics:[]}); await newCommand;
