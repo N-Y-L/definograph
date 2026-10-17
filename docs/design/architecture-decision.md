@@ -226,7 +226,7 @@ A template may show only the image of a former or a certified reading, or a fact
     3. *Benefit:* on the long items P is more accurate than F, or as accurate and faster; otherwise the recorded result is "correct renderer, no reading benefit".
     4. *Soundness:* a surplus claim by ≥2 readers on one picture blocks until a template or convention changes and AC4 gains that predicate.
 
-G1 restores the comparison with the typeset statement that `docs/roadmap.md:31` requires and tnf-specification.md dropped. With n=6 it can falsify the design, not prove it. Reader sessions may need approval from course staff before they run.
+G1 restores the comparison with the typeset statement that `docs/roadmap.md:31` requires and tnf-specification.md dropped. With n=6 it can falsify the design, not prove it. Reader sessions may need approval before they run.
 
 **Cost [inf].** Lean 1,100–1,500 lines (tnf-specification.md's 700–900 plus parent recursion, instance export, certification), TypeScript 2,800–3,600, tests about 600: roughly 3–4 months for one person. On a shorter term, cut to X1–X5 with Contain and Order; never cut G0 or G1.
 
@@ -241,7 +241,7 @@ G1 restores the comparison with the typeset statement that `docs/roadmap.md:31` 
 - **Recursion** folds at its first recursive head; quotients and `HEq` fold.
 - **Index arithmetic** needs a ninth, coordinate former; spectral sequences are out of scope, though not impossible.
 - **Instance diamonds** stay unfused.
-- **Short statements:** the formula may simply be faster. The formal statement stays beside every diagram (when this decision was written, `AGENTS.md` made the default "a visual sequence with its logical overview alongside"; it is now the statement's skeleton followed by the sequence), and G1 decides where the diagram earns its place.
+- **Short statements:** the formula may simply be faster. The formal statement stays beside every diagram (when this decision was written, `AGENTS.md` made the default "a visual sequence with its logical overview alongside"; the reader's default is now the statement's skeleton followed by the sequence, as [guided reading](../guided-reading.md) describes), and G1 decides where the diagram earns its place.
 
 ## 9. Research risk versus engineering work
 

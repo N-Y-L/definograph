@@ -1,6 +1,6 @@
 # Definograph website
 
-The tutorial, examples and reference at [definograph.com](https://definograph.com). The site builds to static HTML and CSS. Its diagrams are recorded output from the real reader, with the exact Lean source beside each figure. Every figure is the reader's own HTML and SVG, inline in its page: the site publishes no screenshots or other pixel images. It runs no Lean and ships no JavaScript to the browser.
+The tutorial, examples and reference at [definograph.com](https://definograph.com). The site builds to static HTML and CSS. Its diagrams are recorded output from the real reader, with the exact Lean source beside each figure. The figures were recorded from the reader of 2 October 2026, before the statement skeleton and the closed proof leaf; the Setup page says so and links to that revision. They have not been recorded again since. Every figure is the reader's own HTML and SVG, inline in its page: the site publishes no screenshots or other pixel images. It runs no Lean and ships no JavaScript to the browser.
 
 For the reader itself, use the [project README](https://github.com/N-Y-L/definograph#readme).
 
@@ -37,5 +37,7 @@ See [recorded-view maintenance](docs/recorded-views.md) for the import format, r
 ## Publish
 
 Deploy **only `dist/`**, including `_headers` and `_redirects`. `wrangler.jsonc` describes the existing Cloudflare Worker and static-asset routing. Use a frozen, checked build; verify the live pages, downloads, redirects and custom 404 after deployment. Retain the previous deployment for rollback.
+
+With Wrangler signed in to the account that owns the Worker, deploy from this directory with `npx --yes wrangler@4.149.0 deploy` right after a passing `npm run check`, which rebuilds `dist/`. `npx --yes wrangler@4.149.0 rollback` restores the previous version. Wrangler is not a dependency of this package, so the version is named here.
 
 The source manifest records public asset integrity and recording dates. Private capture receipts, raw metadata, credentials, local paths and Git history are not part of a website source export. The website does not provide a qualified installer or Marketplace release.

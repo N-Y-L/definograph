@@ -6,7 +6,7 @@ This is deterministic reflection of the checked mathematical definition. It does
 
 ## Native record view
 
-For each bound value, the exporter asks Lean's `getStructureInfo?` for its type. If the type is a small safe alias, it follows at most two type-head definitions and checks definitional equality. It then uses Lean's ordered direct-field metadata and `mkProjection` to form each exact projected value. Both the projected expression and its inferred type are checked by the kernel before export.
+For each bound value, the exporter asks Lean's `getStructureInfo?` for its type. If the type is a small safe alias, it follows at most two type-head definitions and checks definitional equality with the elaborator (`Meta.isDefEq`). It then uses Lean's ordered direct-field metadata and `mkProjection` to form each exact projected value. Both the projected expression and its inferred type are checked by the kernel before export.
 
 A field's kind is determined by whether its type is a proposition. Data fields retain their projected value, type expression, and structural type descriptor. Law fields also receive the ordinary logical statement tree, in the owning value's lexical context. The projection itself is the evidence supplied by that structure value; its law is not a globally asserted theorem. This also applies to law-only records in `Prop`, whose proof fields remain scoped to the local hypothesis.
 

@@ -1,63 +1,52 @@
 # Documentation map
 
-Start with [current status](status.md), then read [architecture](architecture.md)
-and [roadmap](roadmap.md). This is a research implementation. Extracting a
-definition, preserving its logic, and explaining its mathematical meaning are
-different levels of progress.
+One line per page. Extracting a definition, preserving its logic and explaining
+its mathematical meaning are different levels of progress; the pages below say
+which one they describe. A discrepancy between a page and the code is a
+documentation bug to fix, not permission to invent support.
 
-## Current direction and contracts
+## Start here
 
-| Document | Use it for |
-| --- | --- |
-| [Status](status.md) | What exists, principal gaps, code entry points, and validation commands |
-| [Current architecture](architecture.md) | Existing implementation, code paths, and limitations |
-| [Architecture decision](design/architecture-decision.md) | Adopted design: fundamental objects, decomposition, composition algebra, meaning/presentation boundary, first vertical slice and reading gates |
-| [TNF specification](design/tnf-specification.md) | Round-1 design specification that the decision amends |
-| [Architecture reset](design/architecture-reset.md) | Earlier proposal and 0.7 findings; superseded by the decision where they differ |
-| [Roadmap](roadmap.md) | Next general capabilities and acceptance criteria |
-| [Reading research](reading-research.md) | Checked sources on recognizing structure in a drawing, misreading statements, proved statements that miss the intention, and existing tools |
-| [Lean contract](lean-contract.md) | Standalone extraction, expression metadata, kernel checks, setup, and limits |
-| [Editor integration](editor-integration.md) | Actual project context, source selection, execution trust, and host limits |
-| [Editor source snapshots](editor-source-snapshots.md) | Exact original/prepared frames, chosen occurrence checks, saved records and revision invalidation |
-| [Editor definition exposure](editor-definition-exposure.md) | One safe definition body, original/result readings, exact trace and separate typing/conversion outcomes |
-| [Reader relations](reader-relations.md) | Prefix-specific provenance, formation, supply, whole-attempt outcomes and passive navigation |
-| [Saved packet reader](packet-reader.md) | Separate packet import, exact syntax/readback and unverified reported outcomes; not an editor-snapshot importer |
-| [Structure reflection](structure-reflection.md) | Direct record fields, projected identities, scoped laws, and export budgets |
-| [Semantic contract](semantic-contract.md) | Objects, relations, scope, recognition, and representation fidelity |
-| [Guided reading](guided-reading.md) | Ordered constructions and retained logical context |
-| [Coverage corpus](coverage-corpus.md) | Hand-reviewed expectations and what their results do not measure |
-| [Verification](verification.md) | Dated local results, environments, and unverified workflows |
-| [Axiom policy](../scripts/axiom-policy.json) | The axioms the proved core may use, its listed exceptions and its certificate theorems; checked by `npm run test:axioms` |
-| [Contributing](../CONTRIBUTING.md) / [agent guide](../AGENTS.md) | Change workflow, isolation, and handoff rules |
+- [Principles](principles.md): what Definograph is for and the standard every change is held to.
+- [Status](status.md): what exists, what remains unsolved, code entry points, validation commands and known failing checks.
+- [Architecture](architecture.md): the code that exists, its data flow, code map and trust boundaries.
+- [Roadmap](roadmap.md): the next general capabilities and their acceptance gates.
+- [Agent guide](../AGENTS.md) and [contributing](../CONTRIBUTING.md): invariants, the exact checks, how to add a test and the commit rules.
 
-Contract documents grew alongside the implementation and may retain historical
-version labels. Use current code and the status page to distinguish implemented
-behavior from proposals; the editor guide describes the current trusted-project path. A discrepancy is a
-documentation issue to fix, not permission to invent support.
+## Contracts
 
-## Component details and references
+- [Lean contract](lean-contract.md): standalone extraction, expression metadata, kernel checks, setup and limits.
+- [Editor integration](editor-integration.md): actual project context, source selection, execution trust and host limits.
+- [Editor source snapshots](editor-source-snapshots.md): exact original and prepared frames, chosen occurrence checks, saved records and revision invalidation.
+- [Editor definition exposure](editor-definition-exposure.md): one safe definition body, original and result readings, exact trace and separate typing and conversion outcomes.
+- [Reader relations](reader-relations.md): prefix-specific provenance, formation, supply, whole-attempt outcomes and passive navigation.
+- [Saved packet reader](packet-reader.md): separate packet import, exact syntax and readback, and unverified reported outcomes; not an editor-snapshot importer.
+- [Structure reflection](structure-reflection.md): direct record fields, projected identities, scoped laws and export budgets.
+- [Semantic contract](semantic-contract.md): objects, relations, scope, recognition and representation fidelity.
+- [Guided reading](guided-reading.md): the statement skeleton, identity colour, the step sequence and the optional construction graph.
+- [Coverage corpus](coverage-corpus.md): hand-reviewed expectations and what their results do not measure.
+- [Axiom policy](../scripts/axiom-policy.json): the axioms the proved core may use, its listed exceptions and its certificate theorems; checked by `npm run test:axioms`.
 
-- [Compositional sets](set-constructions.md)
-- [Graph constraints](graph-semantics.md)
-- [Restricted maps](restricted-semantics.md)
-- [LeanTeX integration](leantex-integration.md)
-- [Visual-method research and references](visual-method.md)
-- [Third-party notices](../NOTICE)
+## Components
 
-These describe specific capabilities and sources. They are not a checklist of
-mathematical names to exhaust.
+- [Compositional sets](set-constructions.md): union, intersection, difference and complement, read compositionally.
+- [Graph constraints](graph-semantics.md): canonical Mathlib simple-graph adjacency, colourings and graph maps.
+- [Restricted maps](restricted-semantics.md): maps with inverse laws on designated regions, such as `PartialEquiv`.
+- [LeanTeX integration](leantex-integration.md): the pinned LeanTeX printer behind the optional notation.
 
-## Historical iteration records
+These describe specific capabilities. They are not a checklist of mathematical
+names to exhaust.
 
-The following preserve the reasoning and acceptance evidence of earlier work.
-They are not the current roadmap, and their claims are limited to the tested
-iteration:
+## References
 
-- [Statement-first review](statement-first-review.md)
-- [Atlas iteration](atlas-iteration.md)
-- [Graph iteration](graph-iteration.md)
-- [Restricted-map iteration](restricted-iteration.md)
-- [Generic decomposition iteration](decomposition-iteration.md)
+- [Reading research](reading-research.md): checked sources on recognizing structure in a drawing, misreading statements, proved statements that miss the intention, and existing tools.
+- [Third-party notices](../NOTICE): reused code, runtime dependencies and design inspiration, kept apart.
 
-Generated native corpus reports and local build logs remain in ignored
-`.local/`; they are not reproducible source files and should not be committed.
+## Records
+
+- Design records: the [architecture decision](design/architecture-decision.md), the [TNF specification](design/tnf-specification.md) it amends and the earlier [architecture reset](design/architecture-reset.md). Each opens with a status line; none describes built code.
+- [History](history/README.md): frozen records of earlier work, including the closed verification record. They describe the code of their day.
+
+Generated native corpus reports and local build logs stay in the ignored
+`.local/` directory; they are not reproducible source files and are not
+committed.

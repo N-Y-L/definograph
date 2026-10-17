@@ -1,48 +1,41 @@
 # Definograph
 
-**Read a Lean statement through its objects, relationships and scope.** Definograph is a local mathematical statement reader with linked diagrams, a guided sequence and a VS Code companion. It uses Lean's actual types and definitions, keeps unsupported expressions visible, and separates symbolic structure from optional numerical examples.
+**Definograph draws the logical structure of a Lean 4 statement: what is chosen, in what order, under which assumptions, and what must hold.** It is for checking that a statement says what was meant. It reads statements, not proofs.
 
-[Website and examples](https://definograph.com/) · [Tutorial](https://definograph.com/learn/) · [Current capabilities](docs/status.md) · [Setup guide](docs/editor-integration.md)
+Research prototype. Lean 4.28.0 only. Runs locally; the full setup has been exercised on macOS arm64. The website shows recorded examples and runs no Lean.
 
-Definograph is an experimental research implementation. It does not yet explain arbitrary mathematics. Lean's typing checks do not prove the submitted proposition or certify its visualization.
+[Recorded examples](https://definograph.com/examples/) (no install) · [Tutorial](https://definograph.com/learn/) · [Principles](docs/principles.md) · [Status](docs/status.md) · [Contributing](CONTRIBUTING.md)
 
-## See the reader
+## How it reads a statement
 
-- **Follow the logic.** The whole statement is drawn once as nested frames, above the steps; then read quantifiers, assumptions and conclusions in sequence.
-- **Trace an object.** Highlight its visible occurrences and inspect maps, inputs and relationships.
-- **Inspect structure.** Read direct record fields and laws. In VS Code, [inspect a definition](docs/editor-definition-exposure.md#inspect-from-the-statement) with its actual arguments and scope, then return to the same reading step. Bounded histories retain the recorded checks.
-- **Explore supported examples.** View selected set, graph, restricted-map and metric relations. Numerical samples remain separate from the statement's assertions.
+`∀ x, ∃ y, x < y` is drawn as a box inside a rail: `y` is chosen after `x` and may depend on it. `∃ y, ∀ x, x < y` is a rail inside a box: one `y` serves every `x`.
 
-The reader uses pure white base surfaces in light mode and pure black in dark mode. The standalone reader follows the system theme; the VS Code companion follows the editor theme. Mathematical regions keep their semantic colors, and dense diagrams scroll while preserving readable labels.
-
-Where available, **Construction graph** shows a clause’s supplied operations and ports within its logical frames. Guided reading and containment remain the default. Supported math labels use local KaTeX; their source identities stay separate. See the [reading guide](docs/guided-reading.md).
-
-For example, enter this statement term:
-
-```lean
-∀ x : ℝ, ∃ y : ℝ, x < y
-```
-
-Here the choice of `y` may depend on the earlier `x`. Reversing the quantifiers asks for one `y` that works for every `x`. The reader makes this dependency visible; it does not supply a witness or a proof. See the [recorded examples](https://definograph.com/examples/) for broader views and their exact source statements.
+That drawing of the whole statement, the skeleton, comes first; below it the reader takes the quantifiers, assumptions and conclusions one step at a time. It reads Lean's elaborated term, so it shows what the source text hides. A part it cannot interpret stays on screen as plain structure, and it never supplies a witness or a proof. Selecting an object highlights its occurrences. In VS Code you can [inspect a definition](docs/editor-definition-exposure.md#inspect-from-the-statement) with its actual arguments and scope and return to the same step. Numerical examples, where supported, are kept apart from what the statement asserts. The [reading guide](docs/guided-reading.md) has the details.
 
 <img src="website/source-assets/views/web-light-captures-20261002/light-depends-app-context/context@2x.png" width="720" alt="Definograph's Choices view lists an arbitrary x followed by a candidate y that may depend on x.">
 
-*Recorded Choices view: `y` may depend on the earlier `x`; its existence remains an obligation. [Exact Lean source](website/source-assets/views/web-light-captures-20261002/light-depends-app-context/source.lean).*
+*Recorded Choices view of `∀ x : ℝ, ∃ y : ℝ, x < y`: `y` may depend on the earlier `x`; its existence remains an obligation. [Exact Lean source](website/source-assets/views/web-light-captures-20261002/light-depends-app-context/source.lean). Rendered on 2 October 2026 from retained Lean 4.28.0 results, before the statement skeleton was added above the steps. Lean was not rerun; the original native acquisition date is unavailable.*
 
-<details>
-<summary>Trace an object through a statement about two map paths</summary>
+## What is proved, what is checked, what is only tested
 
-<img src="website/source-assets/views/web-light-captures-20261002/light-paths-identity-trace/context@2x.png" width="640" alt="The selected object x is linked across a reading step, typed maps and the equation g(f(x)) = h(x).">
+Lean's kernel accepting a statement as well typed does not prove the statement, and nothing yet certifies the drawing. The [principles](docs/principles.md) give the standard; this is where the code stands.
 
-*The dotted thread links visible occurrences of the selected `x` across the guided step and full statement. The thread's route carries no mathematical meaning. [Exact Lean source](website/source-assets/views/web-light-captures-20261002/light-paths-identity-trace/source.lean).*
+| Claim | How it is established |
+| --- | --- |
+| The statement being read is well typed, and so is each definition the reader opens and each record field it projects | Lean's kernel at run time: `checkWithKernel` in the browser worker and in the editor's guided reading. The editor's **Source data** checks hand each declaration to the kernel under a resource bound |
+| An opened definition is definitionally equal to what it replaces | In the guided reading, Lean's elaborator (`Meta.isDefEq`), not the kernel. In the editor's **Expose definition head**, a kernel-checked declaration |
+| Every admitted Lean expression has a view that decodes back to it, and every view has a shared graph | Proved in Lean (`admitted_view_coverage`, `every_view_has_graph` in [`vendor/DefinographCapture`](vendor/DefinographCapture/README.md)). That code is linked only into the editor's context program; the guided reading does not run on it, and nothing is proved from the graph to the picture |
+| The proved core declares no axiom and uses none outside `propext`, `Quot.sound` and `Classical.choice`; its theorems use only `propext` and `Quot.sound`, apart from listed theorems whose statements already depend on `Classical.choice`; its compiled modules replay through the kernel | `npm run test:axioms`, against [`scripts/axiom-policy.json`](scripts/axiom-policy.json). It needs the built native engine and is not run in CI |
+| A drawing reads back to the structure it was drawn from | The statement skeleton: unit and native tests, not checked at run time. The structural drawings of **Source data** and of the saved-packet reader: read back and compared with their input before they are shown. The other guided figures: no readback |
+| The axioms a selected term depends on | Recorded with each editor check and listed; not yet classified as clean or not. The browser path records none |
+| The rest of the drawing, and the code that carries the kernel's verdict to the screen | Tested TypeScript; not proved |
+| The drawing helps a reader | Not measured yet |
 
-</details>
+## Try it
 
-Rendered on 2 October 2026 from retained Lean 4.28.0 results, before the statement skeleton was added above the steps. Lean was not rerun; the original native acquisition date is unavailable.
+**Without installing anything:** the [recorded examples](https://definograph.com/examples/) and the [tutorial](https://definograph.com/learn/) show the reader's own drawings with the exact Lean source beside each. They were recorded on 2 October 2026, before the skeleton.
 
-## Run locally
-
-Requirements: **Node.js 22.12+** and an existing **Lean 4.28.0** executable. Retained setup evidence covers macOS arm64 with Node.js 24.18.1. Linux, WSL and minimum-version compatibility remain unqualified; native Windows linking is not implemented.
+**Locally:** you need **Node.js 22.12+** and an existing **Lean 4.28.0** executable. With `--download`, setup fetches the pinned mathlib's dependencies into the ignored `.local/` directory, which can use several GB. Retained setup evidence covers macOS arm64 with Node.js 24.18.1. Linux, WSL and minimum-version compatibility remain unqualified; native Windows linking is not implemented.
 
 ```sh
 git clone https://github.com/N-Y-L/definograph.git
@@ -54,13 +47,13 @@ npm run setup:lean -- \
 npm run dev
 ```
 
-Open [localhost:5173](http://127.0.0.1:5173), choose a statement, and follow **Next**. **Lean source** accepts a statement term, not a file of declarations. For a production build, run `npm run build` followed by `npm start`, then open [localhost:4317](http://127.0.0.1:4317).
+Open [localhost:5173](http://127.0.0.1:5173), choose a statement, and follow **Next**, or enter a statement term such as `∀ x : ℝ, ∃ y : ℝ, x < y`. **Lean source** accepts a statement term, not a file of declarations. For a production build, run `npm run build` followed by `npm start`, then open [localhost:4317](http://127.0.0.1:4317).
 
-Setup pins mathlib to `8f9d9cff6bd728b17a24e163c9402775d9e6a365`. `--download` fetches its dependencies into the ignored `.local/` directory and can use several GB. Alternatively, pass `--packages /absolute/path/to/a/built/.lake/packages` for an existing matching cache. Setup does not install Lean or change Elan defaults. See the [setup contract](docs/lean-contract.md) and [installation qualification](docs/editor-integration.md#installation-qualification).
+Setup pins mathlib to `8f9d9cff6bd728b17a24e163c9402775d9e6a365`. Instead of `--download`, pass `--packages /absolute/path/to/a/built/.lake/packages` for an existing matching cache. Setup does not install Lean or change Elan defaults. See the [setup contract](docs/lean-contract.md) and [installation qualification](docs/editor-integration.md#installation-qualification).
 
 ### Use VS Code
 
-Install the official Lean extension (`leanprover.lean4`) in VS Code **1.95+**. After building and configuring the reader above, run:
+The companion reads a selection in your own trusted Lean 4.28.0 project, against that project's built imports. Install the official Lean extension (`leanprover.lean4`) in VS Code **1.95+**. After `npm run setup:lean` and `npm run build` above, run:
 
 ```sh
 npm ci --prefix extension --ignore-scripts
@@ -68,11 +61,7 @@ node --import tsx scripts/verify-local-setup.ts
 npm run package --prefix extension -- --out /absolute/path/to/new/statement-lens-editor-0.7.1.vsix
 ```
 
-Packaging never overwrites an existing VSIX. The version stays 0.7.1 from one packaging run to the next, so packaging to the same path a second time stops with `Refusing to overwrite …`; pass a new `--out` path, or move the old file away first. Use **Extensions: Install from VSIX…**, then set `statementLens.engineDirectory` in VS Code **User settings** to this matching built checkout's absolute path. In a trusted Lean 4.28.0 project with built imports, run **Definograph: Visualize Selection**.
-
-A selected proof opens **Statement of your selected proof**, its inferred proposition with the recorded context. A section `variable` that the enclosing declaration does not take, or may not take, is listed under the title instead of drawn. **Inspect a definition in this statement** keeps the original reading alongside a searchable list of actual applications. An inspection shows its recorded result in native Lean notation when available, with individual check outcomes and exact arguments and scope in details. Notation may hide implicit arguments. An opaque or unsupported head reports its boundary. **Return to reading** restores the exact step.
-
-The VSIX contains the extension controller only. The reader assets, native engine, toolchain and compiled imports remain separate prerequisites. Source is available here; there is no qualified one-click installer or Marketplace release. The [editor guide](docs/editor-integration.md) covers assembly, supported journeys and failure states. Retained `StatementLens` module names and `statementLens.*` settings are compatibility identifiers.
+Install the file with **Extensions: Install from VSIX…**, set `statementLens.engineDirectory` in VS Code **User settings** to this checkout's absolute path, select a proposition or a proof, and run **Definograph: Visualize Selection**. Editor mode re-elaborates the whole active buffer, so Lean commands in it can run code; it is not a security sandbox. The [editor guide](docs/editor-integration.md) covers packaging, the supported journeys, the trust model and the failure states.
 
 ## Architecture and boundaries
 
@@ -83,25 +72,13 @@ Lean term or trusted editor buffer
   → guided reading, diagrams and explicit interpretation gaps
 ```
 
-The standalone reader, editor inspections, saved packets and raw source-data view have different contracts. The [reader relation table](docs/reader-relations.md) and [documentation index](docs/README.md) explain their scope. Imported snapshots remain unverified records; a stored outcome does not certify the current source.
-
-Editor mode re-elaborates the **whole trusted active buffer**. Lean commands and elaborators can execute code; this is not a security sandbox. Analysis runs locally without a model API or cloud service. See the [execution boundaries](docs/editor-integration.md#execution-and-isolation-limits).
+The standalone reader, editor inspections, saved packets and raw source-data view have different contracts. The [reader relation table](docs/reader-relations.md) and [documentation map](docs/README.md) explain their scope. Imported snapshots remain unverified records; a stored outcome does not certify the current source. Analysis runs locally without a model API or cloud service; see the [execution boundaries](docs/editor-integration.md#execution-and-isolation-limits).
 
 The [architecture decision](docs/design/architecture-decision.md) and [roadmap](docs/roadmap.md) describe the compositional engine still to be completed. Their acceptance gates are research goals, not established universal coverage. The [code map](docs/architecture.md) describes the implementation.
 
 ## Develop
 
-Portable checks need no Lean setup or download:
-
-```sh
-npm run build
-npm run check:reader-drivers
-npm test
-npm run test:server
-npm run test:source-dependency
-```
-
-With the pinned native worker configured, `npm run check` adds the native integration suites. With extension dependencies installed, `npm run check:extension` checks and packages the controller. See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidance. The public website has a separate, reproducible build in [website/README.md](website/README.md).
+The invariants a change must keep, the exact checks CI runs, the native checks and the commit rules are in the [agent guide](AGENTS.md#checks); [CONTRIBUTING.md](CONTRIBUTING.md) says which contributions help. The public website has a separate, reproducible build in [website/README.md](website/README.md).
 
 ## License and credits
 

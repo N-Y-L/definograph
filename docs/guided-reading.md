@@ -12,6 +12,7 @@ The skeleton is drawn from the region tree that the step sequence and the full r
 - **A hypothesis** stands beside a small Given mark. The marks are one column and the hypotheses the next. The conclusion steps in under the hypotheses, so it is always further in than the hypotheses that govern it.
 - **What is negated** hangs from a dashed rail as heavy as a witness's box, so it is not taken for an assertion. Conjunction and alternatives still share one frame and differ by glyph and word.
 - **A region beyond the display bound** is one stub that names its first row and counts the rows it stands for. Selecting it brings it into view.
+- **A binder that comes from inside an opened definition** is not yet marked as such and is drawn among the statement's own binders.
 
 The drawing reads back. `readSkeleton` in `src/visual/skeleton-readback.ts` recovers, from the rendered markup alone, each row's kind, its source nodes, its ordered children with their edges, and the role mark it prints; the result must equal the region tree, stubs included, and each quantifier and connective row must carry its own mark. Unit tests require this of every fixture the reading tests use, and `npm run test:atlas` requires it of every example and standalone corpus statement exported by Lean. The feature that separates the two quantifier orders is named in those tests: the chain of binder rows that enclose the clause row. This is a tested property of the TypeScript renderer, not a theorem; nothing checks it at run time.
 
@@ -24,6 +25,7 @@ Hue carries object identity and nothing else. A statement's colours are assigned
 - Only an object that a binder introduces takes a hue. Hypotheses, recorded context entries and compound expressions such as `f x` or `A ∪ B` are drawn in neutral ink.
 - Hues are given in order of first introduction, the statement's own binders before a binder local to one expression, from seven hues that also differ in lightness. The darkest hue is the nearest to ink on a thin glyph and is given last. A hue is never used twice in a statement. Neutral ink is not a hue: from the eighth object on, objects share it and are told apart by their labels.
 - A field law read inside a statement keeps the statement's hues and gives its own binders only hues still unused.
+- Two objects that print alike are still two objects and never share a hue.
 - Colour is never the only carrier: every coloured thing keeps its label.
 
 ## The step sequence
@@ -31,6 +33,8 @@ Hue carries object identity and nothing else. A statement's colours are assigned
 A step is named once, in the step selector; no caption repeats it. Under the selector one closed disclosure, **About this step**, holds the longer explanation, the objects in scope, the assumptions the step stands under and its sibling clauses. Its label counts them, for example "About this step · 5 in scope · 1 given". The skeleton already draws all of these with the current row marked, so they are not repeated in view. The step's position among the connectives stays in view as one line beside the figure, because a figure does not yet show whether its clause is assumed, negated or concluded.
 
 A step on a connective has no figure of its own: it is the marked row of the skeleton and the rows inside its frame. In a chain of hypotheses one Given row is marked, the selected hypothesis or otherwise the first.
+
+Motion is limited to a short transition of the progress indicator, turned off under a reduced-motion preference. Objects are not animated, and no step needs playback or chosen coordinates.
 
 A relation figure is drawn at one unit per CSS pixel from the left edge of the column, so a label is the same size in every relation figure and is never stretched with the column. A narrower column shrinks the figure to three quarters at most and then scrolls.
 
@@ -47,6 +51,10 @@ keyboard-focusable so it can be scrolled without a pointer; a fitting frame adds
 no extra Tab stop. The routes and spacing carry no additional mathematical meaning.
 
 The compiler in `src/reading/cues.ts` derives a portable cue plan from the elaborated semantic document and the complete reading document. A cue identifies its exact source nodes, expression scope, enclosing logical branches, assumptions, visible objects, and relations. It carries semantic object identities rather than matching displayed names. Application stages follow their inputs before an outer comparison. Constructors are reusable; there is no dispatch by theorem name.
+
+## Surfaces and theme
+
+Base surfaces are pure white in light mode and pure black in dark mode. The standalone reader follows the system preference. The VS Code webview follows the editor's light, dark or high-contrast theme ahead of the system preference. Objects keep their identity colours in both themes, and dense diagrams keep readable labels and scroll.
 
 ## Optional construction graph
 
@@ -107,4 +115,4 @@ notation for inspected results have their own contracts; see
 
 Each renderer receives the same typed relation and scope used by the static reader. Geometry is substituted only for an entire recognized clause. The guide does not promote a nested metric condition into the meaning of an unknown outer predicate.
 
-The plan is included in version 3 workspace exports. It can be reused by an editor host or another presentation without moving Lean semantics into the renderer. The method follows the construction-first and persistent-identity principles documented in [the 3Blue1Brown research](visual-method.md); no Manim code or scene assets are copied.
+The plan is included in version 3 workspace exports. It can be reused by an editor host or another presentation without moving Lean semantics into the renderer. The method follows the construction-first and persistent-identity principles documented in [the 3Blue1Brown research](history/visual-method.md); no Manim code or scene assets are copied.

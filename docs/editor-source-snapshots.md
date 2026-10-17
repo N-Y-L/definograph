@@ -125,7 +125,10 @@ npm run test:source-snapshot-controls
 npm run test:source-occurrence
 npm run test:source-occurrence-controls
 npm run test:source-head-exposure
+npm run test:axioms
 npm run check:extension
 ```
+
+`npm run test:axioms` audits the axioms of the same compiled modules against `scripts/axiom-policy.json` and replays them through the kernel with `leanchecker`.
 
 The source-snapshot integration command uses temporary Lean projects and actual InfoTrees. It includes the equal-range selection rule for an anonymous-constructor proof and data body, and the reported class of a proof whose guided reading is refused. Set `DEFINOGRAPH_SOURCE_SNAPSHOT_CAPTURES` to a path outside the repository to retain its corpus for independent raw readback and interface tests. Native integration and mocked extension-controller tests do not replace validation in a real VS Code GUI.

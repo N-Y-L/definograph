@@ -32,7 +32,7 @@ The importer verifies the package before copying publishable files. It never cop
 
 Use `--replaces batch-name` to replace a complete batch, or `--replaces-view view-id` for a capture-only entry. These options remove the replaced source assets, so review the dry run and retain the existing source before applying them. Never edit the recorded diagram to invent a different reader result.
 
-New or changed captions are marked as drafts until reviewed. Check the exact source pairing, view coverage, caption, alt text, excerpt label and saved-history label before clearing the draft flag. Imported screenshots may contain a full window or a disclosed excerpt; show them at their intended size with a full-size link.
+New or changed captions are marked as drafts until reviewed. Check the exact source pairing, view coverage, caption, alt text, excerpt label and saved-history label before clearing the draft flag. Imported screenshots may contain a full window or a disclosed excerpt. They stay pinned in `source-assets/views/` and are not placed on any page; where no vector recording of a state exists, describe it in words.
 
 ## Presentation and verification
 

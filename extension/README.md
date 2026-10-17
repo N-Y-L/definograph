@@ -1,6 +1,6 @@
 # Definograph for Lean
 
-Read a selected Lean proposition as a visual sequence of typed objects, assumptions, and mathematical relationships in its actual project context.
+Read a selected Lean proposition, or the statement of a selected proof, as one nested drawing of the whole statement followed by a step-by-step sequence of its objects, assumptions and relationships, in the project's actual context.
 
 This is an optional local extension for a built Definograph checkout. It targets Lean **4.28.0** projects on macOS and Linux; retained editor-host evidence is from macOS arm64. Linux, WSL and remote hosts remain unqualified, and native Windows linking is not implemented. It does not modify a project's source, Lake configuration, toolchain, or compiled dependencies, and it does not run Lake or download dependencies.
 
@@ -41,11 +41,11 @@ clean installation and upgrade/rollback qualification remain release work.
 2. Install that VSIX using **Extensions: Install from VSIX…**.
 3. In VS Code **User settings**, set `statementLens.engineDirectory` to the absolute path of that checkout.
 4. Open a saved Lean file in a trusted workspace with its dependencies already built.
-5. Select a complete proposition and run **Definograph: Visualize Selection** from the command palette or editor context menu. With an empty selection, the nearest enclosing elaborated proposition is used.
+5. Select a complete proposition or proof term and run **Definograph: Visualize Selection** from the command palette or editor context menu. With an empty selection, the smallest enclosing proposition, or proof term whose type is a proposition, is used. Among terms that cover the same source range the outermost is chosen, so a proof written as `⟨…⟩` reads the statement it proves.
 
 The active buffer may have unsaved changes. Other unsaved Lean buffers in the same workspace must be saved and built first. **Refresh** uses the current selection when that Lean editor is visible; otherwise it uses the remembered selection. Editing or closing the analyzed document, changing the selection, or changing adapter settings clears its previous diagram and source snapshot. **Reveal** returns to the original source.
 
-Ordinary local objects are displayed as context parameters and ordinary local proof hypotheses as assumptions. A section `variable` that the enclosing declaration's type does not include, or one the selection does not mention when that cannot be decided, is not displayed; it is listed under the title with its reason. Recorded `auxDecl` and `implDetail` entries receive neutral context labels. A selected proof term displays its proposition type under **Statement of your selected proof**. A valid statement can still be inspected when a later proof is incomplete; Lean diagnostics remain visible. Selected placeholders, unresolved metavariables, and definition expansions containing `sorry` are rejected.
+Ordinary local objects are displayed as context parameters and ordinary local proof hypotheses as assumptions. A section `variable` that the enclosing declaration's type does not include, or one the selection does not mention when that cannot be decided, is not displayed; it is listed under the title with its reason. Recorded `auxDecl` and `implDetail` entries receive neutral context labels. A selected proof term displays its proposition type under **Statement of your selected proof**, with one line giving the recorded typing verdict, the axiom list and the basis for calling it a proof. Its body is not drawn. A valid statement can still be inspected when a later proof is incomplete; Lean diagnostics remain visible. Selected placeholders, unresolved metavariables, and definition expansions containing `sorry` are rejected.
 
 **Inspect a definition in this statement** opens a workspace beside the original
 clause and its ordered context. Search applications from the whole retained
@@ -59,7 +59,8 @@ checkout for bounds and the detailed contract.
 
 The reader uses pure white base surfaces in light mode and pure black in dark
 mode, following the VS Code body theme ahead of the system preference.
-Mathematical regions retain their semantic colors. Dense typed-map diagrams keep
+Objects keep their identity colours, assigned once per statement, in both themes.
+Dense typed-map diagrams keep
 readable labels and offer keyboard-accessible horizontal scrolling.
 
 **Source data** separately retains the original selected expression and local
@@ -94,7 +95,7 @@ Standard Lake library layouts are discovered from the project root and `lake-man
 
 See `docs/editor-integration.md` in the checkout for the architecture and verified coverage. The extension's local engine and browser application are prerequisites; the VSIX does not bundle a Lean toolchain or Mathlib cache.
 
-Credits: Codex under the supervision of Neil Yuanting Li.
+Credits: the 0.7 prototype by Codex and later development by Claude, both under the supervision of Neil Yuanting Li.
 
 ### Record fields in a continuation
 

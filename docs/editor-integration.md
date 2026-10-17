@@ -1,6 +1,6 @@
 # Lean editor context adapter
 
-Definograph includes a local VS Code extension that exports selected mathematical propositions from the project's actual Lean environment. The standalone website still uses its separately pinned, closed-term worker. The editor adapter does not copy a selected string into that fixed environment.
+Definograph includes a local VS Code extension that exports selected mathematical propositions from the project's actual Lean environment. The standalone browser reader still uses its separately pinned, closed-term worker; the public website runs no Lean. The editor adapter does not copy a selected string into that fixed environment.
 
 ## Install and use
 
@@ -38,7 +38,10 @@ the VSIX, browser build and native engine identities together, and rebuild and
 verify again if their inputs change.
 
 Packaging builds only the extension controller. It refuses to overwrite an
-existing VSIX; choose a new `--out` path for each retained build. Without `--out`,
+existing VSIX; choose a new `--out` path for each retained build. The version
+stays 0.7.1 from one build to the next, so packaging to the same path a second
+time stops with `Refusing to overwrite …`; pass a new `--out` path or move the
+old file away first. Without `--out`,
 the default is `.local/statement-lens-editor-0.7.1.vsix`. Package timestamps use
 `SOURCE_DATE_EPOCH` (default: 2000-01-01 UTC); UTC and file permissions are
 normalized so fixed input bytes and the same packaging dependencies reproduce
@@ -112,8 +115,8 @@ Refresh uses the current selection if the original editor is visible, or the rem
 The reader's base surfaces are pure white in light mode and pure black in dark
 mode. The VS Code webview uses the host's light, dark or high-contrast body theme
 classes, which take precedence over the operating-system preference. The
-standalone reader follows the system preference. Mathematical regions retain
-semantic color fills in both modes.
+standalone reader follows the system preference. Objects keep their identity
+colours in both modes.
 
 ## Installation qualification
 
@@ -146,7 +149,7 @@ A fragment's ordinary free local objects become **context parameters**, not impl
 
 Lean elaborates a declaration's header inside every `variable` of its section, so that context also holds section variables the declaration does not take. In Lean 4.28.0 a theorem takes the section variables its header mentions, those named by `include`, every variable a taken one mentions, and each instance-implicit variable whose type mentions only taken variables, less those named by `omit`; any other declaration takes the ones its header or value mentions, with every variable they mention. The `include` and `omit` sets are not saved after elaboration, so the adapter does not recompute this rule. A section variable is a local whose every binder record lies in a `variable` command. An unnamed instance variable, such as `[Inhabited β]`, has no binder record; such a local among the section variables is in doubt in the same way, and with no named section variable in scope it counts only when a `variable` command ends before the selection. One that the selected term, its statement or another drawn local mentions is drawn (`mentioned`). For the others, each choice of which ones the declaration takes is tested against the declaration's final type in the processed environment, which must open with exactly the drawn locals before the declaration's first own local. When exactly one choice passes (`matched`), the variables it leaves out are reported as not taken. When none or several pass (`mismatch`), when more than ten are in doubt (`not-checked`, and no type is compared), or when Lean added no declaration from this buffer (`no-declaration`: an `example`, a `#check`, a failed declaration), the section variables in doubt are reported as undetermined, and the unnamed ones in doubt, with any section variable only they mention, are drawn and reported as unconfirmed. Neither not-taken nor undetermined variables are drawn, as an assumption or as a parameter. The reader lists both under the title with their reason, says which drawn locals are unconfirmed, and, if it cannot read the record, says that some variables may be missing. The engine leaves variables out only when the host asks for this record (`sectionVariableReport: true`, sent by `server/editor-context.ts`); a host built before it gets the context drawn as before, with no record. Section variables whose binders needed automatically bound implicits are re-created by Lean without binder records; they are not recognised and are drawn as before. Ordinary local proof hypotheses become **assumptions**, scoped over the displayed fragment. Recorded `auxDecl` and `implDetail` entries receive neutral context labels instead. Guided export substitutes local `let` entries whose recorded `nondep` flag is false, including a second placeholder check after substitution. Exact source frames retain recorded local definitions. A selected proof expression is displayed as its proposition type, with `selectionKind: "proof-type"`. Beside the guided result, every response in which a term was chosen carries the top-level `selectionClass` (`proposition`, `proof` or `other`), Lean's `Meta.isProp` on the chosen term and on its inferred type. It is reported whether or not the guided reading succeeded, the host and the webview refuse any other value, and continuation answers keep the class of their parent capture. It is the elaborator's report and establishes no receipt. Placeholder-containing proof values are refused even when their type is a valid proposition. Later proof errors may be reported as diagnostics while an independently valid selected statement remains inspectable. This checks the selected term's type; it does not certify that the surrounding theorem is proved.
 
-Exact safe definition names may be expanded on request, with at most 12 names and depth 1–3. Every expansion is kernel checked and checked for definitional equality; unresolved terms and `sorry` introduced by unfolding are refused. The adapter also requests bounded small-definition previews within the same elaboration; the reader selects at most one when it reduces unknown meaning and retains the original reading. Generating these previews does not replay the buffer again. See [the graph and inspection iteration](graph-iteration.md) for limits. Opaque or otherwise unsupported mathematics remains typed structure, with no invented properties.
+Exact safe definition names may be expanded on request, with at most 12 names and depth 1–3. Every expansion is type-checked by the kernel, and its definitional equality with the original is checked by the elaborator (`Meta.isDefEq`); unresolved terms and `sorry` introduced by unfolding are refused. The adapter also requests bounded small-definition previews within the same elaboration; the reader selects at most one when it reduces unknown meaning and retains the original reading. Generating these previews does not replay the buffer again. See [the graph and inspection iteration](history/graph-iteration.md) for limits. Opaque or otherwise unsupported mathematics remains typed structure, with no invented properties.
 
 Editor provenance uses:
 

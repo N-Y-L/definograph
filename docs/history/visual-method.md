@@ -18,7 +18,7 @@ These observations support the current atlas: typed constructions, ordered map p
 
 ## Implemented foundation in release 0.5: semantic reading cues
 
-The pure compiler in [`src/reading/cues.ts`](../src/reading/cues.ts) emits a deterministic list of attention cues over the semantic document and reading presentation, independent of an animation engine. [`src/visual/GuidedReading.tsx`](../src/visual/GuidedReading.tsx) presents this sequence with Previous/Next controls and a step selector. The complete static statement remains available below it. See [guided reading](guided-reading.md) for the current contract and [verification](verification.md) for the recorded checks.
+The pure compiler in [`src/reading/cues.ts`](../../src/reading/cues.ts) emits a deterministic list of attention cues over the semantic document and reading presentation, independent of an animation engine. [`src/visual/GuidedReading.tsx`](../../src/visual/GuidedReading.tsx) presents this sequence with Previous/Next controls and a step selector. The complete static statement remains available below it. See [guided reading](../guided-reading.md) for the current contract and [verification](verification.md) for the recorded checks.
 
 Each cue contains:
 
@@ -28,9 +28,9 @@ Each cue contains:
 - Its logical role: parameter, arbitrary choice, requested witness, assumption, required conclusion, alternative, negated condition, or contained expression part.
 - A short explanation derived from that role and the recognized relation; no claim that the condition has been proved.
 
-Cues use the same scope-preserving regions as the atlas. Within one atomic clause, ordered application dependencies supply a construction sequence. [Boolean set constructions](set-constructions.md) also retain their operand identities and expose intermediate operations before their enclosing relation. Do not flatten a disjunction into successive required facts, move a witness before its permitted dependencies, or expose an inner predicate as an assertion of its unknown wrapper. An equality cue compares its two expressions; it does not certify their equality.
+Cues use the same scope-preserving regions as the atlas. Within one atomic clause, ordered application dependencies supply a construction sequence. [Boolean set constructions](../set-constructions.md) also retain their operand identities and expose intermediate operations before their enclosing relation. Do not flatten a disjunction into successive required facts, move a witness before its permitted dependencies, or expose an inner predicate as an assertion of its unknown wrapper. An equality cue compares its two expressions; it does not certify their equality.
 
-The current renderer reuses the browser diagrams and keeps the surrounding logic visible, with [the statement skeleton](guided-reading.md#the-statement-skeleton) above the step. It requires neither autoplay nor chosen coordinates. Motion is currently limited to a short progress-indicator transition, disabled under reduced-motion preferences; animated object transforms and correspondence-preserving motion remain future work.
+The current renderer reuses the browser diagrams and keeps the surrounding logic and overview visible. It requires neither autoplay nor chosen coordinates. Motion is currently limited to a short progress-indicator transition, disabled under reduced-motion preferences; animated object transforms and correspondence-preserving motion remain future work.
 
 The cue plan is checked against these semantic requirements:
 
@@ -40,17 +40,15 @@ The cue plan is checked against these semantic requirements:
 4. OR, iff, negation, nested antecedents, and unknown wrappers retain their enclosing roles throughout playback.
 5. Guided and complete static reading retain the same semantic objects and enclosing logical context; reduced-motion preferences do not change mathematical content. Any future animated renderer must meet the same requirement.
 
-Identity colour follows the same rule as identity itself: it is assigned per statement from Lean-derived object IDs, to binder-introduced objects only, in order of introduction, from seven hues that also differ in lightness, and never twice in one statement. [Guided reading](guided-reading.md#identity-colour) gives the contract. Two objects that print alike never share a hue, and a compound expression has none. Past the seventh object of a statement, objects are drawn in neutral ink and are told apart by their labels.
-
 Coordinated highlighting inside the optional mathematical notation needs a further provenance contract: LaTeX fragments linked to expression IDs. LeanTeX currently returns a string, so matching letters in that string is not a reliable way to identify bound objects.
 
 ## Release 0.6: identity through graph constraints and checked inspection
 
 The [graph iteration](graph-iteration.md) applies the same approach to adjacency, colorings, colorability, and graph maps. Named graph objects retain their Lean-derived IDs and shared visual colors through introduction, application, and comparison. Arbitrary endpoint slots belong only to the explanatory schematic; they do not masquerade as selected vertices. Available palette labels are shown separately from any vertex assignment. The complete logical context remains visible, including a graph condition inside a negated alternative.
 
-The next step in a reading is sometimes inside a small definition. Optional native previews now inspect at most three one-step candidates in the already elaborated context, without replaying project source. The frontend chooses at most one only when it reduces opaque structure within explicit size limits. It labels that choice and keeps the original reading accessible. This is a local improvement in the explanation, not automatic discovery of the mathematics behind every definition. [The architecture](architecture.md) records the exact bounds.
+The next step in a reading is sometimes inside a small definition. Optional native previews now inspect at most three one-step candidates in the already elaborated context, without replaying project source. The frontend chooses at most one only when it reduces opaque structure within explicit size limits. It labels that choice and keeps the original reading accessible. This is a local improvement in the explanation, not automatic discovery of the mathematics behind every definition. [The architecture](../architecture.md) records the exact bounds.
 
-The [coverage panel and corpus](coverage-corpus.md) expose the remaining vocabulary gaps. Their role is to keep missing meaning visible, including continuity, local maps, and rank, while preserving any set or map relationships already understood. A pleasing diagram or a higher interpreted-clause count is not a measurement of human understanding.
+The [coverage panel and corpus](../coverage-corpus.md) expose the remaining vocabulary gaps. Their role is to keep missing meaning visible, including continuity, local maps, and rank, while preserving any set or map relationships already understood. A pleasing diagram or a higher interpreted-clause count is not a measurement of human understanding.
 
 [Penrose's examples](https://penrose.cs.cmu.edu/examples) provide another design reference. Its [Domain, Substance, and Style layers](https://penrose.cs.cmu.edu/docs/ref) separate mathematical vocabulary, concrete relationships, and presentation. Our inference is that a Lean-derived semantic document should remain reusable across multiple renderers. The current graph constraints use deterministic local SVG; a new optimization or animation runtime is unnecessary for this limited representation.
 
@@ -66,6 +64,6 @@ Release 0.6 uses these mechanisms as design references and keeps the browser ren
 
 The Manim engine uses the MIT license; copied substantial portions would retain its copyright and permission notice. The separate `3b1b/videos` repository declares CC BY-NC-SA 4.0 for its contents and notes that older scenes may require older Manim versions. It is not licensed on the same terms as the engine. No scene code, artwork, video assets, or Manim dependency was copied for this review. [Manim license](https://github.com/3b1b/manim/blob/master/LICENSE.md), [video repository's license statement](https://github.com/3b1b/videos#readme)
 
-Penrose's examples and architecture were also reviewed; no Penrose code, styles, or assets were copied and its runtime is not bundled. Actual software reuse is separate: Lean and mathlib supply the checked environment, including [the pinned graph-coloring definitions](https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Combinatorics/SimpleGraph/Coloring.lean), and the documented LeanTeX, KaTeX, CodeMirror, and React components supply printing and interface infrastructure. [NOTICE](../NOTICE) records that distinction.
+Penrose's examples and architecture were also reviewed; no Penrose code, styles, or assets were copied and its runtime is not bundled. Actual software reuse is separate: Lean and mathlib supply the checked environment, including [the pinned graph-coloring definitions](https://github.com/leanprover-community/mathlib4/blob/8f9d9cff6bd728b17a24e163c9402775d9e6a365/Mathlib/Combinatorics/SimpleGraph/Coloring.lean), and the documented LeanTeX, KaTeX, CodeMirror, and React components supply printing and interface infrastructure. [NOTICE](../../NOTICE) records that distinction.
 
 Design research and recommendations: Codex under the supervision of Neil Yuanting Li. Inspiration credited to the linked 3Blue1Brown lessons, Manim examples, and Penrose references.

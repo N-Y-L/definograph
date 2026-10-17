@@ -47,15 +47,15 @@ An unguarded statement `e.symm (e x) = x` is also preserved as written. The read
 
 ## Evaluation
 
-[`scripts/restricted-reading-integration.ts`](../scripts/restricted-reading-integration.ts) evaluates actual unsaved Lean editor buffers through the native context sidecar, semantic compiler, guide compiler, and production React renderer. The independent cases cover both bundled structures, nested inverse applications, `symm`, `toPartialEquiv`, a selected theorem fragment with a local hypothesis, separate existential alternatives, unknown wrappers, a custom coercion, fake familiar names, an unguarded equality, and equal carrier types.
+[`scripts/restricted-reading-integration.ts`](../../scripts/restricted-reading-integration.ts) evaluates actual unsaved Lean editor buffers through the native context sidecar, semantic compiler, guide compiler, and production React renderer. The independent cases cover both bundled structures, nested inverse applications, `symm`, `toPartialEquiv`, a selected theorem fragment with a local hypothesis, separate existential alternatives, unknown wrappers, a custom coercion, fake familiar names, an unguarded equality, and equal carrier types.
 
-The checks verify scope and port identity, ordered construction stages, exact input/output connections, source/target law labels, complete-clause preservation, and the absence of invented numerical scenes. They also verify that private saved source and configuration remain unchanged and that native executable hashes are stable throughout the run. The broader [coverage corpus](coverage-corpus.md) includes a renamed restricted-map statement and keeps the previous unsupported continuity and rank conditions.
+The checks verify scope and port identity, ordered construction stages, exact input/output connections, source/target law labels, complete-clause preservation, and the absence of invented numerical scenes. They also verify that private saved source and configuration remain unchanged and that native executable hashes are stable throughout the run. The broader [coverage corpus](../coverage-corpus.md) includes a renamed restricted-map statement and keeps the previous unsupported continuity and rank conditions.
 
 See [verification](verification.md) for the recorded release results and remaining environment limitations. A passing rendering test checks the implementation's stated contract; it is not a proof of the original proposition or a measure of human comprehension.
 
 ## Upstream sources and remaining foundations
 
-The mathematical structures are reused from Mathlib at commit `8f9d9cff6bd728b17a24e163c9402775d9e6a365` under Apache 2.0. The semantic adapters and SVG renderer are implemented here; this iteration adds no Manim or Penrose runtime, copied scene asset, or layout dependency. Earlier visual and architectural references remain credited in [NOTICE](../NOTICE) and [the visual method](visual-method.md).
+The mathematical structures are reused from Mathlib at commit `8f9d9cff6bd728b17a24e163c9402775d9e6a365` under Apache 2.0. The semantic adapters and SVG renderer are implemented here; this iteration adds no Manim or Penrose runtime, copied scene asset, or layout dependency. Earlier visual and architectural references remain credited in [NOTICE](../../NOTICE) and [the visual method](visual-method.md).
 
 This common grammar is useful groundwork for charts and local trivializations, whose additional conditions still require interpretation. Base/fiber/projection relationships, linear-map image/kernel/rank, derivatives, tangent fields, and planarity remain separate mathematical foundations to build. Hairy-ball, constant-rank, and four-color theorem visualization are not completed by this release.
 

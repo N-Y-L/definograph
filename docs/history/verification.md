@@ -1,6 +1,25 @@
 # Verification record
 
-Verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
+This record is closed. It ends with the checks of 2026-10-12 and 2026-10-13; later results are recorded in the commit messages that change the code. What the code does now is in [status](../status.md).
+
+The release sections were verified on 2026-09-19 using macOS arm64, Node.js 24.18.1, Lean 4.28.0, and pinned mathlib `8f9d9cff6bd728b17a24e163c9402775d9e6a365`.
+
+## 2026-10-12 and 2026-10-13
+
+Local results on macOS arm64 with Lean 4.28.0, after the statement skeleton, the closed proof leaf and the axiom audit were added. The counts are those recorded when the changes were made.
+
+| Check | Result |
+| --- | --- |
+| `npm run test:axioms` | 3 of 3: the 26 vendored modules at foundation commit `e5527ba` (2,324 theorem constants) against `scripts/axiom-policy.json`, the negative control, and a `leanchecker` replay |
+| `npm run test:source-dependency` | 9 of 9 |
+| `npm test` | 1,482 |
+| `npm run test:server` | 59 |
+| `npm run test:editor` | 39 |
+| `npm run test:source-snapshot` | 17 |
+| `npm run test:atlas` | 23 of 23, including skeleton readback on every example and standalone corpus statement |
+| `npm run check` in `website/` | 19 groups |
+
+Two browser drivers, `scripts/reader-action-navigation-check.ts` and `scripts/reader-outline-check.ts`, stall in a 400px keyboard scenario in headless Chrome 155; they stalled on the code before these changes too. The corpus-gated part of `src/editor/source-reader-outline.test.ts`, which `npm test` skips unless a capture corpus is named, fails on rows that end in a definition exposure, also before these changes. `npm run test:source-presentation` passed without a recorded count.
 
 ## Publication cleanup 0.7.1
 
@@ -59,7 +78,7 @@ These checks exposed and corrected lost alias applications, missing hypothesis d
 
 The extension packages as `.local/statement-lens-editor-0.7.0.vsix`. It has not been installed or published by this iteration. Actual VS Code GUI activation and complete extension-host use, and native Windows operation, remain unverified. The checked local browser bridge is not a substitute for that host validation.
 
-Direct structure reflection and bounded unfolding are implemented foundations, not universal geometric understanding. Early native budget/type-size exits may retain only the original typed object without a specific reason; recursive value/inductive decomposition and automatic abstraction selection remain incomplete. See [the decomposition record](decomposition-iteration.md) and [the roadmap](roadmap.md).
+Direct structure reflection and bounded unfolding are implemented foundations, not universal geometric understanding. Early native budget/type-size exits may retain only the original typed object without a specific reason; recursive value/inductive decomposition and automatic abstraction selection remain incomplete. See [the decomposition record](decomposition-iteration.md) and [the roadmap](../roadmap.md).
 
 ## Historical release 0.6 checks
 
@@ -91,9 +110,9 @@ A hosted-browser fixture using actual native context output also checked a defin
 
 The extension packages as `.local/statement-lens-editor-0.6.0.vsix`. Native context tests and mocked controller checks do not replace an actual VS Code GUI session: installation, activation, and the full editor-host workflow remain unverified. Native Windows operation is also unverified.
 
-The corpus has 18/18 passing expectations, including deliberately unsupported inputs; this is not 18 fully visualized statements. Its report records the mathematical vocabulary still missing. No planarity/four-color-theorem, tangent-field/hairy-ball, derivative, or constant-rank-normal-form grammar is claimed. See [the iteration record](graph-iteration.md), [graph contracts](graph-semantics.md), and [corpus](coverage-corpus.md).
+The corpus has 18/18 passing expectations, including deliberately unsupported inputs; this is not 18 fully visualized statements. Its report records the mathematical vocabulary still missing. No planarity/four-color-theorem, tangent-field/hairy-ball, derivative, or constant-rank-normal-form grammar is claimed. See [the iteration record](graph-iteration.md), [graph contracts](../graph-semantics.md), and [corpus](../coverage-corpus.md).
 
-Setup adds the pinned Mathlib coloring module to StatementLens's own dependency cache. Existing formal projects and global toolchain settings remain unchanged. Optional previews run in the original checked Lean context without an additional source replay. Explicit user-requested refreshes and expansions still perform a new analysis. See [editor execution limits](editor-integration.md).
+Setup adds the pinned Mathlib coloring module to StatementLens's own dependency cache. Existing formal projects and global toolchain settings remain unchanged. Optional previews run in the original checked Lean context without an additional source replay. Explicit user-requested refreshes and expansions still perform a new analysis. See [editor execution limits](../editor-integration.md).
 
 ## Historical release 0.5 checks
 
@@ -122,7 +141,7 @@ Browser checks covered the guided sequence, abstract maps, compositional sets, a
 
 A final pass loaded the rebuilt production reader, the dynamically loaded LeanTeX component, and the CodeMirror source editor. The exercised workflows produced no browser console errors. These browser observations are manual checks, not an exhaustive UI regression suite.
 
-See [guided reading](guided-reading.md), [set constructions](set-constructions.md), and [editor integration](editor-integration.md) for implemented behavior and limits. No Manim runtime was added. Editor extraction replays trusted Lean source in a separate process; it is not a security sandbox and does not certify the surrounding theorem. Existing user projects and global toolchain settings were not modified by these checks.
+See [guided reading](../guided-reading.md), [set constructions](../set-constructions.md), and [editor integration](../editor-integration.md) for implemented behavior and limits. No Manim runtime was added. Editor extraction replays trusted Lean source in a separate process; it is not a security sandbox and does not certify the surrounding theorem. Existing user projects and global toolchain settings were not modified by these checks.
 
 ## Historical release 0.4 checks
 
@@ -158,14 +177,14 @@ The statement-first release passes strict TypeScript, the production build, and 
 | `npm run test:lean` | 45 | Real Lean elaboration, kernel checks, instance audits, signatures/bodies, and rejection of executable input |
 | `npm run test:integration` | 15 | All 14 interface examples through the actual worker plus combined geometry/dependency behavior |
 | `npm run test:semantic` | 21 | Typed object/relationship recognition, scope, partial applications, and declaration behavior |
-| `npm run test:reading` | 20 | Whole-statement sequence, negation, alternatives, both iff directions, witnesses, abstract composition, and dependent morphism families |
+| `npm run test:reading` | 20 | Whole-statement sequence and overview, negation, alternatives, both iff directions, witnesses, abstract composition, and dependent morphism families |
 | `npm run test:notation` | 21 | Actual LeanTeX output through strict KaTeX, binder order, logical grouping, definition bodies/signatures, custom instances, fallback recovery, and aggregate response limits |
 
 The default UI was checked in the in-app browser for symbolic geometry, abstract sets, an equation between composed maps, fixed-before-universal witness order, and negation inside a disjunction. No numerical sliders appear in the default reading; the separate exploration action retains the numerical views. Mathematical notation rendered from real worker output with local fonts. Mobile-width DOM checks at a browser-reported 500 pixels showed no horizontal document overflow. Deep overview indentation was capped after the desktop screenshot exposed narrow text columns. No console errors appeared in the final exercised workflows.
 
 Review found and corrected a diagram drawing the same center expression as two distinct points. It now shows one object and the distance-to-self condition. Native notation integration also required resolving duplicate printer-extension initialization; the final worker dynamically imports the fixed printer once and calls only its trusted entry point. Worker builds atomically replace the executable. Optional notation cannot enlarge an otherwise accepted response beyond the transport limit: it is dropped before required semantic fields.
 
-LeanTeX source is pinned and checksummed. Compatibility changes are applied only to isolated build copies. No additional Mathlib modules were introduced. See [the LeanTeX integration record](leantex-integration.md) and [the statement-first acceptance review](statement-first-review.md).
+LeanTeX source is pinned and checksummed. Compatibility changes are applied only to isolated build copies. No additional Mathlib modules were introduced. See [the LeanTeX integration record](../leantex-integration.md) and [the statement-first acceptance review](statement-first-review.md).
 
 ## Historical release 0.2 checks
 
@@ -202,7 +221,7 @@ These checks found and corrected stale BallView coordinate state, misleading inh
 
 ## Isolation and reproducibility
 
-Development used an isolated local checkout. Its worker read StatementLens's own dedicated mathlib cache and the pinned installed Lean binary. No other formal project or global toolchain setting was modified. The source contains no machine-specific runtime paths; those stay in ignored `.local/config.json`. No commits were pushed and no external remote repository was configured.
+During the releases recorded above, development used an isolated local checkout. Its worker read StatementLens's own dedicated mathlib cache and the pinned installed Lean binary. No other formal project or global toolchain setting was modified. The source contains no machine-specific runtime paths; those stay in ignored `.local/config.json`. No commits were pushed from those runs.
 
 The original clean-cache download smoke test remains applicable: setup fetched 2,372 pinned transitive module caches into a dedicated directory and built a working worker. Release 0.2 adds no Lean imports or mathlib dependencies. CodeMirror dependencies are pinned in `package-lock.json`; the editor is split into a separate production chunk.
 
@@ -210,4 +229,4 @@ The original clean-cache download smoke test remains applicable: setup fetched 2
 
 Passing these checks is not a proof that the renderer is bug-free. Lean's kernel checks the submitted expression or definition expansion; the TypeScript semantic rules, layout, and floating-point evaluator have regression tests rather than formal correctness proofs. Numerical samples cannot certify universal statements or exact real equality.
 
-The standalone reader's fixed imported environment and allowlisted term syntax do not accept every Lean project or incomplete expression. The editor adapter adds trusted project-context extraction, with the toolchain, import, source-selection, and execution limits documented in [editor integration](editor-integration.md). Source occurrences are exact, but transformed-node-to-source mapping is not guessed. Definition unfolding is bounded and acts at logical heads. The planner uses explicit heuristics and representation contracts, not a verified global optimum. Rich geometric realization for arbitrary structures, witness strategies, and Rocq support remain future work. Actual VS Code GUI installation and end-to-end extension-host use remain unverified in release 0.7.
+The standalone reader's fixed imported environment and allowlisted term syntax do not accept every Lean project or incomplete expression. The editor adapter adds trusted project-context extraction, with the toolchain, import, source-selection, and execution limits documented in [editor integration](../editor-integration.md). Source occurrences are exact, but transformed-node-to-source mapping is not guessed. Definition unfolding is bounded and acts at logical heads. The planner uses explicit heuristics and representation contracts, not a verified global optimum. Rich geometric realization for arbitrary structures, witness strategies, and Rocq support remain future work. Actual VS Code GUI installation and end-to-end extension-host use remain unverified in release 0.7.

@@ -28,7 +28,7 @@ These lenses supplement the generic foundation. Unknown user record names still 
 
 ## Independent acceptance fixtures
 
-[`corpus/structures.ts`](../corpus/structures.ts) contains fresh user definitions chosen to avoid known-constructor shortcuts:
+[`corpus/structures.ts`](../../corpus/structures.ts) contains fresh user definitions chosen to avoid known-constructor shortcuts:
 
 - Two abstract maps, function and set aliases, an unused scalar field, and guarded laws.
 - The same record with every structure, alias, and field name changed.
@@ -40,14 +40,14 @@ These lenses supplement the generic foundation. Unknown user record names still 
 - A record whose fields are all proofs, available only under its local hypothesis.
 - Two same-named record witnesses under separate negated alternatives.
 
-[`scripts/decomposition-integration.ts`](../scripts/decomposition-integration.ts) uses actual editor buffers and inspects the native reflection, semantic composition, production object renderer, and whole-statement reader. The ten fixtures require retained identities, scoped laws, bounded output, and explicit unknown or omitted structure. None of the fixture names is a built-in semantic rule. Native executable and private-source checks distinguish a stable test result from a concurrent rebuild.
+[`scripts/decomposition-integration.ts`](../../scripts/decomposition-integration.ts) uses actual editor buffers and inspects the native reflection, semantic composition, production object renderer, and whole-statement reader. The ten fixtures require retained identities, scoped laws, bounded output, and explicit unknown or omitted structure. None of the fixture names is a built-in semantic rule. Native executable and private-source checks distinguish a stable test result from a concurrent rebuild.
 
-The [coverage corpus](coverage-corpus.md) remains a separate regression inventory for interpreted and unknown predicate vocabulary. Its categories are not a percentage of mathematics understood. The release's recorded verification and environment limitations are in [verification](verification.md).
+The [coverage corpus](../coverage-corpus.md) remains a separate regression inventory for interpreted and unknown predicate vocabulary. Its categories are not a percentage of mathematics understood. The release's recorded verification and environment limitations are in [verification](verification.md).
 
 ## Limits of this foundation
 
 This implementation reflects direct record fields and laws and inspects bounded type-head aliases. It does not yet decompose arbitrary recursive inductives or all nested record fields. Reflection reads what the structure declares; it does not infer every mathematical consequence or automatically synthesize the best picture of every abstraction. Generic law diagrams also do not by themselves explain a topological obstruction, a rank theorem, or graph planarity. Additional common primitives and optional lenses can improve those readings without introducing a named-theorem catalogue.
 
-The implementation uses Lean's checked expressions and structure metadata. Mathlib definitions used by optional lenses remain pinned and credited in [NOTICE](../NOTICE). Existing Manim and Penrose design references are inspiration; no corresponding runtime or scene asset is added by this iteration.
+The implementation uses Lean's checked expressions and structure metadata. Mathlib definitions used by optional lenses remain pinned and credited in [NOTICE](../../NOTICE). Existing Manim and Penrose design references are inspiration; no corresponding runtime or scene asset is added by this iteration.
 
 Development and design assessment: Codex under the supervision of Neil Yuanting Li.

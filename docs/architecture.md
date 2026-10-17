@@ -2,7 +2,7 @@
 
 Definograph is an experimental Lean statement reader. The current code can preserve logical context, expose direct structure fields, and compose several typed relationships. It does **not** yet implement the general decomposition and representation architecture needed for the project's objective.
 
-Read [the architecture decision](design/architecture-decision.md) for the adopted design (it amends the [TNF specification](design/tnf-specification.md) and supersedes [the architecture reset](design/architecture-reset.md) where they differ) and [the roadmap](roadmap.md) for delivery gates. This page describes the code that exists. Older iteration documents are historical records, not evidence that the general problem is solved. `StatementLens`, `statementLens`, and related protocol/module identifiers remain internal compatibility names.
+Read [the architecture decision](design/architecture-decision.md) for the adopted design (it amends the [TNF specification](design/tnf-specification.md) and supersedes [the architecture reset](design/architecture-reset.md) where they differ) and [the roadmap](roadmap.md) for delivery gates. This page describes the code that exists; the [principles](principles.md) give the standard it is held to. Older iteration documents, in [history](history/README.md), are historical records, not evidence that the general problem is solved. `StatementLens`, `statementLens`, and related protocol/module identifiers remain internal compatibility names.
 
 ## Existing data flow
 
@@ -111,6 +111,10 @@ is separately associated with its captured result by `editor/source-presentation
 | Definition-head exposure | `SourceSnapshot.captureHeadExposure`, `src/editor/source-head-exposure.ts`, `head-exposure-replay.ts`, `SourceHeadExposureReading.tsx` | One initial-environment safe body, exact syntactic replay, unchanged positional home and separate result/conversion outcomes |
 | Exact continuation histories | `src/editor/source-decomposition.ts`, `extension/src/continuation.ts`, `SourceDecompositionReading.tsx` | Exact capture/prefix replay, bounded v1/v2/v3 operations and separately associated outcomes |
 | Prefix provenance and supply | `src/editor/source-provenance.ts`, `source-supplier.ts`, `SourceProvenanceReading.tsx`, `SourceSupplierReading.tsx` | Pure derived readings; full scope and axiom audit, no invented proof or current-source authority |
+| Statement skeleton and identity colour | `src/visual/StatementSkeleton.tsx`, `skeleton-readback.ts`, `object-identity.ts`, `region-words.ts` | Drawn from the shared region tree; readback is a unit and native test, not a run-time check; seven hues per statement, binder-introduced objects only |
+| Selected proof leaf | `lean/StatementLens/Context.lean` (selection class), `src/editor/selection-class.ts`, `source-proof-fold.ts`, `ProofLeaf.tsx` | Calling the term a proof rests on the elaborator's `Meta.isProp` unless the kernel basis exists; proofs inside a selected data term are still drawn |
+| Section variables | `lean/StatementLens/Context.lean`, `src/editor/section-variables.tsx` | Variables the declaration does not take are listed, not drawn, only when the host asks for the record |
+| Axiom policy of the proved core | `scripts/axiom-audit.mjs`, `axiom-audit.lean`, `axiom-policy.json`, `scripts/fixtures/axiom-audit/` | Covers the vendored proved core only; not capture records and not the statement being read |
 | Typed export | `lean/StatementLens/Export.lean`, `src/core/types.ts` | Logical trees and expression ASTs; selected metadata and optional bounded views |
 | Response bounds | `lean/StatementLens/Response.lean`, `server/protocol.ts` | Optional views may be dropped to preserve the mandatory result |
 | Identity and scoped interpretation | `src/semantic/compiler.ts`, `expression.ts`, `types.ts` | Exact expression identity and scopes; domain-specific relation variants remain in the shared schema |
@@ -137,11 +141,11 @@ Proposition inspection is a different mechanism: the native exporter considers a
 
 ## Trust and meaning
 
-Lean checks that submitted expressions have the expected types and that accepted expansions preserve definitional equality. This does not prove an arbitrary submitted proposition. A record law is available from its owning value inside the relevant context; it is not a global theorem. Unknown predicates retain their expressions and enclosing logic.
+Lean's kernel checks that submitted expressions and their expansions are well typed. That an expansion preserves definitional equality is checked by Lean's elaborator (`Meta.isDefEq`), not by the kernel. This does not prove an arbitrary submitted proposition. A record law is available from its owning value inside the relevant context; it is not a global theorem. Unknown predicates retain their expressions and enclosing logic.
 
 The browser validates bounded export shapes and uses the native worker's check markers. It does not independently check Lean certificates. TypeScript interpretation, representation selection, and rendering are tested code, not formally verified transformations. A schematic view supplies no unstated coordinates, cardinality, geometric realization, or witness.
 
-Editor extraction accepts trusted project source that may execute elaborators or commands. The worker process is not a security sandbox. It reads built dependencies without rewriting the user's project or changing its toolchain. Standalone browser requests expose a narrower input interface. See [editor integration](editor-integration.md) and [verification](verification.md).
+Editor extraction accepts trusted project source that may execute elaborators or commands. The worker process is not a security sandbox. It reads built dependencies without rewriting the user's project or changing its toolchain. Standalone browser requests expose a narrower input interface. See [editor integration](editor-integration.md) and [verification](history/verification.md).
 
 ## Reuse
 

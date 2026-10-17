@@ -1,80 +1,154 @@
-# Working on Definograph
+# Agent guide
 
-Definograph is an early research implementation of a general mathematical statement
-reader. Read [current status](docs/status.md), [architecture](docs/architecture.md),
-and [roadmap](docs/roadmap.md) before choosing the next implementation task.
-Historical iteration reports are evidence about particular changes, not the
-current product specification.
+Definograph draws the logical structure of a Lean 4 statement so that a person
+can check what it says. It reads statements, not proofs. It runs locally: a
+Lean 4.28.0 worker, a TypeScript reader in the browser, and a VS Code
+companion. Read [docs/principles.md](docs/principles.md) first; it is short.
 
-## Objective and implementation rules
+Changes are accepted on machine checks, not on a person's review. A claim the
+code makes needs a Lean proof, a kernel check, or a test that fails when the
+claim breaks.
 
-- Help a reader understand the statement. The default is the statement's
-  skeleton followed by a visual sequence. Numerical exploration is secondary.
-- Extend deterministic decomposition and composition of shared primitives.
-  Do not add dispatch on a theorem name, corpus case ID, user record name, or
-  field spelling to make an example pass. Specialized mathematical lenses need
-  an explicit contract and must remain optional refinements.
-- Preserve exact expression identity, binder identity, universe distinctions,
-  argument roles, quantifier order, and lexical scope. An object's fields and
-  laws are available only where the owning object is available.
-- Keep the original expression and the reason for a transformation. Checked
-  unfolding can expose a definition; it does not establish every mathematical
-  consequence or guarantee a useful visual explanation.
-- Preserve unresolved expressions and resource boundaries. Never replace an
-  unknown predicate with an interpreted child or silently invent coordinates,
-  nonempty regions, a metric, continuity, a witness, or a proof.
-- Distinguish kernel checking, semantic interpretation, schematic presentation,
-  and numerical sampling in code and documentation. A passing corpus measures
-  its stated contracts, not understanding of all mathematics.
+## Invariants
 
-## Formal environment boundary
+Breaking one of these is never the fix.
 
-The standalone worker accepts restricted terms in a pinned environment. The
-editor sidecar re-elaborates a trusted active buffer against existing project
-dependencies; its separate process is **not** a security sandbox. Keep those
-input modes and trust contracts distinct.
+1. **Statements, not proofs.** A proof is shown as the statement it proves,
+   with the kernel's verdict and its axioms where they were recorded. Do not
+   draw a proof body. Proofs inside a selected data term are still drawn today
+   ([status](docs/status.md#what-remains-unsolved)); do not add new cases.
+2. **Never show what the term does not say.** Unread or uninterpreted parts
+   stay visible and labelled. Never invent a witness, coordinates, a metric, a
+   region, continuity or a proof.
+3. **Keep identity and scope exact.** Preserve expression and binder identity,
+   universe distinctions, argument roles, quantifier order and lexical scope.
+   A field or law is available only where its owning object is. Keep the
+   original expression beside any transformation of it.
+4. **No new axioms.** Do not add `axiom`, `sorry`, `native_decide` or a looser
+   kernel check to make something work. The exceptions are the negative
+   control `scripts/fixtures/axiom-audit/AxiomAuditFixture.lean`, which
+   nothing imports, and test inputs that check such a term is refused.
+5. **The axiom policy only tightens.** In `scripts/axiom-policy.json`,
+   `allowedAxioms`, `ratchetExceptions` and each certificate's `axioms` may
+   lose entries, never gain them; `ratchetedAxiom` stays `Classical.choice`,
+   and no certificate is deleted to make the audit pass. A theorem that newly
+   needs an exception is the defect: if `Classical.choice` enters through its
+   proof, fix the proof; if through its statement, fix the statement in the
+   foundation. No test refuses a new entry yet.
+6. **Vendored code is read-only.** `vendor/DefinographCapture/src/` is a
+   byte-exact copy of a foundation repository that is not public, pinned by
+   SHA-256 in `UPSTREAM.json`; `npm run test:source-dependency` fails on any
+   change. It is refreshed only from that repository, as its
+   [README](vendor/DefinographCapture/README.md) says. `vendor/LeanTeX/upstream/`
+   is unchanged too; the native build verifies its checksums, and its
+   compatibility changes are `vendor/LeanTeX/lean-4.28.patch`.
+7. **Drawings read back.** Anything added to the drawing's grammar needs a test
+   that reads the drawing back to the structure it was drawn from
+   (`src/visual/skeleton-readback.ts` is the pattern). Never weaken a readback
+   or an expectation to match new output.
+8. **No name dispatch.** Do not key behaviour on a theorem name, corpus case
+   id, record name or field spelling. The rules in `src/semantic/registry.ts`
+   keyed on audited Lean and Mathlib constant names are a known gap
+   ([principles](docs/principles.md#where-the-code-stands)), not a pattern to
+   extend.
+9. **Say where each check comes from.** Keep kernel checks, elaborator answers
+   (`Meta.isDefEq`, `Meta.isProp`), tested-only code and unchecked vocabulary
+   distinct, in code, on screen and in documents.
+10. **Leave the user's project alone.** Never change a user's Lean source, Lake
+    files, dependencies, toolchain or settings, and never log or commit a
+    user's buffer. The editor sidecar runs trusted code; it is not a sandbox.
+11. **Compatibility names stay.** `StatementLens` Lean namespaces, IPC
+    identifiers and `statementLens.*` settings are kept on purpose.
 
-Use this repository's ignored `.local/` directory for native builds, private
-dependencies, reports, and machine-specific configuration. Do not change a
-user's Lean source, Lake files, compiled dependencies, global toolchain, or
-settings as a shortcut. Do not run Lake updates or dependency downloads in a
-user's formal project. Native setup can read an existing matching cache or
-explicitly download into this repository's isolated cache.
+## Where things are
 
-Do not add axioms, `sorry`, or relaxed placeholder checks to make a visualization
-succeed. The one exception is `scripts/fixtures/axiom-audit/AxiomAuditFixture.lean`,
-a negative control that plants a `sorry`, a `native_decide` and an axiom so that
-`npm run test:axioms` can show it rejects them; nothing imports it. Never log or
-commit an editor user's buffer as a diagnostic artifact without a task-specific
-reason.
+| Path | Contents |
+| --- | --- |
+| `lean/StatementLens/` | Lean programs: browser worker (`Worker.lean`), editor context program (`Context.lean`, `SourceSnapshot.lean`), and the export both use (`Export.lean`) |
+| `vendor/DefinographCapture/` | The proved core: the Lean modules with the theorems (read-only) |
+| `src/` | The reader: `core/`, `semantic/`, `reading/`, `visual/` (skeleton and figures), `editor/`, `packets/` |
+| `server/` | Local HTTP service and Lean process management |
+| `extension/` | VS Code controller |
+| `corpus/` | Expectations for the native suites |
+| `scripts/` | Native suites, the axiom audit, setup |
+| `website/` | The static site at definograph.com; its own package |
+| `docs/` | Current contracts; `docs/history/` is a frozen record |
 
-## Change and verification workflow
+[Code entry points](docs/status.md#code-entry-points) maps each boundary to files.
 
-1. State the reusable capability and the meaning it must preserve. Inspect its
-   existing code path before adding another representation or registry.
-2. Keep the change bounded and compatible with the current typed contracts.
-   Internal `StatementLens` Lean namespaces, IPC identifiers, and
-   `statementLens.*` settings are retained for compatibility despite the Definograph
-   display name; do not rename them as cosmetic cleanup.
-3. For semantic changes, use real Lean exports and independent expected
-   relationships. Include a renamed or unfamiliar definition where relevant,
-   plus a boundary case that must remain unknown. Do not weaken expectations to
-   match a new implementation.
-4. Run the applicable [checks](CONTRIBUTING.md#validation). Check the actual
-   browser when changing reading or interaction. Mocked extension checks are
-   not evidence of an actual VS Code host session.
-5. Update current status/contracts for changed behavior. Report what was tested,
-   what remains unverified, and any migration or compatibility risk. Do not
-   turn each small change into another release report.
+## Checks
 
-Current user instructions and authorized task scope govern publication and
-other actions; this file does not create an additional approval gate. Keep
-unrelated work intact, and do not push, publish, or install software merely
-because a local check completed.
+These need no Lean, and CI runs exactly these on every push. Install with the
+two `npm ci` lines, then run the rest before every commit:
 
-## Repository map
+```sh
+npm ci --ignore-scripts
+npm ci --prefix extension --ignore-scripts
+npm run build
+npm run check:reader-drivers
+npm test
+npm run test:server
+npm run test:source-dependency
+npm run check:extension
+cd website && npm ci --ignore-scripts && npm run check
+```
 
-See [code entry points](docs/status.md#code-entry-points) for the extraction,
-decomposition, semantics, reading, rendering, and editor boundaries. New design
-work belongs in the architecture and roadmap; reusable fixture expectations
-belong in `corpus/`; generated audit output belongs in `.local/`.
+Run them one at a time, never two together. The heavy ones, which take a large
+share of a small machine's memory, are both `npm ci` lines, `npm run build`,
+`npm test`, `npm run check:extension` and the website's `npm ci` and
+`npm run check`.
+
+Native checks need the built native engine. Without it they stop at once,
+most of them on a missing `.local/config.json`. Build it once with
+`npm run setup:lean -- --lean /absolute/path/to/lean-4.28.0/bin/lean --download`
+(several GB into the ignored `.local/`); later, `npm run setup:lean` rebuilds
+with the saved paths. Then:
+
+- `npm run test:axioms`: the proved core's axioms, a negative control and a
+  kernel replay. Run it after any change under `lean/`, `vendor/` or
+  `scripts/axiom-*`.
+- The focused native suite for what you changed, for example
+  `npm run test:editor` or `npm run test:corpus`. The list is in `package.json`
+  and in [status](docs/status.md#validation-and-evidence).
+- `npm run check`: the build and the reader-driver, unit, server and
+  source-dependency checks, then every native suite and the axiom audit.
+
+Every native check is heavy. Run them one at a time, and never while
+`setup:lean` is rebuilding: the corpus compares executable hashes. CI runs no
+native check, so say in the commit message which ones you ran. Known failing
+checks are listed in [status](docs/status.md#known-failing-checks); do not
+spend time rediscovering them.
+
+## Adding a test
+
+- Unit or renderer: `src/<area>/<name>.test.ts` beside the module. Vitest runs
+  `src/**/*.test.ts` with `npm test`.
+- Server: `server/<name>.test.ts`, run by `npm run test:server`.
+- Extension: `extension/src/<name>.test.ts`, run by `npm run check:extension`.
+- Native: extend `scripts/<area>-integration.ts`, or add a script with an npm
+  entry and add that entry to `check`.
+- Expectations for native suites: `corpus/cases.ts`, `corpus/structures.ts`.
+- Use real Lean exports for anything that depends on elaboration. Include a
+  renamed or unfamiliar definition, and a boundary case that must stay unknown.
+- A bug fix comes with a test that fails without the fix. Test what a reader
+  sees, not the implementation's branches.
+
+## Commits
+
+- One logical change per commit, built and passing the checks above.
+- Subject: imperative, at most 72 characters, saying what changes for a reader
+  or a contributor.
+- Body: why, what changed, and what did not. End the body, before any
+  trailers, with `Checked:` and the commands actually run, with counts.
+- Write only about this repository's code and documents. No personal names
+  except in credit lines and `Co-Authored-By` trailers, no quotations from
+  conversations, no local paths, no references to files outside the repository,
+  and no project-management state (who approved what, what is awaited).
+- Never force-push, rewrite history or delete branches. A passing check is not
+  permission to push, publish, deploy or install; do what the task authorizes.
+
+## Documents
+
+When behaviour changes, update `docs/status.md` and the contract page in the
+same commit. Do not add dated reports to `docs/`; the commit message is the
+record. Generated output and native builds go in `.local/`.

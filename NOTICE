@@ -65,5 +65,6 @@ These are credited sources of design inspiration. No Manim or Penrose code,
 scene assets, video assets, or styles were copied or vendored; neither runtime
 is included. No third-party diagram implementation is vendored into this repository.
 The graph-constraint figures use local SVG and add no graph-layout dependency.
-See docs/visual-method.md and docs/graph-iteration.md for the specific application
-of these ideas and the distinction between inspiration and software reuse.
+See docs/history/visual-method.md and docs/history/graph-iteration.md for the
+specific application of these ideas and the distinction between inspiration and
+software reuse.

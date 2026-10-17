@@ -1,6 +1,9 @@
 # Contributing to Definograph
 
 Definograph is a research project, not a completed general mathematical visualizer.
+Read [the principles](docs/principles.md) first: they are the standard every
+change is held to. The [agent guide](AGENTS.md) lists the invariants a change
+must keep, the exact checks and the commit rules; it applies to people too.
 Contributions should advance the [architecture](docs/architecture.md) toward
 reusable decomposition and composition. Read [current status](docs/status.md)
 and [the roadmap](docs/roadmap.md) before choosing work.
@@ -30,7 +33,7 @@ npm ci --ignore-scripts
 npm ci --prefix extension --ignore-scripts
 ```
 
-The TypeScript, browser, server, and extension checks below do not need Lean.
+The checks listed in [the agent guide](AGENTS.md#checks) do not need Lean.
 Native extraction requires Lean 4.28.0 and the pinned mathlib cache. Follow the
 [README setup](README.md) and [Lean setup contract](docs/lean-contract.md)
 explicitly; the default checks do not install a toolchain for you. Native
@@ -39,24 +42,19 @@ artifacts and machine paths belong in ignored `.local/`.
 The editor adapter executes trusted Lean source in a separate process. It must
 not modify the user's source, Lake configuration, dependencies, or global
 toolchain. Do not add `sorry`, axioms, or looser kernel checks to make an example
-render. See [the editor boundary](docs/editor-integration.md).
+render. Never add an entry to `allowedAxioms`, `ratchetExceptions` or a
+certificate's `axioms` in `scripts/axiom-policy.json`: entries may be removed,
+never added. See
+[the editor boundary](docs/editor-integration.md).
 
 ## Validation
 
-The fast, toolchain-independent check set is:
-
-```sh
-npm run build
-npm run check:reader-drivers
-npm test
-npm run test:server
-npm run test:source-dependency
-npm run check:extension
-```
-
-GitHub CI runs those commands. Its result does **not** imply native Lean checks
-or an installed VS Code extension passed. It installs npm dependencies; it does
-not run `setup:lean`, Lake, Elan, or download mathlib.
+The toolchain-independent checks, exactly as GitHub CI runs them, are listed
+once, in [the agent guide](AGENTS.md#checks): the build, the reader-driver type
+check, unit, server, source-dependency and extension checks, and, separately,
+`npm run check` in `website/`. A CI pass does **not** imply that native Lean
+checks or an installed VS Code extension passed. CI installs npm dependencies;
+it does not run `setup:lean`, Lake, Elan, or download mathlib.
 
 `check:reader-drivers` applies strict TypeScript checks to the reader, action
 navigation and section-outline browser drivers and their imported modules. It
@@ -76,8 +74,11 @@ npm run check:extension
 rebuilds against it. Run it before the tests, not concurrently with native
 integration tests: the corpus checks executable hashes to detect mixed builds.
 Useful focused commands include `test:decomposition`, `test:structure-export`,
-`test:semantic`, `test:reading`, `test:editor`, and `test:corpus`; see
-[the status test map](docs/status.md#validation-and-evidence).
+`test:semantic`, `test:reading`, `test:editor`, `test:corpus` and `test:axioms`,
+which audits the axioms of the vendored proved core and replays it through the
+kernel; see [the status test map](docs/status.md#validation-and-evidence). Every
+native command needs the built native engine, and CI runs none of them. Known
+failures are listed under [known failing checks](docs/status.md#known-failing-checks).
 
 Use real exported expressions when a change depends on elaboration, coercions,
 instances, or scope. Include negative cases as well as supported ones. For

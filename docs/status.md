@@ -6,9 +6,12 @@ generic direct-record reflection as one useful foundation. It has **not** solved
 automatic mathematical explanation, general definition decomposition, or the
 selection of the best visual abstraction.
 
-This page describes the underlying 0.7 implementation, retained in the 0.7.1
-identity and repository cleanup. The
-[architecture](architecture.md) maps current code; the [architecture decision](design/architecture-decision.md), the earlier [reset proposal](design/architecture-reset.md)
+This page describes the 0.7 implementation as extended since the 0.7.1
+cleanup: the statement skeleton above the steps, a selected proof read as the
+statement it proves, section variables that a declaration does not take listed
+apart, and an axiom audit of the vendored proved core. The package version is
+still 0.7.1. The [principles](principles.md) give the standard these are held
+to. The [architecture](architecture.md) maps current code; the [architecture decision](design/architecture-decision.md), the earlier [reset proposal](design/architecture-reset.md)
 and [roadmap](roadmap.md) describe future work, not implemented behavior.
 
 The added `/packet` client reads saved composition-checker output through exact
@@ -66,7 +69,7 @@ See the [reader relation table](reader-relations.md) for these bounded readings.
 
 | Capability | Implemented boundary |
 | --- | --- |
-| Checked Lean input | Restricted standalone proposition terms and imported declarations in a pinned environment; selected propositions from a trusted Lean editor buffer using actual built project dependencies |
+| Checked Lean input | Restricted standalone proposition terms and imported declarations in a pinned environment; selected propositions, and selected proofs read through the statement they prove, from a trusted Lean editor buffer using actual built project dependencies |
 | Typed and logical structure | Exact exported expression identities, binder order, quantifier dependencies, assumptions, branches, typed objects, and unresolved applications |
 | Generic record reflection | Up to 16 direct fields with checked projections and instantiated types; supplementary field laws remain in the owning object's scope; unfamiliar record/field names need no recognizer |
 | Checked definition views | Bounded type-head aliases and proposition previews, explicit bounded expansion, original names and expressions retained |
@@ -77,6 +80,9 @@ See the [reader relation table](reader-relations.md) for these bounded readings.
 | Editor package | A local VS Code controller and native context sidecar; configuration and identifiers retain the internal StatementLens name |
 | Local browser service | One reading at a time on 127.0.0.1. The page checks a reply's shape before drawing it, and the editor view checks its readings the same way. It names the kind of failure: a refusal by Lean or by Definograph's own limits, a statement over the length limit, Lean busy, Lean stopped at its time limit, an answer over the size limit, a request the service refused, Lean unavailable, the service not reachable, the service failing, or a reply the page cannot read. It retries a busy reply up to three times when Retry-After asks for at most five seconds, and replaces a diagram that fails to draw with a note; an error outside every diagram shows a page that says Definograph stopped. The service accepts its own origin, and the Vite page on port 5173 only under `npm run dev`. A request without an Origin header is accepted only when its Sec-Fetch-Site header is same-origin or none, or when it has no Sec-Fetch-Site header, as from a client that is not a current browser |
 | Exact editor source capture | Original/prepared raw frames, expected type, retained source typing outcomes and axiom audits; explicit unsupported and resource-limit states |
+| Selected proofs | Read through the statement they prove: the guided title with one verdict line, and in Source data one closed leaf `(⋯ : statement)` with the recorded typing verdict and axioms; no constructor inside it can be chosen |
+| Section variables | In the editor, a section `variable` that the enclosing declaration does not take, or may not take, is listed under the title with its reason instead of drawn |
+| Proved-core axiom audit | `npm run test:axioms`: no constant of the vendored proved core declares an axiom or uses one outside `propext`, `Quot.sound` and `Classical.choice`; every theorem uses only `propext` and `Quot.sound`, apart from the theorems listed in `scripts/axiom-policy.json`, whose statements already depend on `Classical.choice` through `Lean.Json` or `Lean.Environment`; no proof adds `Classical.choice`; a negative control must be rejected; the compiled modules replay through `leanchecker` |
 | Exact definition-head exposure | One safe definition body at a retained term/type occurrence, with the original fold, unchanged dependent context, replayable trace and fresh result/conversion checks |
 | Checked continuations | Up to eight exposure, focus, field-catalogue, projection, type-component or logical-inspection operations, independently reconstructed dependent contexts, named/primitive projections and check declarations, exact replay and retained earlier attempts |
 
@@ -119,6 +125,19 @@ fallback; typography never determines source identity or a check outcome.
   mathematics better, or measure a percentage of mathematics covered.
 - **Complete boundary reporting.** Some early native heartbeat or oversized
   type exits retain the original object without a specific omission reason.
+- **Proofs inside data.** Proof arguments inside a selected data term, and
+  inside the statement or context of a selected proof, are still drawn as
+  ordinary structure in Source data; the drawer says so
+  ([source snapshots](editor-source-snapshots.md)).
+- **Run-time readback.** The skeleton's readback is a unit and native test, not
+  a run-time check, and the other guided figures have no readback
+  ([guided reading](guided-reading.md#the-statement-skeleton)).
+- **Axiom status.** Capture records list their axioms but are not classified
+  against a policy. A term that depends on a lemma proved with `sorry` is
+  accepted, with `sorryAx` in its list.
+- **Kernel-checked conversion on the main path.** The guided reading compares an
+  opened definition with the original through Lean's elaborator
+  (`Meta.isDefEq`), and it does not run on the proved core.
 - **Broader integration.** Lean 4.28.0 is the only targeted version. An automated
   macOS VS Code development-host journey has exercised inspection buttons, native
   continuations, cancellation, refusal recovery and Reveal. Native Windows,
@@ -146,6 +165,9 @@ dependencies, and global toolchain settings must remain unchanged.
 | Semantic objects, identities, scopes, and rules | [`src/semantic/compiler.ts`](../src/semantic/compiler.ts), [`types.ts`](../src/semantic/types.ts), [`registry.ts`](../src/semantic/registry.ts), [`expression.ts`](../src/semantic/expression.ts) |
 | Shared applications and typed constructions | [`src/semantic/application-flow.ts`](../src/semantic/application-flow.ts), [`src/constructions/model.ts`](../src/constructions/model.ts) |
 | Reading sequence and representations | [`src/reading/compiler.ts`](../src/reading/compiler.ts), [`src/reading/types.ts`](../src/reading/types.ts), [`src/semantic/planner.ts`](../src/semantic/planner.ts) |
+| Statement skeleton and identity colour | [`StatementSkeleton.tsx`](../src/visual/StatementSkeleton.tsx), [`skeleton-readback.ts`](../src/visual/skeleton-readback.ts), [`object-identity.ts`](../src/visual/object-identity.ts), [`region-words.ts`](../src/visual/region-words.ts) |
+| Selected proof leaf and section variables | [`selection-class.ts`](../src/editor/selection-class.ts), [`source-proof-fold.ts`](../src/editor/source-proof-fold.ts), [`ProofLeaf.tsx`](../src/editor/ProofLeaf.tsx), [`section-variables.tsx`](../src/editor/section-variables.tsx), with the selection class and section-variable record from [`Context.lean`](../lean/StatementLens/Context.lean) |
+| Axiom policy of the proved core | [`axiom-audit.mjs`](../scripts/axiom-audit.mjs), [`axiom-audit.lean`](../scripts/axiom-audit.lean), [`axiom-policy.json`](../scripts/axiom-policy.json), [`fixtures/axiom-audit/`](../scripts/fixtures/axiom-audit/) |
 | Primary reader and reflected objects | [`src/visual/GuidedReading.tsx`](../src/visual/GuidedReading.tsx), [`StatementReadingView.tsx`](../src/visual/StatementReadingView.tsx), [`StructuralObjectFigure.tsx`](../src/decomposition/StructuralObjectFigure.tsx) |
 | Optional source-scoped graph | [`src/reading/scoped-graph.ts`](../src/reading/scoped-graph.ts), [`ScopedStatementGraph.tsx`](../src/visual/ScopedStatementGraph.tsx), [`scoped-graph-layout.ts`](../src/visual/scoped-graph-layout.ts), [`scoped-graph-math.ts`](../src/visual/scoped-graph-math.ts) |
 | Typed plot labels | [`src/notation/math-display.ts`](../src/notation/math-display.ts), [`MathLabel.tsx`](../src/components/MathLabel.tsx), [`math-label-measure.ts`](../src/components/math-label-measure.ts), [`use-diagram-text.ts`](../src/components/use-diagram-text.ts) |
@@ -165,11 +187,12 @@ spans.
 
 The **0.7 baseline** reports **725 checks** on macOS arm64 with Lean 4.28.0.
 That is a historical local result, not a claim that this count was rerun for the
-publication cleanup or by GitHub CI, or that the objective is complete. See
-[verification](verification.md) for suite counts, environment, browser
-observations, and explicit gaps.
+publication cleanup or by GitHub CI, or that the objective is complete. The
+closed [verification record](history/verification.md) gives suite counts,
+environment, browser observations and explicit gaps up to 2026-10-13; later
+results are in the commit messages that change the code.
 
-Recent model and static-render checks cover source-scoped graph composition, repeated ports,
+Before 2026-10-12, model and static-render checks covered source-scoped graph composition, repeated ports,
 quantifier and guard controls, local binders, constructor-preserving notation,
 and measured labels. Browser checks exercise narrow scrolling, declaration
 references, passive folds, source-linked clause choice, and return to guided
@@ -177,7 +200,11 @@ reading. These are bounded fixture checks, not a general usability qualification
 Installed-extension checks have shown readable native inspection results for the
 Lebesgue-number and uniform-continuity cases. Return to the prior reading stage and selector focus is checked in both cases.
 These installed checks precede the final graph and plot-label integration; the
-changed display paths require their own verification.
+changed display paths require their own verification. They also precede the
+statement skeleton and the closed proof leaf of 2026-10-12 and 2026-10-13. The
+skeleton has unit and native readback tests and was checked by eye in the
+running browser reader. The proof leaf and the section-variable list have unit
+and native tests; no installed VS Code session has exercised them.
 
 | Command | What it checks |
 | --- | --- |
@@ -186,7 +213,7 @@ changed display paths require their own verification.
 | `npm test` | Unit and renderer contracts, including checked fixtures; no live Lean worker |
 | `npm run test:server` | Local HTTP/IPC, process lifecycle, cancellation, request boundaries, and mocked workers |
 | `npm run check:extension` | Type checking, mocked controller/lifecycle checks, and local VSIX packaging; no editor installation |
-| `npm run test:axioms` | Every constant of the compiled proved core against the axiom allowlist in `scripts/axiom-policy.json`, a negative control that must be rejected, and a kernel replay with `leanchecker`; requires the built native engine. `--no-replay` skips the replay |
+| `npm run test:axioms` | Every constant of the compiled proved core against the axiom allowlist in `scripts/axiom-policy.json`, a negative control that must be rejected, and a kernel replay with `leanchecker`; requires the built native engine. `--no-replay` skips the replay; `--fresh` replays the whole import closure from an empty environment |
 | `node --import tsx scripts/host-journey.ts` | Real macOS VS Code development-host inspection clicks, exact command fields, native process counts, cancellation, refusal recovery and Reveal |
 | `npm run test:structure-export` | Actual native field reflection, type aliases, bounds, source isolation, and response trimming |
 | `npm run test:decomposition` | Unfamiliar and renamed user records through native extraction, shared semantics, and the production reader |
@@ -200,15 +227,39 @@ changed display paths require their own verification.
 | `npm run test:corpus` | Hand-reviewed interpreted and unresolved relationships, scope, identities, and native binary provenance |
 | `npm run check` | Build, unit/server tests, and all current native integration suites; requires a configured built native engine |
 
-GitHub CI intentionally runs only build, unit, server, and extension checks. It
-does not provision Lean or download mathlib. Native suites must run after an
-explicit [isolated setup](lean-contract.md), with no concurrent worker rebuild.
+GitHub CI runs the build, the reader-driver type check, unit, server,
+source-dependency and extension checks, and the website's own check. It does not
+provision Lean or download mathlib, so no native suite and no axiom audit runs
+there. Native suites must run after an explicit [isolated setup](lean-contract.md),
+with no concurrent worker rebuild. The exact CI commands are listed in the
+[agent guide](../AGENTS.md#checks).
 
 The strongest existing generality check renames a complete unfamiliar record
 and its fields while requiring the same primitive topology without additional
 recognizers. That checks name independence, not the usefulness or completeness
 of the explanation. Further progress needs both adversarial semantic cases and
 direct evaluation with people reading unfamiliar statements.
+
+## Known failing checks
+
+The first two were observed on 2026-10-12, on the code before that day's
+changes as well; the advisory came with the inherited lockfile. None has been
+fixed. They are listed so that nobody spends time rediscovering them.
+
+- **Two browser drivers stall.** `scripts/reader-action-navigation-check.ts` and
+  `scripts/reader-outline-check.ts` stall in a 400px keyboard scenario in
+  headless Chrome 155 on macOS. No npm script runs them; the other two browser
+  drivers, `scripts/reader-browser-check.ts` and `scripts/reader-race-check.ts`,
+  passed.
+- **The corpus rows of the section-outline test fail.** In
+  `src/editor/source-reader-outline.test.ts`, the part that runs only when
+  `DEFINOGRAPH_SOURCE_LOGICAL_FIXTURES` or `DEFINOGRAPH_ACCEPTANCE_FIXTURES`
+  names a capture corpus fails on rows that end in a definition exposure: the
+  step's return link is not immediately before its section. `npm test` skips
+  that part when neither variable is set.
+- **One dependency advisory.** The root lockfile carries `source-map-js` 1.2.1,
+  a build-time dependency of PostCSS under Vite, for which a denial-of-service
+  advisory (GHSA-68fv-2mgg-jv7q) is reported. No automatic upgrade was made.
 
 ## Handoff priorities
 
