@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, realpath, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-export const SOURCE_CAPTURE_COMMIT = 'e5527ba39f998b0a0babdf8734e0ef56626e418c';
+export const SOURCE_CAPTURE_COMMIT = '6566dc95bfcbd4c2bc293a30e14daf119627e022';
 const HASH = /^[0-9a-f]{64}$/;
 const MODULE = /^[A-Za-z_][A-Za-z_0-9]*(?:\.[A-Za-z_][A-Za-z_0-9]*)*$/;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');

@@ -1,7 +1,7 @@
 # Definograph source capture dependency
 
 This is the exact `SourceCapture` import closure from source commit
-`e5527ba39f998b0a0babdf8734e0ef56626e418c` of the Definograph foundation, a
+`6566dc95bfcbd4c2bc293a30e14daf119627e022` of the Definograph foundation, a
 separately maintained repository that is not public. That commit cannot be
 fetched; this directory, with the hashes in `UPSTREAM.json`, is the only
 published copy. The foundation repository remains authoritative for changes.

@@ -13,6 +13,9 @@ def CTel.items : {n : Nat} → CTel n → Array HItem
   | _, .port C a A => (CTel.items C).push (.port a.name a.info (dec A))
   | _, .letE C nm nd A v => (CTel.items C).push (.letE nm (dec A) (dec v) nd)
 
+-- `simpa only` in the next two proofs is deliberate. Plain `simpa` also rewrites the fold's start
+-- index with `Array.size_push`, after which only `Array.foldr_push'` applies, and that core lemma
+-- depends on `Classical.choice`. `Array.foldr_push` itself needs `propext` and `Quot.sound` only.
 theorem forall_decode (C : CTel n) (t : Core n) :
     dec (C.close t) = closeForall (CTel.items C) (dec t) := by
   induction C with
@@ -22,6 +25,9 @@ theorem forall_decode (C : CTel n) (t : Core n) :
   | letE C nm nd A v ih => simpa only [CTel.close, CTel.items, closeForall, dec,
       CoreExprBridge.decode, Array.foldr_push] using ih (.letE nm nd A v t)
 
+/-- info: 'DefinographAdmission.forall_decode' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms forall_decode
+
 theorem lambda_decode (C : CTel n) (t : Core n) :
     dec (ctelLam C t) = closeLam (CTel.items C) (dec t) := by
   induction C with
@@ -30,6 +36,9 @@ theorem lambda_decode (C : CTel n) (t : Core n) :
       CoreExprBridge.decode, Array.foldr_push] using ih (.lam a A t)
   | letE C nm nd A v ih => simpa only [ctelLam, CTel.items, closeLam, dec,
       CoreExprBridge.decode, Array.foldr_push] using ih (.letE nm nd A v t)
+
+/-- info: 'DefinographAdmission.lambda_decode' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms lambda_decode
 
 def checkContextWith (run : Check) (nm : Name) (ls : List Name) (C : CTel n) : MetaM Checks := do
   ensureSourceBasis (← getEnv) [contextExpr C]
@@ -125,7 +134,5 @@ def ingestComponent (items : List HItem) (term type : Expr) :
   let ⟨n, C⟩ ← ingestContext items
   return ⟨n, C, ← CoreExprBridge.reify term n, ← CoreExprBridge.reify type n⟩
 
-#print axioms forall_decode
-#print axioms lambda_decode
 #print axioms allAccepted_push
 end DefinographAdmission

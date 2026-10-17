@@ -1309,6 +1309,8 @@ theorem Tmpl.uses_depth {Γ : List Nat} {n : Nat} : ∀ {e : Nat} (t : Tmpl Γ n
     have := ih z hz
     simp only [List.length_cons, List.filter_cons]
     simp at this ⊢
+    -- Only the arithmetic half goes to omega. Given the whole conjunction as its goal, omega
+    -- negates it and splits `¬(_ ∧ _)` with `Classical.propDecidable`, that is, Classical.choice.
     exact ⟨by omega, this.2⟩
   | letE nm nd ty v b ih =>
     intro y hy
@@ -1317,7 +1319,11 @@ theorem Tmpl.uses_depth {Γ : List Nat} {n : Nat} : ∀ {e : Nat} (t : Tmpl Γ n
     have := ih z hz
     simp only [List.length_cons, List.filter_cons]
     simp at this ⊢
+    -- As in the pi case: omega must not be given the conjunction.
     exact ⟨by omega, this.2⟩
+
+/-- info: 'V6Structured.Tmpl.uses_depth' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms Tmpl.uses_depth
 
 /-- Selection paths to holes are prefix-free: a hole is a leaf of the selection. -/
 theorem followSel_prefix_free : ∀ (s : BSel) (p q : List Step) (i : Nat) (s' : BSel),

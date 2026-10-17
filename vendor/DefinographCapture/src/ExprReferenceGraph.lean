@@ -118,9 +118,14 @@ theorem run_append (initial : Values Γ) (first : Extension Γ Δ) (rest : Exten
   induction rest with
   | done => rfl
   | snoc rest node ih =>
+    -- Stated with `show` and closed by `rw` on purpose: a `simp` that closes this goal ends with
+    -- `eq_self`, which is proved with `propext`, and `roundTrip_eq` would then depend on it.
     show pushValues (run initial (first.append rest)) (evalNode (run initial (first.append rest)) node)
       = pushValues (run (run initial first) rest) (evalNode (run (run initial first) rest) node)
     rw [ih]
+
+/-- info: 'ExprReferenceGraph.run_append' does not depend on any axioms -/
+#guard_msgs in #print axioms run_append
 
 theorem run_lift (initial : Values Γ) (code : Extension Γ Δ) (r : Ref Γ k) :
     run initial code (code.lift r) = initial r := by
@@ -322,6 +327,9 @@ def encode (e : Expr) : ClosedGraph .expr := encodeExpr e []
 theorem roundTrip_eq (e : Expr) : decodeGraph (encode e) = eraseMetadata e :=
   encodeExpr_correct e [] emptyValues
 
+/-- info: 'ExprReferenceGraph.roundTrip_eq' does not depend on any axioms -/
+#guard_msgs in #print axioms roundTrip_eq
+
 -- A constructor-by-constructor relation, separate from Expr's alpha-oriented BEq.
 inductive ExactLevel : Level → Level → Prop where
   | zero : ExactLevel .zero .zero
@@ -384,6 +392,9 @@ theorem ExactExpr.refl (e : Expr) : ExactExpr e e := by
 theorem roundTrip_exact (e : Expr) : ExactExpr (decodeGraph (encode e)) (eraseMetadata e) := by
   rw [roundTrip_eq]
   exact ExactExpr.refl _
+
+/-- info: 'ExprReferenceGraph.roundTrip_exact' does not depend on any axioms -/
+#guard_msgs in #print axioms roundTrip_exact
 
 theorem exact_binder_fields
     (h : ExactExpr (.lam name type body info) (.lam name' type' body' info')) :
